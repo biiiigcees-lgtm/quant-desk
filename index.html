@@ -365,8 +365,9 @@
     <div class="tb-change num" id="topChange">——</div>
   </div>
   <div class="flex-gap">
-    <div class="dot"></div>
+    <div class="dot" id="feedDot"></div>
     <div class="tb-time" id="topTime">——</div>
+    <div style="font-size:9px;color:var(--text3);" id="feedStatus">connecting…</div>
   </div>
 </div>
 
@@ -650,7 +651,6 @@
 
 const CC_KEY = ''; // No key needed for free tier
 const COINBASE_BASE = 'https://api.exchange.coinbase.com';
-const CC_BASE = 'https://min-api.cryptocompare.com/data';
 
 // ---- STATE ----
 let state = {
@@ -1081,26 +1081,30 @@ function computeKelly(pWin, edge) {
 // ---- LIVE DATA ----
 async function fetchCoinbasePrice() {
   try {
-    const r = await fetch(`${COINBASE_BASE}/products/BTC-USD/ticker`, {
-      headers: { 'User-Agent': 'Mozilla/5.0 BTC-Terminal/1.0' }
-    });
-    if (!r.ok) throw new Error(r.status);
-    const d = await r.json();
+    const hdrs = { 'User-Agent': 'Mozilla/5.0 BTC-Terminal/1.0' };
+    const [tR, sR] = await Promise.all([
+      fetch(`${COINBASE_BASE}/products/BTC-USD/ticker`, { headers: hdrs }),
+      fetch(`${COINBASE_BASE}/products/BTC-USD/stats`,  { headers: hdrs }),
+    ]);
+    if (!tR.ok) throw new Error(tR.status);
+    const t = await tR.json();
+    const s = sR.ok ? await sR.json() : {};
     return {
-      price: parseFloat(d.price),
-      vol24: parseFloat(d.volume),
-      open24: parseFloat(d.open_24h),
-      high24: parseFloat(d.high_24h),
-      low24:  parseFloat(d.low_24h),
+      price:  parseFloat(t.price),
+      vol24:  parseFloat(s.volume  || t.volume || 0),
+      open24: parseFloat(s.open    || t.price),
+      high24: parseFloat(s.high    || t.price),
+      low24:  parseFloat(s.low     || t.price),
     };
-  } catch {
+  } catch(e) {
+    console.warn('Ticker fetch failed:', e.message);
     return null;
   }
 }
 
 async function fetchCoinbaseOB() {
   try {
-    const r = await fetch(`${COINBASE_BASE}/products/BTC-USD/book?level=2`, {
+    const r = await fetch(`${COINBASE_BASE}/products/BTC-USD/book?level=2&limit=30`, {
       headers: { 'User-Agent': 'Mozilla/5.0 BTC-Terminal/1.0' }
     });
     if (!r.ok) throw new Error(r.status);
@@ -1114,28 +1118,50 @@ async function fetchCoinbaseOB() {
   }
 }
 
-async function fetchCCCandles() {
+async function fetchCoinbaseCandles() {
   try {
-    const r = await fetch(`${CC_BASE}/v2/histominute?fsym=BTC&tsym=USD&limit=96&aggregate=15`);
+    // Coinbase format: [time, low, high, open, close, volume] — newest first
+    const r = await fetch(
+      `${COINBASE_BASE}/products/BTC-USD/candles?granularity=900&limit=200`,
+      { headers: { 'User-Agent': 'Mozilla/5.0 BTC-Terminal/1.0' } }
+    );
     if (!r.ok) throw new Error(r.status);
     const d = await r.json();
-    if (d.Response !== 'Success') throw new Error(d.Message);
-    return d.Data.Data.map(c => ({
-      time: c.time, open: c.open, high: c.high, low: c.low,
-      close: c.close, volume: c.volumefrom,
+    if (!Array.isArray(d) || d.length === 0) throw new Error('empty');
+    return d.reverse().map(c => ({
+      time:   c[0],
+      low:    c[1],
+      high:   c[2],
+      open:   c[3],
+      close:  c[4],
+      volume: c[5],
     })).filter(c => c.close > 0);
-  } catch {
+  } catch(e) {
+    console.warn('Candles fetch failed:', e.message);
     return null;
   }
 }
 
 // ---- UPDATE ALL ----
+let fetchFailCount = 0;
 async function updateAll() {
-  const [ticker, ob, candles] = await Promise.all([
-    fetchCoinbasePrice(),
-    fetchCoinbaseOB(),
-    fetchCCCandles(),
-  ]);
+  let ticker, ob, candles;
+  try {
+    [ticker, ob, candles] = await Promise.all([
+      fetchCoinbasePrice(),
+      fetchCoinbaseOB(),
+      fetchCoinbaseCandles(),
+    ]);
+  } catch(e) {
+    console.error('updateAll error:', e);
+  }
+
+  const feedOk = ticker && candles;
+  fetchFailCount = feedOk ? 0 : fetchFailCount + 1;
+  const dot = document.getElementById('feedDot');
+  const fs  = document.getElementById('feedStatus');
+  if (dot) dot.style.background = feedOk ? 'var(--green)' : fetchFailCount > 2 ? 'var(--red)' : 'var(--amber)';
+  if (fs)  fs.textContent = feedOk ? 'LIVE · Coinbase' : fetchFailCount > 2 ? 'FEED ERROR' : 'reconnecting…';
 
   if (ticker) {
     state.price  = ticker.price;
@@ -1309,7 +1335,7 @@ function renderUI() {
   }
 
   const sigVals = [
-    e9 && e21 ? (e9 > e21 ? { v:'BULL', cls:'sig-bull' } : { v:'BEAR', cls:'sig-bear' }) : { v:'——', cls:'sig-neut' },
+    e9 && e21 ? (e9 > e21 ? { v:'▲ '+e9.toFixed(0), cls:'sig-bull' } : { v:'▼ '+e9.toFixed(0), cls:'sig-bear' }) : { v:'——', cls:'sig-neut' },
     state.rsi ? { v: state.rsi.toFixed(0), cls: state.rsi > 60 ? 'sig-bull' : state.rsi < 40 ? 'sig-bear' : 'sig-neut' } : { v:'——', cls:'sig-neut' },
     state.macd ? { v: state.macd > state.macdSignal ? 'BULL' : 'BEAR', cls: state.macd > state.macdSignal ? 'sig-bull' : 'sig-bear' } : { v:'——', cls:'sig-neut' },
     state.bb.mid ? { v: state.price > state.bb.upper ? 'OB' : state.price < state.bb.lower ? 'OS' : 'MID', cls: state.price > state.bb.upper ? 'sig-bear' : state.price < state.bb.lower ? 'sig-bull' : 'sig-neut' } : { v:'——', cls:'sig-neut' },
@@ -1625,9 +1651,13 @@ async function runAIAnalyst() {
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5',
         max_tokens: 1000,
         system: `You are the world's most elite quantitative trader specializing in BTC micro-structure and Kalshi 15-minute prediction markets. You have 20 years of institutional experience reading order flow, EMA crossovers, and price trajectory. 
 
