@@ -380,6 +380,239 @@ function calcEMA(arr,p){
   for(let i=p;i<arr.length;i++){e=arr[i]*k+e*(1-k);res[i]=e;}
   return res;
 }
+
+// ─────────────────────────────────────────────
+// WEBSOCKET ENGINE
+// ─────────────────────────────────────────────
+let ws = null;
+let wsReconnectTimer = null;
+let wsPingInterval = null;
+let wsConnectTs = 0;
+
+function wsConnect() {
+  if (ws && ws.readyState === WebSocket.OPEN) return;
+  setWsStatus('connecting');
+
+  try {
+    ws = new WebSocket('wss://ws-feed.exchange.coinbase.com');
+  } catch (error) {
+    console.warn('WebSocket connection failed', error);
+    setWsStatus('error');
+    scheduleReconnect();
+    return;
+  }
+
+  wsConnectTs = Date.now();
+
+  ws.onopen = () => {
+    ws.send(JSON.stringify({
+      type: 'subscribe',
+      product_ids: ['BTC-USD'],
+      channels: ['ticker', 'level2_50', 'matches'],
+    }));
+    setWsStatus('connected');
+    marketStore.wsConnected = true;
+    marketStore.reconnectCount = 0;
+    clearTimeout(wsReconnectTimer);
+
+    // Heartbeat ping every 20s
+    clearInterval(wsPingInterval);
+    wsPingInterval = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'heartbeat', on: true, product_ids: ['BTC-USD'] }));
+      }
+    }, 20000);
+  };
+
+  ws.onmessage = (evt) => {
+    const now = Date.now();
+    marketStore.lastMsgTs = now;
+    marketStore.msgCount++;
+    try {
+      handleWsMessage(JSON.parse(evt.data));
+    } catch (error) {
+      console.warn('Skipping malformed websocket payload', error);
+    }
+  };
+
+  ws.onerror = () => { setWsStatus('error'); };
+
+  ws.onclose = () => {
+    marketStore.wsConnected = false;
+    setWsStatus('error');
+    clearInterval(wsPingInterval);
+    scheduleReconnect();
+  };
+}
+
+function scheduleReconnect() {
+  clearTimeout(wsReconnectTimer);
+  const delay = Math.min(1000 * Math.pow(2, marketStore.reconnectCount), 30000);
+  marketStore.reconnectCount++;
+  setWsStatus('connecting');
+  wsReconnectTimer = setTimeout(wsConnect, delay);
+}
+
+function setWsStatus(status) {
+  const dot = document.getElementById('wsDot');
+  const lbl = document.getElementById('wsLabel');
+  if (!dot || !lbl) return;
+  let label = 'RECONNECTING';
+  let color = 'var(--red)';
+
+  if (status === 'connected') {
+    label = 'WS LIVE';
+    color = 'var(--green)';
+  } else if (status === 'connecting') {
+    label = 'connecting…';
+    color = 'var(--amber)';
+  }
+
+  dot.className = 'ws-dot ' + status;
+  lbl.textContent = label;
+  lbl.style.color = color;
+}
+
+// ─────────────────────────────────────────────
+// WS MESSAGE HANDLER
+// ─────────────────────────────────────────────
+function handleWsMessage(d) {
+  const t = d.type;
+
+  if (t === 'ticker') handleTicker(d);
+  else if (t === 'snapshot') handleObSnapshot(d);
+  else if (t === 'l2update') handleObUpdate(d);
+  else if (t === 'match' || t === 'last_match') handleTrade(d);
+}
+
+function handleTicker(d) {
+  const prev = marketStore.price;
+  marketStore.price   = Number.parseFloat(d.price) || prev;
+  marketStore.bestBid = Number.parseFloat(d.best_bid) || 0;
+  marketStore.bestAsk = Number.parseFloat(d.best_ask) || 0;
+  marketStore.high24  = Number.parseFloat(d.high_24h) || 0;
+  marketStore.low24   = Number.parseFloat(d.low_24h)  || 0;
+  marketStore.open24  = Number.parseFloat(d.open_24h) || 0;
+  marketStore.vol24   = Number.parseFloat(d.volume_24h) || 0;
+
+  // WS latency from exchange time
+  if (d.time) {
+    const exchTs = new Date(d.time).getTime();
+    marketStore.wsLatency = Date.now() - exchTs;
+  }
+
+  // Update current candle close
+  updateCurrentCandle(marketStore.price);
+}
+
+function handleObSnapshot(d) {
+  marketStore.bids.clear();
+  marketStore.asks.clear();
+  (d.bids || []).forEach(([p, s]) => { const ps = Number.parseFloat(p), ss = Number.parseFloat(s); if(ss>0) marketStore.bids.set(ps, ss); });
+  (d.asks || []).forEach(([p, s]) => { const ps = Number.parseFloat(p), ss = Number.parseFloat(s); if(ss>0) marketStore.asks.set(ps, ss); });
+  rebuildObLists();
+}
+
+function handleObUpdate(d) {
+  (d.changes || []).forEach(([side, p, s]) => {
+    const ps = Number.parseFloat(p), ss = Number.parseFloat(s);
+    const map = side === 'buy' ? marketStore.bids : marketStore.asks;
+    if (ss === 0) map.delete(ps);
+    else map.set(ps, ss);
+  });
+  rebuildObLists();
+}
+
+function rebuildObLists() {
+  // Bids: sorted descending (best first)
+  marketStore.bidsList = [...marketStore.bids.entries()]
+    .sort((a,b) => b[0]-a[0]).slice(0, 20)
+    .map(([p,s]) => ({price:p, size:s}));
+  // Asks: sorted ascending (best first)
+  marketStore.asksList = [...marketStore.asks.entries()]
+    .sort((a,b) => a[0]-b[0]).slice(0, 20)
+    .map(([p,s]) => ({price:p, size:s}));
+
+  // Imbalance
+  const bidVol = marketStore.bidsList.slice(0,10).reduce((a,b)=>a+b.size,0);
+  const askVol = marketStore.asksList.slice(0,10).reduce((a,b)=>a+b.size,0);
+  marketStore.imbalance = (bidVol+askVol)>0 ? (bidVol-askVol)/(bidVol+askVol) : 0;
+}
+
+function handleTrade(d) {
+  const trade = {
+    price: Number.parseFloat(d.price),
+    size:  Number.parseFloat(d.size),
+    side:  d.side,  // 'buy' or 'sell'
+    time:  d.time,
+    ts:    Date.now(),
+  };
+  marketStore.trades.unshift(trade);
+  if (marketStore.trades.length > 80) marketStore.trades.pop();
+
+  // CVD — running total
+  if (d.side === 'buy') marketStore.cvd += trade.size;
+  else marketStore.cvd -= trade.size;
+
+  // Rolling delta (last 50)
+  const last50 = marketStore.trades.slice(0, 50);
+  marketStore.tradeDeltaBuy  = last50.filter(t=>t.side==='buy').reduce((a,t)=>a+t.size,0);
+  marketStore.tradeDeltaSell = last50.filter(t=>t.side==='sell').reduce((a,t)=>a+t.size,0);
+  marketStore.aggression     = (marketStore.tradeDeltaBuy - marketStore.tradeDeltaSell) /
+                               (marketStore.tradeDeltaBuy + marketStore.tradeDeltaSell + 0.0001);
+}
+
+// ─────────────────────────────────────────────
+// CANDLE ENGINE — REST bootstrap + live tick maintenance
+// ─────────────────────────────────────────────
+async function bootstrapCandles() {
+  try {
+    const r = await fetch(
+      'https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=900&limit=200'
+    );
+    const d = await r.json();
+    if (!Array.isArray(d)) throw new Error('bad candles');
+    // [time, low, high, open, close, vol] newest first → reverse
+    const candles = d.reverse().map(c => ({
+      time: c[0], low: c[1], high: c[2], open: c[3], close: c[4], volume: c[5]
+    })).filter(c => c.close > 0);
+    marketStore.candles = candles;
+    if (window._mStore) window._mStore.setState({ candles });
+    computeIndicators();
+    requestAnimationFrame(()=>{ resizeChart(); renderAll(); });
+  } catch(e) {
+    console.warn('Candle bootstrap failed:', e.message);
+  }
+}
+
+function updateCurrentCandle(price) {
+  if (!marketStore.candles.length || !price) return;
+  const now15 = Math.floor(Date.now() / 900000) * 900;
+  const last = marketStore.candles[marketStore.candles.length - 1];
+
+  if (last.time === now15) {
+    // Update current candle
+    last.close = price;
+    if (price > last.high) last.high = price;
+    if (price < last.low)  last.low  = price;
+  } else if (now15 > last.time) {
+    // New candle
+    marketStore.candles.push({ time: now15, open: price, high: price, low: price, close: price, volume: 0 });
+    if (marketStore.candles.length > 300) marketStore.candles.shift();
+  }
+}
+
+// ─────────────────────────────────────────────
+// INDICATORS — computed from candles
+// ─────────────────────────────────────────────
+function computeEMA(arr, p) {
+  const k = 2/(p+1), res = new Array(arr.length).fill(null);
+  if (arr.length < p) return res;
+  let ema = arr.slice(0,p).reduce((a,b)=>a+b,0)/p;
+  res[p-1] = ema;
+  for (let i=p; i<arr.length; i++) { ema = arr[i]*k + ema*(1-k); res[i]=ema; }
+  return res;
+}
 function calcRSI(arr,p=14){
   if(arr.length<p+1)return 50;
   let g=0,l=0;
@@ -868,15 +1101,20 @@ const cvs=document.getElementById('cc'),ctx=cvs.getContext('2d');
 const hcvs=document.getElementById('hmc'),hctx=hcvs.getContext('2d');
 let cW=0,cH=270;
 function resizeChart(){
-  const w=document.getElementById('cw');
-  cW=w.clientWidth;cH=270;
-  cvs.width=cW;cvs.height=cH;hcvs.width=cW;hcvs.height=cH;
+  const wrap=document.getElementById('canvasWrap');
+  const w=wrap.clientWidth||wrap.offsetWidth||wrap.getBoundingClientRect().width||(document.documentElement.clientWidth-460);
+  if(w>0) chartW=Math.floor(w);
+  chartH=280;
+  cvs.width=chartW; cvs.height=chartH;
+  hcvs.width=chartW; hcvs.height=chartH;
 }
 window.addEventListener('resize',()=>{resizeChart();drawChart();});
 
 function drawChart(){
-  const C=S.candles;if(!C.length||!cW)return;
-  const W=cW,H=cH,pad=40,rpad=72,tp=10,bp=28;
+  if(!chartW) resizeChart();
+  const C=marketStore.candles;
+  if(!C.length||!chartW) return;
+  const W=chartW, H=chartH;
   ctx.clearRect(0,0,W,H);
   const cw=Math.max(2,Math.floor((W-pad-rpad)/C.length)-1);
   const prices=C.flatMap(c=>[c.high,c.low]);
@@ -1243,12 +1481,10 @@ setInterval(()=>txt('clock',new Date().toLocaleTimeString()),1000);
 // ── INIT ──────────────────────────────────────────────────────────────
 async function init(){
   resizeChart();
-  wsSetStatus('wait');
-  await bootstrapCandles();
-  wsConnect();
-  fetchFunding();
-  setInterval(refreshMTF, 60000);
-  setInterval(fetchFunding, 300000);
+  setWsStatus('connecting');
+  await bootstrapCandles();   // REST candle bootstrap from REST API
+  resizeChart();              // re-measure after layout settles
+  // WS engine started by module script — see bottom of <body>
   requestAnimationFrame(renderLoop);
 }
 init();
