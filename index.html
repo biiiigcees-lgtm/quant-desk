@@ -336,8 +336,10 @@ canvas{width:100%;height:100%;display:block}
 // AI: /api/analyze (OpenRouter proxy)
 // ═══════════════════════════════════════════════════════════════════
 
-// ── STORE ────────────────────────────────────────────────────────────
-const S = {
+// ─────────────────────────────────────────────
+// MARKET STORE — single source of truth
+// ─────────────────────────────────────────────
+var marketStore = {
   // Price
   price:0, open24:0, high24:0, low24:0, vol24:0,
   bestBid:0, bestAsk:0, spread:0,
@@ -647,24 +649,71 @@ function detectAnomaly(C){
   return null;
 }
 
-// ── WEBSOCKET ─────────────────────────────────────────────────────────
-let ws=null,wsTimer=null,wsPing=null,reconnects=0;
-const prevWalls=new Map(),absorbBuf=[];
+function computeIndicators() {
+  const C = marketStore.candles;
+  if (C.length < 22) return;
+  const closes = C.map(c=>c.close);
 
-function wsConnect(){
-  if(ws?.readyState===WebSocket.OPEN)return;
-  wsSetStatus('wait');
-  try{ws=new WebSocket('wss://ws-feed.exchange.coinbase.com');}
-  catch(e){wsSetStatus('err');wsSchedule();return;}
-  ws.onopen=()=>{
-    reconnects=0;wsSetStatus('on');S.wsOk=true;
-    ws.send(JSON.stringify({type:'subscribe',product_ids:['BTC-USD'],channels:['ticker','level2_50','matches']}));
-    clearInterval(wsPing);
-    wsPing=setInterval(()=>{if(ws?.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:'heartbeat',on:true,product_ids:['BTC-USD']}));},20000);
-  };
-  ws.onmessage=e=>{try{handleMsg(JSON.parse(e.data));}catch(_){}};
-  ws.onerror=()=>{wsSetStatus('err');ws?.close();};
-  ws.onclose=()=>{S.wsOk=false;wsSetStatus('err');clearInterval(wsPing);wsSchedule();};
+  const e9a=computeEMA(closes,9), e21a=computeEMA(closes,21);
+  const e9=e9a[e9a.length-1], e21=e21a[e21a.length-1];
+  const e9p=e9a[e9a.length-2], e21p=e21a[e21a.length-2];
+
+  marketStore.ema9=e9||0; marketStore.ema21=e21||0;
+  marketStore.ema9prev=e9p||0; marketStore.ema21prev=e21p||0;
+  marketStore.emaSpread=e9&&e21?(e9-e21)/marketStore.price*1000:0;
+  marketStore.emaCross=e9p&&e21p?(e9p<=e21p&&e9>e21?'GOLDEN_CROSS':e9p>=e21p&&e9<e21?'DEATH_CROSS':e9>e21?'BULL_ALIGNED':'BEAR_ALIGNED'):'NONE';
+
+  marketStore.rsi=computeRSI(closes);
+  const m=computeMACD(closes); marketStore.macd=m.macd; marketStore.macdSig=m.signal;
+  marketStore.bb=computeBB(closes);
+  marketStore.vwap=computeVWAP(C);
+  marketStore.atr=computeATR(C);
+  marketStore.stoch=computeStoch(C);
+  marketStore.momentum=closes[closes.length-1]-closes[Math.max(0,closes.length-10)];
+  marketStore.trendStrength=marketStore.emaSpread;
+  marketStore.trajectorySlope=trajectorySlope(closes,6);
+  marketStore.volAvg=C.slice(-20).reduce((a,c)=>a+(c.volume||0),0)/20;
+
+  marketStore.fvgs=detectFVGs(C);
+  marketStore.sweeps=detectSweeps(C);
+  const anom=detectAnomaly(C);
+  if(anom&&(!marketStore.anomalies.length||marketStore.anomalies[0].type!==anom))
+    marketStore.anomalies.unshift({type:anom,price:marketStore.price,ts:Date.now()});
+  if(marketStore.anomalies.length>6) marketStore.anomalies.pop();
+
+  // Regime
+  const p=marketStore.price;
+  if(p>e9&&e9>e21) marketStore.regime='BULL_TREND';
+  else if(p<e9&&e9<e21) marketStore.regime='BEAR_TREND';
+  else if(Math.abs(marketStore.emaSpread)<2) marketStore.regime='RANGING';
+  else marketStore.regime='TRANSITIONAL';
+
+  // Bayesian signals
+  const sigs=[
+    p>marketStore.vwap, marketStore.rsi>50&&marketStore.rsi<75,
+    marketStore.macd>marketStore.macdSig, e9>e21, marketStore.cvd>0,
+    trajectorySlope(e9a,6)>0, trajectorySlope(e21a,6)>0,
+    marketStore.trajectorySlope>0, marketStore.regime==='BULL_TREND',
+    marketStore.imbalance>0,
+  ];
+  const bull=sigs.filter(Boolean).length;
+  marketStore.pAbove=(bull+1)/(sigs.length+2);
+  marketStore.pBelow=1-marketStore.pAbove;
+  marketStore.verdict=marketStore.pAbove>=0.5?'ABOVE':'BELOW';
+  marketStore.confidence=Math.round(Math.max(marketStore.pAbove,marketStore.pBelow)*100);
+
+  // Kalshi synthetic
+  let ka=Math.round(marketStore.pAbove*100);
+  ka=Math.max(20,Math.min(80,ka));
+  marketStore.kalshiAbove=ka; marketStore.kalshiBelow=100-ka;
+
+  // Kelly
+  const edge=marketStore.pAbove-ka/100;
+  const kf=Math.max(0,Math.min((marketStore.pAbove-(1-marketStore.pAbove))/1,.25));
+  marketStore.kellyFull=kf; marketStore.kellyEdge=edge; marketStore.kellyWR=marketStore.pAbove;
+
+  // Bet signal
+  marketStore.betData=computeBetSignal();
 }
 function wsSchedule(){
   clearTimeout(wsTimer);
@@ -922,58 +971,61 @@ function drawHeatmap(){
 function $id(id){return document.getElementById(id);}
 function txt(id,v){const e=$id(id);if(e)e.textContent=v;}
 function renderAll(){
-  const p=S.price,pch=p&&S.open24?((p-S.open24)/S.open24*100):0,isUp=pch>=0;
+  const s=marketStore;
+  const p=s.price;
+  const pch=p&&s.open24?((p-s.open24)/s.open24*100):0;
+  const isUp=pch>=0;
   // Topbar
   if(p){txt('tp','$'+p.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}));
     const tc=$id('tc');if(tc){tc.textContent=(isUp?'▲ +':'▼ ')+pch.toFixed(2)+'%';tc.className='tb-change num '+(isUp?'up':'dn');}
   }
-  txt('th',S.high24?'$'+S.high24.toLocaleString(undefined,{maximumFractionDigits:0}):'——');
-  txt('tl',S.low24?'$'+S.low24.toLocaleString(undefined,{maximumFractionDigits:0}):'——');
-  txt('tv',S.vol24?S.vol24.toFixed(0)+' BTC':'——');
-  txt('tsp',S.spread?'$'+S.spread.toFixed(2):'——');
-  const imEl=$id('tim');if(imEl){imEl.textContent=(S.imbalance*100).toFixed(1)+'%';imEl.className='tb-stat-val num '+(S.imbalance>.05?'up':S.imbalance<-.05?'dn':'neut');}
+  txt('th',s.high24?'$'+s.high24.toLocaleString(undefined,{maximumFractionDigits:0}):'——');
+  txt('tl',s.low24?'$'+s.low24.toLocaleString(undefined,{maximumFractionDigits:0}):'——');
+  txt('tv',s.vol24?s.vol24.toFixed(0)+' BTC':'——');
+  txt('tsp',s.spread?'$'+s.spread.toFixed(2):'——');
+  const imEl=$id('tim');if(imEl){imEl.textContent=(s.imbalance*100).toFixed(1)+'%';imEl.className='tb-stat-val num '+(s.imbalance>.05?'up':s.imbalance<-.05?'dn':'neut');}
   const frEl=$id('tfund');if(frEl){
-    frEl.textContent=S.fundingRate!=null?(S.fundingRate*100).toFixed(4)+'%':'——';
-    frEl.style.color=S.fundingSignal==='LONGS_OVR'?'var(--red)':S.fundingSignal==='SHORTS_OVR'?'var(--green)':'var(--t2)';
+    frEl.textContent=s.fundingRate!=null?(s.fundingRate*100).toFixed(4)+'%':'——';
+    frEl.style.color=s.fundingSignal==='LONGS_OVR'?'var(--red)':s.fundingSignal==='SHORTS_OVR'?'var(--green)':'var(--t2)';
   }
-  txt('tmtf',S.mtf?`${S.mtf.r1?.slice(0,1)||'?'}/${S.mtf.r5?.slice(0,1)||'?'}/${S.mtf.r15?.slice(0,1)||'?'}`:'——');
-  if(S.wsLat)txt('wsLat',S.wsLat+'ms');
+  txt('tmtf',s.mtf?`${s.mtf.r1?.slice(0,1)||'?'}/${s.mtf.r5?.slice(0,1)||'?'}/${s.mtf.r15?.slice(0,1)||'?'}`:'——');
+  if(s.wsLat)txt('wsLat',s.wsLat+'ms');
   // Tape
   const tv=[
     p?'$'+p.toLocaleString(undefined,{maximumFractionDigits:0}):'——',
-    S.high24?'$'+S.high24.toLocaleString(undefined,{maximumFractionDigits:0}):'——',
-    S.low24?'$'+S.low24.toLocaleString(undefined,{maximumFractionDigits:0}):'——',
-    S.vol24?S.vol24.toFixed(0)+' BTC':'——',
-    S.cvd?(S.cvd>0?'+':'')+S.cvd.toFixed(2):'——',
-    S.regime,S.kalshiAbove+'%',
-    ((S.pAbove-S.kalshiAbove/100)*100).toFixed(1)+'%',
-    (S.kellyFull*50*100).toFixed(0)+'%',
-    S.mtf?`${S.mtf.r1?.slice(0,1)||'?'}${S.mtf.r5?.slice(0,1)||'?'}${S.mtf.r15?.slice(0,1)||'?'}`:'———',
+    s.high24?'$'+s.high24.toLocaleString(undefined,{maximumFractionDigits:0}):'——',
+    s.low24?'$'+s.low24.toLocaleString(undefined,{maximumFractionDigits:0}):'——',
+    s.vol24?s.vol24.toFixed(0)+' BTC':'——',
+    s.cvd?(s.cvd>0?'+':'')+s.cvd.toFixed(2):'——',
+    s.regime,s.kalshiAbove+'%',
+    ((s.pAbove-s.kalshiAbove/100)*100).toFixed(1)+'%',
+    (s.kellyFull*50*100).toFixed(0)+'%',
+    s.mtf?`${s.mtf.r1?.slice(0,1)||'?'}${s.mtf.r5?.slice(0,1)||'?'}${s.mtf.r15?.slice(0,1)||'?'}`:'———',
   ];
   for(let i=1;i<=10;i++){txt('t'+i,tv[i-1]);txt('t'+i+'b',tv[i-1]);}
   // EMA cross tag
   const ct=$id('crossTag');
-  if(ct&&S.ema9&&S.ema21){
-    ct.textContent=S.emaCross==='GOLDEN_CROSS'?'⚡ GOLDEN CROSS':S.emaCross==='DEATH_CROSS'?'⚡ DEATH CROSS':`EMA9 ${S.ema9>S.ema21?'>':'<'} EMA21`;
-    ct.className='cross-tag '+(S.ema9>S.ema21?'ct-bull':'ct-bear');
+  if(ct&&s.ema9&&s.ema21){
+    ct.textContent=s.emaCross==='GOLDEN_CROSS'?'⚡ GOLDEN CROSS':s.emaCross==='DEATH_CROSS'?'⚡ DEATH CROSS':`EMA9 ${s.ema9>s.ema21?'>':'<'} EMA21`;
+    ct.className='cross-tag '+(s.ema9>s.ema21?'ct-bull':'ct-bear');
   }
   // Signals strip
-  const e9=S.ema9,e21=S.ema21;
+  const e9=s.ema9,e21=s.ema21;
   const sigsD=[
     e9&&e21?(e9>e21?{v:'▲'+e9.toFixed(0),c:'sv-b'}:{v:'▼'+e9.toFixed(0),c:'sv-s'}):{v:'—',c:'sv-n'},
-    {v:S.rsi.toFixed(0),c:S.rsi>60?'sv-b':S.rsi<40?'sv-s':'sv-n'},
-    {v:S.macd>S.macdSig?'BULL':'BEAR',c:S.macd>S.macdSig?'sv-b':'sv-s'},
-    {v:S.price>S.bb.upper?'OB':S.price<S.bb.lower?'OS':'MID',c:S.price>S.bb.upper?'sv-s':S.price<S.bb.lower?'sv-b':'sv-n'},
-    {v:S.price>S.vwap?'ABOV':'BELW',c:S.price>S.vwap?'sv-b':'sv-s'},
-    {v:S.cvd?(S.cvd>0?'+':'')+S.cvd.toFixed(1):'—',c:S.cvd>0?'sv-b':S.cvd<0?'sv-s':'sv-n'},
-    {v:S.atr?S.atr.toFixed(0):'—',c:'sv-n'},
-    {v:S.stoch.toFixed(0),c:S.stoch>80?'sv-s':S.stoch<20?'sv-b':'sv-n'},
-    {v:S.momentum?(S.momentum>0?'+':'')+S.momentum.toFixed(0):'—',c:S.momentum>0?'sv-b':S.momentum<0?'sv-s':'sv-n'},
-    {v:(S.aggression*100).toFixed(0)+'%',c:S.aggression>.1?'sv-b':S.aggression<-.1?'sv-s':'sv-n'},
+    {v:s.rsi.toFixed(0),c:s.rsi>60?'sv-b':s.rsi<40?'sv-s':'sv-n'},
+    {v:s.macd>s.macdSig?'BULL':'BEAR',c:s.macd>s.macdSig?'sv-b':'sv-s'},
+    {v:s.price>s.bb.upper?'OB':s.price<s.bb.lower?'OS':'MID',c:s.price>s.bb.upper?'sv-s':s.price<s.bb.lower?'sv-b':'sv-n'},
+    {v:s.price>s.vwap?'ABOV':'BELW',c:s.price>s.vwap?'sv-b':'sv-s'},
+    {v:s.cvd?(s.cvd>0?'+':'')+s.cvd.toFixed(1):'—',c:s.cvd>0?'sv-b':s.cvd<0?'sv-s':'sv-n'},
+    {v:s.atr?S.atr.toFixed(0):'—',c:'sv-n'},
+    {v:s.stoch.toFixed(0),c:s.stoch>80?'sv-s':s.stoch<20?'sv-b':'sv-n'},
+    {v:s.momentum?(s.momentum>0?'+':'')+s.momentum.toFixed(0):'—',c:s.momentum>0?'sv-b':s.momentum<0?'sv-s':'sv-n'},
+    {v:(s.aggression*100).toFixed(0)+'%',c:s.aggression>.1?'sv-b':s.aggression<-.1?'sv-s':'sv-n'},
   ];
   sigsD.forEach((d,i)=>{const e=$id('s'+i);if(e){e.textContent=d.v;e.className='sig-v '+d.c;}});
   // OHLC
-  const last=S.candles[S.candles.length-1];
+  const last=s.candles[s.candles.length-1];
   if(last)txt('ohlc',`O:${last.open.toFixed(0)} H:${last.high.toFixed(0)} L:${last.low.toFixed(0)} C:${last.close.toFixed(0)}`);
   // Orderflow
   const cvdBull=S.cvd>=0;
