@@ -636,8 +636,7 @@ function handleTrade(d) {
 async function bootstrapCandles() {
   try {
     const r = await fetch(
-      'https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=900&limit=200',
-      { headers: { 'User-Agent': 'Mozilla/5.0 BTC-Terminal/1.0' } }
+      'https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=900&limit=200'
     );
     const d = await r.json();
     if (!Array.isArray(d)) throw new Error('bad candles');
@@ -648,6 +647,7 @@ async function bootstrapCandles() {
     marketStore.candles = candles;
     if (window._mStore) window._mStore.setState({ candles });
     computeIndicators();
+    requestAnimationFrame(()=>{ resizeChart(); renderAll(); });
   } catch(e) {
     console.warn('Candle bootstrap failed:', e.message);
   }
@@ -886,13 +886,16 @@ const hctx=hcvs.getContext('2d');
 
 function resizeChart(){
   const wrap=document.getElementById('canvasWrap');
-  chartW=wrap.clientWidth; chartH=280;
+  const w=wrap.clientWidth||wrap.offsetWidth||wrap.getBoundingClientRect().width||(document.documentElement.clientWidth-460);
+  if(w>0) chartW=Math.floor(w);
+  chartH=280;
   cvs.width=chartW; cvs.height=chartH;
   hcvs.width=chartW; hcvs.height=chartH;
 }
 window.addEventListener('resize',()=>{resizeChart();drawChart();});
 
 function drawChart(){
+  if(!chartW) resizeChart();
   const C=marketStore.candles;
   if(!C.length||!chartW) return;
   const W=chartW, H=chartH;
@@ -1446,6 +1449,7 @@ async function init(){
   resizeChart();
   setWsStatus('connecting');
   await bootstrapCandles();   // REST candle bootstrap from REST API
+  resizeChart();              // re-measure after layout settles
   // WS engine started by module script — see bottom of <body>
   requestAnimationFrame(renderLoop);
 }
