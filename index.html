@@ -642,9 +642,11 @@ async function bootstrapCandles() {
     const d = await r.json();
     if (!Array.isArray(d)) throw new Error('bad candles');
     // [time, low, high, open, close, vol] newest first → reverse
-    marketStore.candles = d.reverse().map(c => ({
+    const candles = d.reverse().map(c => ({
       time: c[0], low: c[1], high: c[2], open: c[3], close: c[4], volume: c[5]
     })).filter(c => c.close > 0);
+    marketStore.candles = candles;
+    if (window._mStore) window._mStore.setState({ candles });
     computeIndicators();
   } catch(e) {
     console.warn('Candle bootstrap failed:', e.message);
@@ -758,6 +760,7 @@ function detectAnomaly(candles) {
 }
 
 function computeIndicators() {
+  if (window._mStore) marketStore = window._mStore;
   const C = marketStore.candles;
   if (C.length < 22) return;
   const closes = C.map(c=>c.close);
@@ -1023,11 +1026,15 @@ function drawHeatmap(){
   const prices=marketStore.candles.flatMap(c=>[c.high,c.low]);
   const minP=Math.min(...prices), maxP=Math.max(...prices), range=maxP-minP||1;
   const sy=p=>10+(1-(p-minP)/range)*(H-38);
-  const zones=[
-    {p:marketStore.price*1.012,s:.9},{p:marketStore.price*.988,s:.85},
-    {p:marketStore.price*1.025,s:.6},{p:marketStore.price*.975,s:.7},
-    {p:marketStore.price*1.04,s:.4},{p:marketStore.price*.96,s:.5},
-  ];
+  // Use computed liquidation zones from MarketStore if available
+  const rawZones = (marketStore.liquidationZones && marketStore.liquidationZones.length)
+    ? marketStore.liquidationZones.map(z => ({p:z.price, s:z.strength}))
+    : [
+        {p:marketStore.price*1.012,s:.9},{p:marketStore.price*.988,s:.85},
+        {p:marketStore.price*1.025,s:.6},{p:marketStore.price*.975,s:.7},
+        {p:marketStore.price*1.04, s:.4},{p:marketStore.price*.96, s:.5},
+      ];
+  const zones = rawZones;
   zones.forEach(z=>{
     if(z.p<minP||z.p>maxP) return;
     const y=sy(z.p);
@@ -1051,6 +1058,7 @@ function scheduleRender(){
 }
 
 function renderAll(){
+  if (window._mStore) marketStore = window._mStore;
   const s=marketStore;
   const p=s.price;
   const pch=p&&s.open24?((p-s.open24)/s.open24*100):0;
@@ -1136,9 +1144,16 @@ function renderAll(){
   if(deltaEl){deltaEl.textContent=(s.aggression>=0?'+':'')+agPct;deltaEl.className='of-val num '+(s.aggression>0.1?'up':s.aggression<-0.1?'dn':'neut');}
   setTxt('ofDeltaSub',s.tradeDeltaBuy>s.tradeDeltaSell?'Buyers dominant':'Sellers dominant');
   const anom=s.anomalies[0];
+  const absorb=s.absorption;
+  const spoof=s.spoofLevels?.length>0;
   const anomEl=document.getElementById('ofAnom');
-  if(anomEl){anomEl.textContent=anom?anom.type:'NONE';anomEl.className='of-val num '+(anom?'dn':'neut');}
-  setTxt('ofAnomSub',anom?`@ $${(anom.price||0).toLocaleString(undefined,{maximumFractionDigits:0})}`:'Volume normal');
+  const anomDisplay = absorb ? absorb.type : spoof ? 'SPOOF DETECT' : anom ? anom.type : 'NONE';
+  const anomClass = (absorb||spoof||anom) ? 'dn' : 'neut';
+  if(anomEl){anomEl.textContent=anomDisplay;anomEl.className='of-val num '+anomClass;}
+  const anomSubTxt = absorb ? `@ $${(absorb.price||0).toLocaleString(undefined,{maximumFractionDigits:0})}` :
+    spoof ? `${s.spoofLevels[0].side} @ $${s.spoofLevels[0].price.toFixed(0)}` :
+    anom ? `@ $${(anom.price||0).toLocaleString(undefined,{maximumFractionDigits:0})}` : 'Volume normal';
+  setTxt('ofAnomSub', anomSubTxt);
 
   // Orderbook
   renderOB();
@@ -1216,6 +1231,21 @@ function renderOB(){
     const w=Math.round((b.size/maxSz)*100);
     h+=`<div class="ob-bid"><div class="ob-bar-wrap"><div class="ob-bar ob-bar-bid" style="width:${w}%"></div></div><div class="ob-price up">${b.price.toFixed(1)}</div><div class="ob-size">${b.size.toFixed(4)}</div></div>`;
   });
+  // Liquidity walls
+  const walls = marketStore.liquidityWalls || [];
+  if (walls.length) {
+    h += '<div style="margin-top:5px;padding-top:4px;border-top:1px solid var(--border)">';
+    h += '<div style="font-size:7px;color:var(--t3);letter-spacing:.8px;margin-bottom:2px">LIQUIDITY WALLS</div>';
+    walls.forEach(w => {
+      const isBid = w.side === 'bid';
+      h += `<div style="display:flex;justify-content:space-between;font-size:9px;padding:1px 0">
+        <span style="color:${isBid?'var(--green)':'var(--red)'}">${isBid?'BID':'ASK'} $${w.price.toFixed(0)}</span>
+        <span style="color:var(--amber);font-weight:700">${w.size.toFixed(3)} BTC</span>
+      </div>`;
+    });
+    h += '</div>';
+  }
+
   const panel=document.getElementById('obPanel');
   if(panel) panel.innerHTML=h;
 }
@@ -1417,12 +1447,93 @@ setInterval(()=>{
 async function init(){
   resizeChart();
   setWsStatus('connecting');
-  await bootstrapCandles();   // REST candles first
-  wsConnect();                // then WS for live updates
+  await bootstrapCandles();   // REST candle bootstrap from REST API
+  // WS engine started by module script — see bottom of <body>
   requestAnimationFrame(renderLoop);
 }
 
-init();
+// init() called from module script after marketStore is ready
 </script>
+
+<!-- ── MODULE BOOTSTRAP ────────────────────────────────── -->
+<script type="module">
+  import { MarketStore, marketStore } from '/lib/marketStore.js';
+  import { CoinbaseWS } from '/lib/coinbaseWebsocket.js';
+
+  // Expose to non-module script
+  window._mStore = marketStore;
+
+  // WS engine
+  const ws = new CoinbaseWS();
+  window._wsEngine = ws;
+
+  // Bridge WS status to UI
+  ws.onStatus(status => {
+    if (typeof setWsStatus === 'function') setWsStatus(status);
+  });
+
+  // Subscribe: mirror WS store state into the legacy inline marketStore
+  // so all indicator + render code works without changes
+  marketStore.subscribe(state => {
+    if (!window.marketStore) return;
+    const ms = window.marketStore;
+    // Mirror live fields
+    ms.price        = state.price       || ms.price;
+    ms.bestBid      = state.bestBid     || ms.bestBid;
+    ms.bestAsk      = state.bestAsk     || ms.bestAsk;
+    ms.high24       = state.high24      || ms.high24;
+    ms.low24        = state.low24       || ms.low24;
+    ms.open24       = state.open24      || ms.open24;
+    ms.vol24        = state.vol24       || ms.vol24;
+    ms.wsLatency    = state.wsLatency   || ms.wsLatency;
+    ms.imbalance    = state.imbalance   ?? ms.imbalance;
+    ms.cvd          = state.cvd         ?? ms.cvd;
+    ms.tradeDeltaBuy  = state.tradeDeltaBuy  ?? ms.tradeDeltaBuy;
+    ms.tradeDeltaSell = state.tradeDeltaSell ?? ms.tradeDeltaSell;
+    ms.aggression   = state.aggression  ?? ms.aggression;
+    ms.trades       = state.trades      || ms.trades;
+    ms.liquidityWalls = state.liquidityWalls || [];
+    ms.liquidationZones = state.liquidationZones || [];
+    ms.absorption   = state.absorption  || null;
+    ms.spoofLevels  = state.spoofLevels || [];
+
+    // Sync OB lists for renderOB()
+    if (state.orderbook?.bids?.length) {
+      ms.bidsList = state.orderbook.bids.slice(0,20).map(([p,s]) => ({price:+p, size:+s}));
+      ms.asksList = state.orderbook.asks.slice(0,20).map(([p,s]) => ({price:+p, size:+s}));
+    }
+
+    // Sync candle current tick
+    if (state.price && ms.candles?.length) {
+      const now15 = Math.floor(Date.now()/900000)*900;
+      const last  = ms.candles[ms.candles.length-1];
+      if (last) {
+        if (last.time === now15) {
+          last.close = state.price;
+          if (state.price > last.high) last.high = state.price;
+          if (state.price < last.low)  last.low  = state.price;
+        } else if (now15 > last.time) {
+          ms.candles.push({ time:now15, open:state.price, high:state.price, low:state.price, close:state.price, volume:0 });
+          if (ms.candles.length > 300) ms.candles.shift();
+        }
+        if (window._mStore) window._mStore.setState({ candles: ms.candles });
+      }
+    }
+  });
+
+  // Wait for inline script to set up, then start
+  function startWhenReady() {
+    if (typeof init === 'function' && typeof marketStore !== 'undefined') {
+      // Sync inline marketStore reference
+      window.marketStore = window.marketStore || {};
+      init();
+      ws.connect();
+    } else {
+      setTimeout(startWhenReady, 50);
+    }
+  }
+  startWhenReady();
+</script>
+
 </body>
 </html>
