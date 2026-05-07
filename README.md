@@ -14,9 +14,18 @@ Live BTC prediction market terminal built for Kalshi 15-minute contracts.
 - Claude Sonnet AI analyst (expert trajectory + ABOVE/BELOW verdict)
 
 ## Data Sources
-- **Candles**: CryptoCompare (15-min OHLCV, no key required)
-- **Price / Order Book**: Coinbase Exchange (User-Agent header required)
-- **AI Analysis**: Claude Sonnet 4 via Anthropic API
+- **Candles + Price + Order Book**: Coinbase Exchange (full CORS, no key required)
+- **AI Analysis**: OpenRouter → meta-llama/llama-3.3-70b-instruct:free (free tier)
+
+## Architecture
+- **Frontend**: Vercel Static (single HTML file)
+- **Backend**: Vercel Serverless (`/api/analyze.js`)
+- **AI**: OpenRouter free tier — key stored in `OPENROUTER_API_KEY` env var, never in browser
+
+## Environment Variables (Vercel Dashboard)
+| Variable | Value |
+|----------|-------|
+| `OPENROUTER_API_KEY` | Your key from https://openrouter.ai/keys |
 
 ## Deploy
 Static single-file HTML — deploys to Vercel as-is.

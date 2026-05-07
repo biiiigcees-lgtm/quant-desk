@@ -1,59 +1,53 @@
 export default async function handler(req, res) {
-  // CORS headers for same-origin requests
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'API key not configured' });
-  }
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'OPENROUTER_API_KEY not configured' });
 
   try {
     const { prompt, system } = req.body;
+    if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
 
-    if (!prompt) {
-      return res.status(400).json({ error: 'Missing prompt' });
-    }
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': 'https://quant-desk-sooty.vercel.app',
+        'X-Title': 'QUANT//DESK BTC Terminal',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
+        model: 'meta-llama/llama-3.3-70b-instruct:free',
         max_tokens: 1200,
-        system: system || 'You are an expert BTC quantitative analyst.',
-        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
+        messages: [
+          ...(system ? [{ role: 'system', content: system }] : []),
+          { role: 'user', content: prompt },
+        ],
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      return res.status(response.status).json({
-        error: 'Anthropic API error',
-        details: errorText,
-      });
+      return res.status(response.status).json({ error: 'OpenRouter API error', details: errorText });
     }
 
     const data = await response.json();
-    return res.status(200).json(data);
+
+    // Normalize to Anthropic-style response shape so frontend works unchanged
+    const text = data.choices?.[0]?.message?.content || 'No analysis returned.';
+    return res.status(200).json({
+      content: [{ type: 'text', text }],
+      model: data.model,
+      usage: data.usage,
+    });
 
   } catch (error) {
-    return res.status(500).json({
-      error: 'Internal server error',
-      details: error.message,
-    });
+    return res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 }
