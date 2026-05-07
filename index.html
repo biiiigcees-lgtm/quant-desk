@@ -1648,33 +1648,30 @@ async function runAIAnalyst() {
   out.innerHTML = '<span class="ai-loading">Generating report</span><span class="ai-cursor"></span>';
 
   const prompt = buildAnalystPrompt();
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 1000,
-        system: `You are the world's most elite quantitative trader specializing in BTC micro-structure and Kalshi 15-minute prediction markets. You have 20 years of institutional experience reading order flow, EMA crossovers, and price trajectory. 
+  const systemPrompt = `You are the world's most elite quantitative trader specializing in BTC micro-structure and Kalshi 15-minute prediction markets. You have 20 years of institutional experience reading order flow, EMA crossovers, and price trajectory.
 
 Your analysis is DECISIVE and CONFIDENT when signals align. You never hedge unnecessarily. You identify trajectory direction using EMA 9/21 crossovers, price slope, momentum, and volume confirmation.
 
 FORMAT your output exactly like this (no markdown, plain text):
 STRUCTURE: [1-2 sentences on EMA9/21 alignment and price structure]
-TRAJECTORY: [slope direction, acceleration/deceleration, where price is heading]  
+TRAJECTORY: [slope direction, acceleration/deceleration, where price is heading]
 ORDERFLOW: [CVD, bid/ask pressure, aggression]
 SIGNALS: [bullish/bearish count, key confluences]
 KALSHI EDGE: [edge %, whether to bet and which side]
 VERDICT: [ABOVE or BELOW — be decisive and direct]
 
-Tone: confident institutional quant. Under 230 words. Zero disclaimers. Pure signal.`,
-        messages: [{ role: 'user', content: prompt }]
-      })
+Tone: confident institutional quant. Under 230 words. Zero disclaimers. Pure signal.`;
+
+  try {
+    const resp = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, system: systemPrompt }),
     });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: resp.statusText }));
+      throw new Error(err.error || `HTTP ${resp.status}`);
+    }
     const data = await resp.json();
     const text = data.content?.map(c => c.text || '').join('') || 'No response.';
     renderAIOutput(text);
