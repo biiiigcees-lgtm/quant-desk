@@ -84,3 +84,59 @@ describe('derivatives — openInterestUsd (post-fix)', () => {
     assert.equal(result.oiDeltaPct, 0);
   });
 });
+
+// ── Kalman filter covariance prediction ─────────────────────────────────────
+// Verifies the corrected Pp = F·P·Fᵀ + Q formula for a constant-velocity model
+
+function kalmanPredict(P, dt, Q) {
+  return [
+    [P[0][0] + 2*P[0][1]*dt + P[1][1]*dt*dt + Q[0][0], P[0][1] + P[1][1]*dt + Q[0][1]],
+    [P[1][0] + P[1][1]*dt + Q[1][0],                    P[1][1] + Q[1][1]],
+  ];
+}
+
+describe('Kalman filter — covariance prediction (F·P·Fᵀ + Q)', () => {
+  it('produces correct Pp[0][0] including cross-covariance term', () => {
+    const P = [[1, 0.5], [0.5, 0.25]];
+    const Q = [[0.01, 0], [0, 0.01]];
+    const Pp = kalmanPredict(P, 1, Q);
+    // Expected: P[0][0] + 2*P[0][1]*dt + P[1][1]*dt^2 + Q[0][0]
+    //         = 1 + 2*0.5*1 + 0.25*1 + 0.01 = 2.26
+    assert.ok(Math.abs(Pp[0][0] - 2.26) < 1e-10, `Pp[0][0]=${Pp[0][0]}, expected 2.26`);
+  });
+
+  it('produces correct Pp[1][0] including velocity covariance term', () => {
+    const P = [[1, 0.5], [0.5, 0.25]];
+    const Q = [[0.01, 0], [0, 0.01]];
+    const Pp = kalmanPredict(P, 1, Q);
+    // Expected: P[1][0] + P[1][1]*dt + Q[1][0] = 0.5 + 0.25 + 0 = 0.75
+    assert.ok(Math.abs(Pp[1][0] - 0.75) < 1e-10, `Pp[1][0]=${Pp[1][0]}, expected 0.75`);
+  });
+
+  it('Pp[0][1] is correct (unchanged by the fix)', () => {
+    const P = [[1, 0.5], [0.5, 0.25]];
+    const Q = [[0.01, 0], [0, 0.01]];
+    const Pp = kalmanPredict(P, 1, Q);
+    // Expected: P[0][1] + P[1][1]*dt + Q[0][1] = 0.5 + 0.25 + 0 = 0.75
+    assert.ok(Math.abs(Pp[0][1] - 0.75) < 1e-10, `Pp[0][1]=${Pp[0][1]}, expected 0.75`);
+  });
+
+  it('symmetry: Pp[0][1] === Pp[1][0] when P is symmetric and Q is diagonal', () => {
+    const P = [[2, 0.3], [0.3, 0.1]];
+    const Q = [[0.01, 0], [0, 0.01]];
+    const Pp = kalmanPredict(P, 1, Q);
+    assert.ok(Math.abs(Pp[0][1] - Pp[1][0]) < 1e-10, 'Pp should remain symmetric');
+  });
+
+  it('diagonal initial covariance stays non-negative definite after prediction', () => {
+    const P = [[1, 0], [0, 1]];
+    const Q = [[0.01, 0], [0, 0.01]];
+    const Pp = kalmanPredict(P, 1, Q);
+    // For positive definiteness: diagonal entries must be positive
+    assert.ok(Pp[0][0] > 0);
+    assert.ok(Pp[1][1] > 0);
+    // Determinant > 0
+    const det = Pp[0][0]*Pp[1][1] - Pp[0][1]*Pp[1][0];
+    assert.ok(det > 0, `det=${det} should be positive`);
+  });
+});

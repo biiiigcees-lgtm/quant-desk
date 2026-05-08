@@ -26,7 +26,13 @@ async function callOpenRouter(model, system, prompt, apiKey) {
     }),
   });
 
-  if (res.status === 429 || res.status === 503 || res.status === 400) {
+  if (res.status === 400) {
+    const err = await res.text();
+    const e = new Error(`400: ${err.slice(0, 120)}`);
+    e.permanent = true; // do not retry on other models
+    throw e;
+  }
+  if (res.status === 429 || res.status === 503) {
     const err = await res.text();
     throw new Error(`${res.status}: ${err.slice(0, 120)}`);
   }
@@ -74,6 +80,9 @@ export default async function handler(req, res) {
         usage,
       });
     } catch (err) {
+      if (err.permanent) {
+        return res.status(400).json({ error: 'Model rejected request', details: err.message });
+      }
       console.warn(`[analyze] Model ${model} failed: ${err.message}`);
       lastError = err;
       // Continue to next model

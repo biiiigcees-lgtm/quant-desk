@@ -162,4 +162,33 @@ describe('MarketStore — flow toxicity', () => {
     store.computeFlowToxicity();
     assert.equal(store.state.flowToxicity, 0);
   });
+
+  it('computeFlowToxicity is called automatically by addTrade', () => {
+    // After adding one-sided trades, toxicity should be non-zero without
+    // manually calling computeFlowToxicity()
+    for (let i = 0; i < 10; i++) {
+      store.addTrade({ price: 1, size: 1, side: 'buy', ts: Date.now() });
+    }
+    assert.ok(store.state.flowToxicity > 0, 'flowToxicity should be auto-computed on addTrade');
+  });
+});
+
+describe('MarketStore — _prevWalls memory management', () => {
+  let store;
+
+  beforeEach(() => { store = new MarketStore(); });
+
+  it('prunes stale _prevWalls entries when size exceeds 500', () => {
+    // Seed 600 stale entries (ts well in the past)
+    for (let i = 0; i < 600; i++) {
+      store._prevWalls.set(`bid:${i}`, { size: 1, ts: Date.now() - 120000 });
+    }
+    // Trigger _detectSpoof via a snapshot update which calls _rebuildOrderbook
+    store.snapshotOrderbook(
+      [['50000', '1']],
+      [['50100', '1']],
+    );
+    // All 600 stale entries should have been pruned
+    assert.ok(store._prevWalls.size <= 500, `_prevWalls size ${store._prevWalls.size} should be ≤500 after pruning`);
+  });
 });
