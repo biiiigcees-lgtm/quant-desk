@@ -267,6 +267,10 @@ canvas{width:100%;height:100%;display:block}
 .acc-dot{width:8px;height:8px;border-radius:50%}
 .acc-dot.ok{background:var(--green)}.acc-dot.ng{background:var(--red)}.acc-dot.pending{background:var(--t3)}
 .ws-latency{color:var(--t3);font-size:9px;margin-left:4px}
+.ws-stale-age{font-size:8px;color:var(--t3);margin-left:4px;min-width:24px;text-align:right}
+.ws-stale-age.fresh{color:var(--green)}
+.ws-stale-age.warn{color:var(--amber)}
+.ws-stale-age.stale{color:var(--red)}
 .clock-text{color:var(--t2);font-size:9px;margin-left:8px}
 .ob-src-label{color:var(--t3)}
 .ob-src-price{font-size:8px;color:var(--t2)}
@@ -361,6 +365,7 @@ canvas{width:100%;height:100%;display:block}
   <div class="ws-label" id="wsLabel">connecting…</div>
   <span class="ws-source" id="wsSource">—</span>
   <span class="ws-latency" id="wsLatency"></span>
+  <span class="ws-stale-age" id="wsStaleAge">—</span>
   <span class="clock-text" id="clock">——</span>
 </div>
 
@@ -769,6 +774,29 @@ function updateWsSourceUI() {
   }
 }
 
+function updateWsFreshnessUI() {
+  const ageEl = document.getElementById('wsStaleAge');
+  if (!ageEl) return;
+
+  const ts = Number.isFinite(marketStore.lastMsgTs) ? marketStore.lastMsgTs : 0;
+  if (!ts) {
+    ageEl.textContent = '—';
+    ageEl.className = 'ws-stale-age';
+    ageEl.title = 'Waiting for first market update';
+    return;
+  }
+
+  const ageSec = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+  let level = 'fresh';
+  if (ageSec >= 20) level = 'stale';
+  else if (ageSec >= 10) level = 'warn';
+
+  ageEl.textContent = `${ageSec}s`;
+  ageEl.className = `ws-stale-age ${level}`;
+  const source = (marketStore.wsSource || 'feed').toUpperCase();
+  ageEl.title = `${source} updated ${ageSec}s ago`;
+}
+
 function setWsControlMode(mode) {
   const nextMode = ['auto', 'fallback', 'rest'].includes(mode) ? mode : 'auto';
   marketStore.manualFallback = nextMode === 'fallback';
@@ -805,10 +833,31 @@ async function bootstrapCandles() {
     );
     const d = await r.json();
     if (!Array.isArray(d)) throw new Error('bad candles');
-    // [time, low, high, open, close, vol] newest first → reverse
-    const candles = d.reverse().map(c => ({
-      time: c[0], low: c[1], high: c[2], open: c[3], close: c[4], volume: c[5]
-    })).filter(c => c.close > 0);
+    const normalized = d.map(c => ({
+      time: Number(c?.[0]),
+      low: Number(c?.[1]),
+      high: Number(c?.[2]),
+      open: Number(c?.[3]),
+      close: Number(c?.[4]),
+      volume: Number(c?.[5]),
+    })).filter(c =>
+      Number.isFinite(c.time)
+      && Number.isFinite(c.low)
+      && Number.isFinite(c.high)
+      && Number.isFinite(c.open)
+      && Number.isFinite(c.close)
+      && Number.isFinite(c.volume)
+      && c.low > 0
+      && c.high > 0
+      && c.open > 0
+      && c.close > 0
+      && c.high >= c.low
+      && c.volume >= 0
+    ).sort((a,b)=>a.time-b.time);
+
+    const candles = normalized.filter((c, i) => i === 0 || c.time > normalized[i-1].time);
+    if (candles.length < 50) throw new Error('insufficient valid candles');
+
     marketStore.candles = candles;
     if (globalThis._mStore) globalThis._mStore.setState({ candles });
     computeIndicators();
@@ -1673,15 +1722,18 @@ async function fetchKalshiLive(){
     const d=await r.json();
     const bid=Number.parseFloat(d?.yes_bid);
     const ask=Number.parseFloat(d?.yes_ask);
-    const midRaw=Number.isFinite(d?.mid)
-      ? d.mid
-      : (Number.isFinite(bid)&&Number.isFinite(ask)
-          ? (bid+ask)/2
-          : (Number.isFinite(bid)?bid:(Number.isFinite(ask)?ask:null)));
-    if(midRaw==null) return;
+    const midHint=Number.parseFloat(d?.mid);
+    let midRaw=null;
+    if(Number.isFinite(midHint)) midRaw=midHint;
+    else if(Number.isFinite(bid)&&Number.isFinite(ask)) midRaw=(bid+ask)/2;
+    else if(Number.isFinite(bid)) midRaw=bid;
+    else if(Number.isFinite(ask)) midRaw=ask;
+    if(!Number.isFinite(midRaw)) return;
     const mid = midRaw > 1.5 ? midRaw / 100 : midRaw;
-    marketStore.kalshiAbove=Math.round(mid*100);
-    marketStore.kalshiBelow=Math.round((1-mid)*100);
+    if(!Number.isFinite(mid) || mid <= 0 || mid >= 1) return;
+    const above=Math.max(0,Math.min(100,Math.round(mid*100)));
+    marketStore.kalshiAbove=above;
+    marketStore.kalshiBelow=100-above;
     marketStore._kalshiLive=true;
     marketStore._kalshiTs=Date.now();
   }catch(e){
@@ -1861,6 +1913,7 @@ function renderAll(){ // NOSONAR
   else if (s.wsLatency) setTxt('wsLatency', s.wsLatency+'ms');
   else setTxt('wsLatency', '');
   updateWsSourceUI();
+  updateWsFreshnessUI();
 
   // Tape
   let cvdTape='——';
@@ -2596,7 +2649,7 @@ async function init(){
     ms.low24        = state.low24       || ms.low24;
     ms.open24       = state.open24      || ms.open24;
     ms.vol24        = state.vol24       || ms.vol24;
-    ms.wsLatency    = state.wsLatency   || ms.wsLatency;
+    ms.wsLatency    = state.wsLatency   ?? ms.wsLatency;
     ms.wsConnected  = state.wsConnected ?? ms.wsConnected;
     ms.lastMsgTs    = state.lastMsgTs   ?? ms.lastMsgTs;
     ms.wsSource     = state.wsSource    ?? ms.wsSource;
