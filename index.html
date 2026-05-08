@@ -38,6 +38,13 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Pl
 .ws-dot.error{background:var(--red)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 .ws-label{font-size:9px;color:var(--t2)}
+.ws-source{font-size:8px;color:var(--t3);letter-spacing:.6px;text-transform:uppercase}
+.ws-source.coinbase{color:var(--cyan)}
+.ws-source.kraken{color:var(--amber)}
+.ws-source.rest{color:var(--t2)}
+.ws-toggle{background:var(--bg2);border:1px solid var(--border);color:var(--t3);font-size:7px;letter-spacing:.6px;padding:2px 6px;border-radius:2px;cursor:pointer}
+.ws-toggle:hover{color:var(--amber);border-color:rgba(255,171,0,.3)}
+.ws-toggle.active{color:var(--amber);border-color:rgba(255,171,0,.5)}
 .up{color:var(--green)!important}.dn{color:var(--red)!important}.neut{color:var(--t2)!important}
 .num{font-variant-numeric:tabular-nums}
 
@@ -349,6 +356,7 @@ canvas{width:100%;height:100%;display:block}
   <div class="tb-spacer"></div>
   <div class="ws-dot" id="wsDot"></div>
   <div class="ws-label" id="wsLabel">connecting…</div>
+  <span class="ws-source" id="wsSource">—</span>
   <span class="ws-latency" id="wsLatency"></span>
   <span class="clock-text" id="clock">——</span>
 </div>
@@ -375,6 +383,7 @@ canvas{width:100%;height:100%;display:block}
   <div class="sb-item">RV <span class="sb-val" id="sbRv">—</span></div>
   <div class="sb-item">ADX <span class="sb-val" id="sbAdx">—</span></div>
   <div class="flex-fill"></div>
+  <button class="ws-toggle" id="wsToggle" onclick="toggleWsFallback()" title="Force Kraken fallback">FALLBACK OFF</button>
   <span id="kbHint" title="A=AI  S=Sound  F=Fullscreen">A · S · F</span>
 </div>
 <!-- TICKER TAPE -->
@@ -692,6 +701,7 @@ var marketStore = {
 
   // WS meta
   wsConnected: false, wsLatency: 0, lastMsgTs: 0,
+  wsSource: 'coinbase', manualFallback: false,
   msgCount: 0, reconnectCount: 0,
 };
 
@@ -714,6 +724,31 @@ function setWsStatus(status) {
   }
   lbl.textContent = nextLabel;
   lbl.style.color = nextColor;
+  if (typeof updateWsSourceUI === 'function') updateWsSourceUI();
+}
+
+function updateWsSourceUI() {
+  const srcEl = document.getElementById('wsSource');
+  const toggle = document.getElementById('wsToggle');
+  const src = marketStore.wsSource || '—';
+  if (srcEl) {
+    srcEl.textContent = src === '—' ? '—' : src.toUpperCase();
+    srcEl.className = 'ws-source ' + (src || '');
+  }
+  if (toggle) {
+    const enabled = !!marketStore.manualFallback;
+    toggle.classList.toggle('active', enabled);
+    toggle.textContent = enabled ? 'FALLBACK ON' : 'FALLBACK OFF';
+  }
+}
+
+function toggleWsFallback() {
+  const next = !marketStore.manualFallback;
+  marketStore.manualFallback = next;
+  if (globalThis._wsEngine && typeof globalThis._wsEngine.setManualFallback === 'function') {
+    globalThis._wsEngine.setManualFallback(next);
+  }
+  updateWsSourceUI();
 }
 
 // ─────────────────────────────────────────────
@@ -1777,6 +1812,7 @@ function renderAll(){ // NOSONAR
 
   // WS latency
   if(s.wsLatency) setTxt('wsLatency',s.wsLatency+'ms');
+  updateWsSourceUI();
 
   // Tape
   let cvdTape='——';
@@ -2515,6 +2551,8 @@ async function init(){
     ms.wsLatency    = state.wsLatency   || ms.wsLatency;
     ms.wsConnected  = state.wsConnected ?? ms.wsConnected;
     ms.lastMsgTs    = state.lastMsgTs   ?? ms.lastMsgTs;
+    ms.wsSource     = state.wsSource    ?? ms.wsSource;
+    ms.manualFallback = state.manualFallbackEnabled ?? ms.manualFallback;
     ms.imbalance    = state.imbalance   ?? ms.imbalance;
     ms.cvd          = state.cvd         ?? ms.cvd;
     ms.tradeDeltaBuy  = state.tradeDeltaBuy  ?? ms.tradeDeltaBuy;
