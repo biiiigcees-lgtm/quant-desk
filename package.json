@@ -1,12 +1,14 @@
 {
   "name": "quant-desk-btc-terminal",
   "version": "2.0.0",
+  "type": "module",
   "description": "BTC Institutional Intelligence Terminal — EMA9/21, Bet Signal Engine, Kalshi Divergence",
   "engines": {
     "node": ">=18"
   },
   "scripts": {
     "dev": "vercel dev",
-    "start": "npx serve ."
+    "start": "npx serve .",
+    "test": "node --test test/*.test.js"
   }
 }
