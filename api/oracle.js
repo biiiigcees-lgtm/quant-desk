@@ -66,7 +66,7 @@ async function fetchBinanceUs() {
   });
   if (!r.ok) throw new Error(`Binance.us HTTP ${r.status}`);
   const d = await r.json();
-  const bid = parseFloat(d.bidPrice), ask = parseFloat(d.askPrice);
+  const bid = Number.parseFloat(d.bidPrice), ask = Number.parseFloat(d.askPrice);
   return { price: (bid + ask) / 2, mid: (bid + ask) / 2, bid, ask };
 }
 
@@ -78,7 +78,7 @@ async function fetchKraken() {
   const d = await r.json();
   if (d.error?.length) throw new Error(d.error[0]);
   const ticker = d.result.XXBTZUSD;
-  const bid = parseFloat(ticker.b[0]), ask = parseFloat(ticker.a[0]);
+  const bid = Number.parseFloat(ticker.b[0]), ask = Number.parseFloat(ticker.a[0]);
   return { price: (bid + ask) / 2, mid: (bid + ask) / 2, bid, ask };
 }
 
@@ -91,7 +91,7 @@ async function fetchBybit() {
   if (d.retCode !== 0) throw new Error(d.retMsg);
   const t = d.result?.list?.[0];
   if (!t) throw new Error('No Bybit ticker data');
-  const bid = parseFloat(t.bid1Price), ask = parseFloat(t.ask1Price);
+  const bid = Number.parseFloat(t.bid1Price), ask = Number.parseFloat(t.ask1Price);
   return { price: (bid + ask) / 2, mid: (bid + ask) / 2, bid, ask };
 }
 
