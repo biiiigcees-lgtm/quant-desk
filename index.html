@@ -135,6 +135,7 @@ canvas{width:100%;height:100%;display:block}
 .verdict-box{padding:9px;border-radius:3px;text-align:center;margin-top:8px}
 .verdict-above{background:var(--g3);border:1px solid rgba(0,230,118,.4)}
 .verdict-below{background:var(--r3);border:1px solid rgba(255,23,68,.4)}
+.verdict-standby{background:rgba(122,122,136,.08);border:1px solid var(--border)}
 .verdict-lbl{font-size:8px;color:var(--t2);letter-spacing:1px;margin-bottom:3px}
 .verdict-val{font-size:15px;font-weight:700}
 .verdict-conf{font-size:9px;color:var(--t2);margin-top:2px}
@@ -1800,6 +1801,7 @@ let _soundEnabled=true;
 let _lastSignalVerdict=null;
 let _signalAlertTimer=null;
 function showSignalAlert(verdict){
+  if(verdict!=='ABOVE'&&verdict!=='BELOW') return;
   const el=document.getElementById('signalAlert');
   const inner=document.getElementById('saInner');
   if(!el||!inner) return;
@@ -1811,6 +1813,7 @@ function showSignalAlert(verdict){
   _signalAlertTimer=setTimeout(()=>el.classList.remove('show'),4000);
 }
 function checkSignalAlert(verdict){
+  if(verdict!=='ABOVE'&&verdict!=='BELOW') return;
   if(!verdict||!_lastSignalVerdict){_lastSignalVerdict=verdict;return;}
   if(verdict!==_lastSignalVerdict){showSignalAlert(verdict);_lastSignalVerdict=verdict;}
 }
@@ -2207,12 +2210,25 @@ function renderAll(){ // NOSONAR
   setTxt('rAdx',s.adxVal?s.adxVal.toFixed(1)+' ADX':'——');
   setTxt('rConf',s.regimeConf?s.regimeConf.toFixed(0)+'%':'——');
 
-  // Verdict
+  // Verdict (secure decision layer)
+  const quality = Number.isFinite(s.dataQuality) ? s.dataQuality : 1;
+  const directionalEdge = Math.abs((s.pAbove || 0.5) - 0.5) * 2;
+  const secureDecision = (s.confidence || 0) >= 35 && quality >= 0.65 && directionalEdge >= 0.08;
+  const verdictUi = secureDecision ? s.verdict : 'STANDBY';
   const vb=document.getElementById('verdictBox');
-  if(vb) vb.className='verdict-box '+(s.verdict==='ABOVE'?'verdict-above':'verdict-below');
+  if(vb){
+    if (verdictUi === 'ABOVE') vb.className='verdict-box verdict-above';
+    else if (verdictUi === 'BELOW') vb.className='verdict-box verdict-below';
+    else vb.className='verdict-box verdict-standby';
+  }
   const vv=document.getElementById('verdictVal');
-  if(vv){vv.textContent=s.verdict;vv.style.color=s.verdict==='ABOVE'?'var(--green)':'var(--red)';}
-  setTxt('verdictConf','Confidence: '+s.confidence+'%');
+  if(vv){
+    vv.textContent=verdictUi;
+    if (verdictUi === 'ABOVE') vv.style.color='var(--green)';
+    else if (verdictUi === 'BELOW') vv.style.color='var(--red)';
+    else vv.style.color='var(--t2)';
+  }
+  setTxt('verdictConf',`Confidence: ${s.confidence}% ${secureDecision ? '· SECURE' : '· LOW'}`);
 
   // Kalshi
   setTxt('kAp',s.kalshiAbove+'%'); setTxt('kBp',s.kalshiBelow+'%');
@@ -2242,7 +2258,18 @@ function renderAll(){ // NOSONAR
   const ke2=document.getElementById('kEdge2');
   if(ke2){ke2.textContent=(s.kellyEdge>=0?'+':'')+((s.kellyEdge*100).toFixed(1))+'%';ke2.style.color=s.kellyEdge>0?'var(--green)':'var(--red)';}
   const ks=document.getElementById('kSig');
-  if(ks){ks.textContent=s.verdict==='ABOVE'?'LONG ABOVE':'SHORT BELOW';ks.style.color=s.verdict==='ABOVE'?'var(--green)':'var(--red)';}
+  if(ks){
+    if (verdictUi === 'ABOVE') {
+      ks.textContent='LONG ABOVE';
+      ks.style.color='var(--green)';
+    } else if (verdictUi === 'BELOW') {
+      ks.textContent='SHORT BELOW';
+      ks.style.color='var(--red)';
+    } else {
+      ks.textContent='STANDBY';
+      ks.style.color='var(--t2)';
+    }
+  }
 
   // Bet signal
   renderBetSignal();
@@ -2370,7 +2397,7 @@ function renderAll(){ // NOSONAR
 
   // Flash & alert
   checkFlash(p);
-  checkSignalAlert(s.verdict);
+  checkSignalAlert(verdictUi);
   updateSessionBar();
 
   // Chart + heatmap + RSI strip + VP
