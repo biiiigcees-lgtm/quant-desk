@@ -4,7 +4,7 @@
   "type": "module",
   "description": "BTC Institutional Intelligence Terminal — EMA9/21, Bet Signal Engine, Kalshi Divergence",
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   },
   "scripts": {
     "dev": "vercel dev",
