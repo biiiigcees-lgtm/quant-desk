@@ -1451,7 +1451,7 @@ function computeBetSignal() { // NOSONAR
   const activeDuration=(active&&_signalActiveTs)?Math.floor((Date.now()-_signalActiveTs)/1000):0;
 
   const kRound=kalshiRound();
-  let phaseConvMult=1.0,timingLabel='OPTIMAL ENTRY',timingClass='tl-open';
+  let phaseConvMult=1,timingLabel='OPTIMAL ENTRY',timingClass='tl-open';
   if(kRound.secsLeft<=120){phaseConvMult=0.75;timingLabel='CLOSING - LOCK/WAIT';timingClass='tl-closing';}
   else if(kRound.secsLeft<=300){phaseConvMult=0.88;timingLabel='CAUTION - LATE ENTRY';timingClass='tl-caution';}
   const conviction=active?Math.round(clamp(Math.max(align,1-align)*quality*confGate*phaseConvMult*100,0,99)):0;
@@ -1460,7 +1460,9 @@ function computeBetSignal() { // NOSONAR
   const _yesBid=s.kalshiBid||s.kalshiAbove/100;
   const evAbove_=s.pAbove-_yesAsk;
   const evBelow_=s.pBelow-(1-_yesBid);
-  const ev=(isBull?evAbove_:isBear?evBelow_:0);
+  let ev=0;
+  if (isBull) ev=evAbove_;
+  else if (isBear) ev=evBelow_;
 
   const reasons=[];
   if(isBull||isBear){
@@ -1903,21 +1905,30 @@ function kalshiRound() {
 }
 
 function updateKalshiCountdownDisplay(kr) {
+  let phaseColor='var(--green)';
+  let phaseLabel='OPEN';
+  if (kr.phase==='closing') {
+    phaseColor='var(--red)';
+    phaseLabel='CLOSING';
+  } else if (kr.phase==='caution') {
+    phaseColor='var(--amber)';
+    phaseLabel='CAUTION';
+  }
   const cdEl=document.getElementById('kCountdown');
   if(cdEl){
     cdEl.textContent=kr.mmss;
-    cdEl.style.color=kr.phase==='closing'?'var(--red)':kr.phase==='caution'?'var(--amber)':'var(--green)';
+    cdEl.style.color=phaseColor;
   }
   const phEl=document.getElementById('kPhase');
   if(phEl){
-    phEl.textContent=kr.phase==='closing'?'CLOSING':kr.phase==='caution'?'CAUTION':'OPEN';
+    phEl.textContent=phaseLabel;
     phEl.className='k-phase '+kr.phase;
   }
   const arc=document.getElementById('kRingArc');
   if(arc){
     const circ=163.4;
     arc.style.strokeDashoffset=String(circ*(1-kr.secsLeft/900));
-    arc.style.stroke=kr.phase==='closing'?'var(--red)':kr.phase==='caution'?'var(--amber)':'var(--green)';
+    arc.style.stroke=phaseColor;
   }
   const txt=document.getElementById('kRingTxt');
   if(txt) txt.textContent=kr.mmss;
@@ -2389,8 +2400,16 @@ function renderAll(){ // NOSONAR
   const kHist=marketStore._kalshiHistory||[];
   if(kTrendEl&&kHist.length>=3){
     const kTrendDelta=kHist[kHist.length-1]-kHist[kHist.length-3];
-    kTrendEl.textContent=kTrendDelta>0.005?'↑':kTrendDelta<-0.005?'↓':'→';
-    kTrendEl.style.color=kTrendDelta>0.005?'var(--green)':kTrendDelta<-0.005?'var(--red)':'var(--t2)';
+    if (kTrendDelta>0.005) {
+      kTrendEl.textContent='↑';
+      kTrendEl.style.color='var(--green)';
+    } else if (kTrendDelta<-0.005) {
+      kTrendEl.textContent='↓';
+      kTrendEl.style.color='var(--red)';
+    } else {
+      kTrendEl.textContent='→';
+      kTrendEl.style.color='var(--t2)';
+    }
   }
   const kw2=document.getElementById('kWin2');
   if(kw2) kw2.textContent=new Date(Math.ceil(Date.now()/900000)*900000).toLocaleTimeString();
@@ -2719,8 +2738,15 @@ function renderBetSignal(){ // NOSONAR
   const bm6=document.getElementById('bm6');
   if(bm6){
     const ev=bet.ev??0;
-    bm6.textContent=bet.active?(ev>=0?'+':'')+(ev*100).toFixed(1)+'¢':'—';
-    bm6.style.color=ev>0?'var(--green)':ev<0?'var(--red)':'var(--t3)';
+    if (bet.active) {
+      const sign = ev>=0?'+':'';
+      bm6.textContent=sign+(ev*100).toFixed(1)+'¢';
+    } else {
+      bm6.textContent='—';
+    }
+    if (ev>0) bm6.style.color='var(--green)';
+    else if (ev<0) bm6.style.color='var(--red)';
+    else bm6.style.color='var(--t3)';
   }
   const bm7=document.getElementById('bm7');
   if(bm7){
