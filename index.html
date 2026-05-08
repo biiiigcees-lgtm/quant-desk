@@ -704,9 +704,14 @@ var marketStore = {
   verdict: 'ABOVE', confidence: 70,
   kalshiAbove: 50, kalshiBelow: 50,
   kellyFull: 0, kellyEdge: 0, kellyWR: 0,
+  dataQuality: 1,
+  calibrationBias: 0,
 
   // Bet signal
   betData: null,
+  signalLog: [],
+  signalAccuracy: null,
+  brierScore: null,
 
   // WS meta
   wsConnected: false, wsLatency: 0, lastMsgTs: 0,
@@ -1019,6 +1024,69 @@ function kalmanUpdate(price) {
   return { price:_kX[0], velocity:_kX[1], uncertainty:Math.sqrt(Math.max(0,_kP[0][0]))*2 };
 }
 
+function clamp(v,min,max){
+  if(!Number.isFinite(v)) return min;
+  return Math.min(max,Math.max(min,v));
+}
+
+function getDataQualityScore(s,p){
+  const now=Date.now();
+  const ageSec=s.lastMsgTs?Math.max(0,(now-s.lastMsgTs)/1000):999;
+  let staleFactor=1;
+  if(ageSec>=20) staleFactor=0.45;
+  else if(ageSec>=10) staleFactor=0.7;
+  const spreadBps=s.bestAsk&&s.bestBid&&p>0?((s.bestAsk-s.bestBid)/p)*10000:0;
+  let spreadFactor=1;
+  if(spreadBps>12) spreadFactor=0.55;
+  else if(spreadBps>8) spreadFactor=0.72;
+  else if(spreadBps>5) spreadFactor=0.85;
+  const oracleConf=Number.isFinite(s.oracleConf)?s.oracleConf:100;
+  const oracleFactor=clamp(oracleConf/100,0.65,1);
+  const wsFactor=s.wsConnected||s.wsSource==='rest'?1:0.8;
+  return clamp(staleFactor*spreadFactor*oracleFactor*wsFactor,0.35,1);
+}
+
+function getCalibrationStats(log){
+  if(!Array.isArray(log)||!log.length) return null;
+  const resolved=log.filter(e=>
+    e?.resolved===true
+    && Number.isFinite(e?.pAbove)
+    && typeof e?.correct==='boolean'
+  );
+  if(!resolved.length) return null;
+  const n=resolved.length;
+  const meanP=resolved.reduce((a,e)=>a+e.pAbove,0)/n;
+  const hitRate=resolved.reduce((a,e)=>a+(e.correct?1:0),0)/n;
+  const bias=meanP-hitRate;
+  const brier=resolved.reduce((a,e)=>{
+    const y=e.correct?1:0;
+    return a+((e.pAbove-y)**2);
+  },0)/n;
+  return {n,meanP,hitRate,bias,brier};
+}
+
+function calibrateProbability(baseP,s,p){
+  let out=clamp(baseP,0.05,0.95);
+  const stats=getCalibrationStats(s.signalLog);
+  if(stats&&stats.n>=12){
+    // Correct systematic probability bias from observed outcomes.
+    const biasWeight=clamp(stats.n/120,0.08,0.35);
+    out=clamp(out-(stats.bias*biasWeight),0.05,0.95);
+
+    // Reduce overconfidence when historical calibration worsens.
+    const sharpness=clamp(1-Math.max(0,stats.brier-0.2)*1.8,0.55,1);
+    out=0.5+((out-0.5)*sharpness);
+    s.calibrationBias=Number((stats.bias*100).toFixed(2));
+  } else {
+    s.calibrationBias=0;
+  }
+
+  const q=getDataQualityScore(s,p);
+  out=0.5+((out-0.5)*q);
+  s.dataQuality=q;
+  return clamp(out,0.05,0.95);
+}
+
 // eslint-disable-next-line sonarjs/cognitive-complexity
 function computeIndicators() {
   const C = marketStore.candles;
@@ -1158,11 +1226,14 @@ function computeIndicators() {
   const totalW = w.trend + w.meanRev + w.flow;
   const weightedScore = directionalScore / totalW;
 
-  // ── pAbove from ensemble ──
-  marketStore.pAbove = Math.max(0.05, Math.min(0.95, (weightedScore + 1) / 2));
+  // ── pAbove from ensemble + calibration + data quality gating ──
+  const rawP = clamp((weightedScore + 1) / 2, 0.05, 0.95);
+  marketStore.pAbove = calibrateProbability(rawP, marketStore, p);
   marketStore.pBelow = 1 - marketStore.pAbove;
   marketStore.verdict = marketStore.pAbove >= 0.5 ? 'ABOVE' : 'BELOW';
-  marketStore.confidence = Math.round(Math.max(marketStore.pAbove, marketStore.pBelow) * (regimeConf / 100) * 100);
+  const probEdge = Math.abs(marketStore.pAbove - 0.5) * 2;
+  const confRaw = probEdge * (regimeConf / 100) * (marketStore.dataQuality || 1) * 100;
+  marketStore.confidence = Math.round(clamp(confRaw, 5, 99));
 
   // ── 4-Scenario probabilities ──
   const pa = marketStore.pAbove;
@@ -1220,7 +1291,7 @@ function computeIndicators() {
   resolveSignalLog();
 
   // ── Log current signal ──
-  if (marketStore.betData?.active) {
+  if (marketStore.betData?.active && (marketStore.dataQuality || 1) >= 0.55) {
     const log = marketStore.signalLog || [];
     const last = log[log.length - 1];
     if (!last || Date.now() - last.ts > 60000) {
@@ -1277,14 +1348,20 @@ function computeBetSignal() { // NOSONAR
   const trajBull=slopeP>0&&slopeE9>0&&slopeE21>0;
   const trajBear=slopeP<0&&slopeE9<0&&slopeE21<0;
   const kEdge=Math.abs(s.pAbove-s.kalshiAbove/100);
+  const quality=Number.isFinite(s.dataQuality)?s.dataQuality:1;
+  const confGate=clamp((s.confidence||0)/100,0.4,1);
+  const probGate=0.63+((1-quality)*0.07);
+  const alignBullGate=0.68+((1-quality)*0.06);
+  const alignBearGate=0.32-((1-quality)*0.06);
 
-  const isBull=align>=0.7&&trajBull&&e9>e21&&slopeE9>0&&s.pAbove>=0.65;
-  const isBear=align<=0.3&&trajBear&&e9<e21&&slopeE9<0&&s.pBelow>=0.65;
-  const active=(isBull||isBear)&&kEdge>=0.04;
+  const isBull=align>=alignBullGate&&trajBull&&e9>e21&&slopeE9>0&&s.pAbove>=probGate;
+  const isBear=align<=alignBearGate&&trajBear&&e9<e21&&slopeE9<0&&s.pBelow>=probGate;
+  const edgeGate=0.04+((1-quality)*0.02);
+  const active=(isBull||isBear)&&kEdge>=edgeGate&&quality>=0.55&&confGate>=0.5;
   let verdict='WAIT';
   if (isBull) verdict='ABOVE';
   else if (isBear) verdict='BELOW';
-  const conviction=active?Math.round(Math.max(align,1-align)*100):0;
+  const conviction=active?Math.round(clamp(Math.max(align,1-align)*quality*confGate*100,0,99)):0;
 
   const reasons=[];
   if(isBull||isBear){
@@ -1303,9 +1380,12 @@ function computeBetSignal() { // NOSONAR
     if (_regimeMatch) regimeType=d?'bull':'bear';
     let edgeType='warn';
     if (kEdge>=0.08) edgeType=d?'bull':'bear';
+    let qualityType='warn';
+    if(quality>=0.75) qualityType=d?'bull':'bear';
     reasonsCore.push(
       {t:regimeType,txt:`Regime: ${s.regime.replaceAll('_',' ')} ${_regimeMatch?'✓':'⚠'}`},
-      {t:edgeType,txt:`Kalshi edge ${(kEdge*100).toFixed(1)}% ${kEdge>=0.08?'— strong':'— moderate'}`}
+      {t:edgeType,txt:`Kalshi edge ${(kEdge*100).toFixed(1)}% ${kEdge>=0.08?'— strong':'— moderate'}`},
+      {t:qualityType,txt:`Feed quality ${(quality*100).toFixed(0)}% · confidence ${s.confidence||0}%`}
     );
     reasons.push(...reasonsCore);
   }
@@ -1872,6 +1952,26 @@ function computeBrierScore(log){
   marketStore.brierScore=(bs/resolved.length).toFixed(3);
   const correct=resolved.filter(e=>e.correct).length;
   marketStore.signalAccuracy=(correct/resolved.length*100).toFixed(1);
+}
+
+function hydrateSignalLog(){
+  try{
+    const raw=localStorage.getItem('qdSignalLog');
+    if(!raw) return;
+    const parsed=JSON.parse(raw);
+    if(!Array.isArray(parsed)) return;
+    const clean=parsed.filter(e=>
+      Number.isFinite(e?.ts)
+      && Number.isFinite(e?.price)
+      && Number.isFinite(e?.pAbove)
+      && typeof e?.verdict==='string'
+      && typeof e?.resolved==='boolean'
+    ).slice(-100);
+    marketStore.signalLog=clean;
+    computeBrierScore(clean);
+  }catch(e){
+    console.debug('signal log hydrate skipped:', e?.message || e);
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -2601,6 +2701,7 @@ setInterval(()=>{
 async function init(){
   resizeChart();
   setWsStatus('connecting');
+  hydrateSignalLog();
   await bootstrapCandles();   // REST candle bootstrap from REST API
   resizeChart();              // re-measure after layout settles
   setupCrosshair();
