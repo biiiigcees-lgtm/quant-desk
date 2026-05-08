@@ -786,15 +786,17 @@ function updateWsFreshnessUI() {
     return;
   }
 
-  const ageSec = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+  const ageMs = Math.max(0, Date.now() - ts);
+  const ageSec = ageMs / 1000;
+  const ageText = ageSec < 10 ? `${ageSec.toFixed(1)}s` : `${Math.floor(ageSec)}s`;
   let level = 'fresh';
   if (ageSec >= 20) level = 'stale';
   else if (ageSec >= 10) level = 'warn';
 
-  ageEl.textContent = `${ageSec}s`;
+  ageEl.textContent = ageText;
   ageEl.className = `ws-stale-age ${level}`;
   const source = (marketStore.wsSource || 'feed').toUpperCase();
-  ageEl.title = `${source} updated ${ageSec}s ago`;
+  ageEl.title = `${source} updated ${ageText} ago`;
 }
 
 function setWsControlMode(mode) {
