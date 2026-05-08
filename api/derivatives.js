@@ -69,29 +69,52 @@ export default async function handler(req, res) {
 }
 
 async function fetchTickerWithFallback() {
+  const errors = [];
   try {
     const bybit = await fetchBybitTicker();
     return { ...bybit, source: 'bybit' };
   } catch (bybitErr) {
-    try {
-      const binance = await fetchBinanceFuturesTicker();
-      return { ...binance, source: 'binance-futures' };
-    } catch (binanceErr) {
-      throw new Error(`Bybit ticker failed (${bybitErr.message}); Binance fallback failed (${binanceErr.message})`);
-    }
+    errors.push(`Bybit ticker failed (${bybitErr.message})`);
   }
+
+  try {
+    const binance = await fetchBinanceFuturesTicker();
+    return { ...binance, source: 'binance-futures' };
+  } catch (binanceErr) {
+    errors.push(`Binance fallback failed (${binanceErr.message})`);
+  }
+
+  try {
+    const okx = await fetchOkxTicker();
+    return { ...okx, source: 'okx' };
+  } catch (okxErr) {
+    errors.push(`OKX fallback failed (${okxErr.message})`);
+  }
+
+  throw new Error(errors.join('; '));
 }
 
 async function fetchOpenInterestWithFallback() {
+  const errors = [];
   try {
     return await fetchBybitOI();
   } catch (bybitErr) {
-    try {
-      return await fetchBinanceFuturesOI();
-    } catch (binanceErr) {
-      throw new Error(`Bybit OI failed (${bybitErr.message}); Binance fallback failed (${binanceErr.message})`);
-    }
+    errors.push(`Bybit OI failed (${bybitErr.message})`);
   }
+
+  try {
+    return await fetchBinanceFuturesOI();
+  } catch (binanceErr) {
+    errors.push(`Binance fallback failed (${binanceErr.message})`);
+  }
+
+  try {
+    return await fetchOkxOI();
+  } catch (okxErr) {
+    errors.push(`OKX fallback failed (${okxErr.message})`);
+  }
+
+  throw new Error(errors.join('; '));
 }
 
 async function fetchBybitTicker() {
@@ -169,6 +192,74 @@ async function fetchBinanceFuturesOI() {
   return {
     openInterest,
     openInterestUsd: null,
+    oiDelta: 0,
+    oiDeltaPct: 0,
+  };
+}
+
+async function fetchOkxTicker() {
+  const fundingRes = await fetch(
+    'https://www.okx.com/api/v5/public/funding-rate?instId=BTC-USDT-SWAP',
+    { signal: AbortSignal.timeout(3000) }
+  );
+  if (!fundingRes.ok) throw new Error(`OKX funding HTTP ${fundingRes.status}`);
+  const fundingData = await fundingRes.json();
+  if (fundingData.code !== '0') throw new Error(`OKX funding code ${fundingData.code}`);
+  const fundingRow = fundingData.data?.[0];
+  if (!fundingRow) throw new Error('No OKX funding data');
+
+  const [markRes, indexRes] = await Promise.allSettled([
+    fetch('https://www.okx.com/api/v5/public/mark-price?instType=SWAP&instId=BTC-USDT-SWAP', {
+      signal: AbortSignal.timeout(3000),
+    }),
+    fetch('https://www.okx.com/api/v5/market/index-tickers?instId=BTC-USDT', {
+      signal: AbortSignal.timeout(3000),
+    }),
+  ]);
+
+  let markPrice = null;
+  if (markRes.status === 'fulfilled' && markRes.value.ok) {
+    const markData = await markRes.value.json();
+    const markVal = Number.parseFloat(markData?.data?.[0]?.markPx);
+    if (Number.isFinite(markVal)) markPrice = markVal;
+  }
+
+  let indexPrice = null;
+  if (indexRes.status === 'fulfilled' && indexRes.value.ok) {
+    const indexData = await indexRes.value.json();
+    const indexVal = Number.parseFloat(indexData?.data?.[0]?.idxPx);
+    if (Number.isFinite(indexVal)) indexPrice = indexVal;
+  }
+
+  const fundingRate = Number.parseFloat(fundingRow.fundingRate);
+  const nextFundingTime = Number.parseInt(fundingRow.fundingTime, 10);
+  return {
+    fundingRate: Number.isFinite(fundingRate) ? fundingRate : 0,
+    nextFundingTime: Number.isFinite(nextFundingTime) ? nextFundingTime : Date.now() + 28800000,
+    markPrice,
+    indexPrice,
+  };
+}
+
+async function fetchOkxOI() {
+  const r = await fetch(
+    'https://www.okx.com/api/v5/public/open-interest?instType=SWAP&instId=BTC-USDT-SWAP',
+    { signal: AbortSignal.timeout(3000) }
+  );
+  if (!r.ok) throw new Error(`OKX OI HTTP ${r.status}`);
+  const d = await r.json();
+  if (d.code !== '0') throw new Error(`OKX OI code ${d.code}`);
+  const row = d.data?.[0];
+  if (!row) throw new Error('No OKX OI data');
+
+  const oiUsd = Number.parseFloat(row.oiUsd);
+  const oiContracts = Number.parseFloat(row.oi);
+  const openInterest = Number.isFinite(oiUsd) && oiUsd > 0 ? oiUsd : oiContracts;
+  if (!Number.isFinite(openInterest)) throw new Error('Invalid OKX OI payload');
+
+  return {
+    openInterest,
+    openInterestUsd: Number.isFinite(oiUsd) ? oiUsd : null,
     oiDelta: 0,
     oiDeltaPct: 0,
   };
