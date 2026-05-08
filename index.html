@@ -45,6 +45,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Pl
 .ws-toggle{background:var(--bg2);border:1px solid var(--border);color:var(--t3);font-size:7px;letter-spacing:.6px;padding:2px 6px;border-radius:2px;cursor:pointer}
 .ws-toggle:hover{color:var(--amber);border-color:rgba(255,171,0,.3)}
 .ws-toggle.active{color:var(--amber);border-color:rgba(255,171,0,.5)}
+.ws-toggle.rest-active{color:var(--cyan);border-color:rgba(0,229,255,.5)}
+.ws-toggle.rest-active:hover{color:var(--cyan);border-color:rgba(0,229,255,.5)}
+.ws-toggle:disabled{opacity:.45;cursor:not-allowed}
 .up{color:var(--green)!important}.dn{color:var(--red)!important}.neut{color:var(--t2)!important}
 .num{font-variant-numeric:tabular-nums}
 
@@ -383,8 +386,9 @@ canvas{width:100%;height:100%;display:block}
   <div class="sb-item">RV <span class="sb-val" id="sbRv">—</span></div>
   <div class="sb-item">ADX <span class="sb-val" id="sbAdx">—</span></div>
   <div class="flex-fill"></div>
-  <button class="ws-toggle" id="wsToggle" onclick="toggleWsFallback()" title="Force Kraken fallback">FALLBACK OFF</button>
-  <span id="kbHint" title="A=AI  S=Sound  F=Fullscreen">A · S · F</span>
+  <button class="ws-toggle" id="wsToggle" onclick="toggleWsFallback()" title="Force Kraken websocket feed">KRAKEN OFF</button>
+  <button class="ws-toggle" id="wsRestToggle" onclick="toggleWsRest()" title="Force Coinbase REST polling mode">REST OFF</button>
+  <span id="kbHint" title="A=AI  S=Sound  F=Fullscreen  K=Kraken  R=REST">A · S · F · K · R</span>
 </div>
 <!-- TICKER TAPE -->
 <div id="tape"><div id="tape-track">
@@ -701,7 +705,7 @@ var marketStore = {
 
   // WS meta
   wsConnected: false, wsLatency: 0, lastMsgTs: 0,
-  wsSource: 'coinbase', manualFallback: false,
+  wsSource: 'coinbase', manualFallback: false, manualRest: false,
   msgCount: 0, reconnectCount: 0,
 };
 
@@ -721,6 +725,9 @@ function setWsStatus(status) {
   } else if (status === 'connecting') {
     nextLabel = 'connecting…';
     nextColor = 'var(--amber)';
+  } else if (status === 'rest') {
+    nextLabel = 'REST LIVE';
+    nextColor = 'var(--cyan)';
   }
   lbl.textContent = nextLabel;
   lbl.style.color = nextColor;
@@ -730,25 +737,62 @@ function setWsStatus(status) {
 function updateWsSourceUI() {
   const srcEl = document.getElementById('wsSource');
   const toggle = document.getElementById('wsToggle');
+  const restToggle = document.getElementById('wsRestToggle');
   const src = marketStore.wsSource || '—';
+  const sourceHelp = {
+    coinbase: 'Primary Coinbase websocket feed',
+    kraken: 'Fallback Kraken websocket feed',
+    rest: 'REST polling fallback feed',
+    '—': 'Waiting for first market update',
+  };
   if (srcEl) {
     srcEl.textContent = src === '—' ? '—' : src.toUpperCase();
     srcEl.className = 'ws-source ' + (src || '');
+    srcEl.title = sourceHelp[src] || sourceHelp['—'];
   }
+
+  const fallbackEnabled = !!marketStore.manualFallback;
+  const restEnabled = !!marketStore.manualRest;
+
   if (toggle) {
-    const enabled = !!marketStore.manualFallback;
-    toggle.classList.toggle('active', enabled);
-    toggle.textContent = enabled ? 'FALLBACK ON' : 'FALLBACK OFF';
+    toggle.classList.toggle('active', fallbackEnabled);
+    toggle.textContent = fallbackEnabled ? 'KRAKEN ON' : 'KRAKEN OFF';
+    toggle.title = fallbackEnabled ? 'Disable Kraken override (return to auto)' : 'Force Kraken websocket feed';
+    toggle.disabled = restEnabled;
+  }
+
+  if (restToggle) {
+    restToggle.classList.toggle('rest-active', restEnabled);
+    restToggle.textContent = restEnabled ? 'REST ON' : 'REST OFF';
+    restToggle.title = restEnabled ? 'Disable REST override (return to auto)' : 'Force Coinbase REST polling mode';
+    restToggle.disabled = fallbackEnabled;
   }
 }
 
-function toggleWsFallback() {
-  const next = !marketStore.manualFallback;
-  marketStore.manualFallback = next;
-  if (globalThis._wsEngine && typeof globalThis._wsEngine.setManualFallback === 'function') {
-    globalThis._wsEngine.setManualFallback(next);
+function setWsControlMode(mode) {
+  const nextMode = ['auto', 'fallback', 'rest'].includes(mode) ? mode : 'auto';
+  marketStore.manualFallback = nextMode === 'fallback';
+  marketStore.manualRest = nextMode === 'rest';
+
+  const ws = globalThis._wsEngine;
+  if (ws) {
+    if (typeof ws.setManualMode === 'function') {
+      ws.setManualMode(nextMode);
+    } else {
+      if (typeof ws.setManualFallback === 'function') ws.setManualFallback(nextMode === 'fallback');
+      if (typeof ws.setForceRest === 'function') ws.setForceRest(nextMode === 'rest');
+    }
   }
+
   updateWsSourceUI();
+}
+
+function toggleWsFallback() {
+  setWsControlMode(marketStore.manualFallback ? 'auto' : 'fallback');
+}
+
+function toggleWsRest() {
+  setWsControlMode(marketStore.manualRest ? 'auto' : 'rest');
 }
 
 // ─────────────────────────────────────────────
@@ -1735,6 +1779,8 @@ document.addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
   if(e.key==='a'||e.key==='A'){if(typeof runAI==='function') runAI();}
   if(e.key==='s'||e.key==='S'){_soundEnabled=!_soundEnabled;}
+  if(e.key==='k'||e.key==='K'){toggleWsFallback();}
+  if(e.key==='r'||e.key==='R'){toggleWsRest();}
   if(e.key==='f'||e.key==='F'){
     if(document.fullscreenElement) document.exitFullscreen?.();
     else document.documentElement.requestFullscreen?.();
@@ -1811,7 +1857,9 @@ function renderAll(){ // NOSONAR
   }
 
   // WS latency
-  if(s.wsLatency) setTxt('wsLatency',s.wsLatency+'ms');
+  if (s.wsSource === 'rest') setTxt('wsLatency', 'REST');
+  else if (s.wsLatency) setTxt('wsLatency', s.wsLatency+'ms');
+  else setTxt('wsLatency', '');
   updateWsSourceUI();
 
   // Tape
@@ -2553,6 +2601,7 @@ async function init(){
     ms.lastMsgTs    = state.lastMsgTs   ?? ms.lastMsgTs;
     ms.wsSource     = state.wsSource    ?? ms.wsSource;
     ms.manualFallback = state.manualFallbackEnabled ?? ms.manualFallback;
+    ms.manualRest   = state.manualRestEnabled ?? ms.manualRest;
     ms.imbalance    = state.imbalance   ?? ms.imbalance;
     ms.cvd          = state.cvd         ?? ms.cvd;
     ms.tradeDeltaBuy  = state.tradeDeltaBuy  ?? ms.tradeDeltaBuy;
