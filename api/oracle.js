@@ -12,10 +12,11 @@ export default async function handler(req, res) {
     fetchBinanceUs(),
     fetchKraken(),
     fetchBybit(),
+    fetchCoinGecko(),
   ]);
 
   const results = sources.map((s, i) => {
-    const name = ['BINANCE_US', 'KRAKEN', 'BYBIT'][i];
+    const name = ['BINANCE_US', 'KRAKEN', 'BYBIT', 'COINGECKO'][i];
     if (s.status === 'fulfilled') return { exchange: name, ...s.value, ok: true };
     return { exchange: name, price: null, mid: null, ok: false, err: s.reason?.message };
   });
@@ -92,4 +93,15 @@ async function fetchBybit() {
   if (!t) throw new Error('No Bybit ticker data');
   const bid = parseFloat(t.bid1Price), ask = parseFloat(t.ask1Price);
   return { price: (bid + ask) / 2, mid: (bid + ask) / 2, bid, ask };
+}
+
+async function fetchCoinGecko() {
+  const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd', {
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!r.ok) throw new Error(`CoinGecko HTTP ${r.status}`);
+  const d = await r.json();
+  if (!d?.bitcoin?.usd) throw new Error('CoinGecko: no price data');
+  const p = d.bitcoin.usd;
+  return { price: p, mid: p, bid: p, ask: p };
 }
