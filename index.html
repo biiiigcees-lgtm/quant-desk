@@ -772,6 +772,8 @@ function updateWsSourceUI() {
     restToggle.title = restEnabled ? 'Disable REST override (return to auto)' : 'Force Coinbase REST polling mode';
     restToggle.disabled = fallbackEnabled;
   }
+
+  if (typeof updateWsFreshnessUI === 'function') updateWsFreshnessUI();
 }
 
 function updateWsFreshnessUI() {
