@@ -61,10 +61,10 @@ async function fetchBybitTicker() {
   const t = d.result?.list?.[0];
   if (!t) throw new Error('No Bybit linear ticker data');
   return {
-    fundingRate:     parseFloat(t.fundingRate) || 0,
-    nextFundingTime: parseInt(t.nextFundingTime) || Date.now() + 28800000,
-    markPrice:       parseFloat(t.markPrice) || 0,
-    indexPrice:      parseFloat(t.indexPrice) || 0,
+    fundingRate:     Number.parseFloat(t.fundingRate) || 0,
+    nextFundingTime: Number.parseInt(t.nextFundingTime, 10) || Date.now() + 28800000,
+    markPrice:       Number.parseFloat(t.markPrice) || 0,
+    indexPrice:      Number.parseFloat(t.indexPrice) || 0,
   };
 }
 
@@ -78,10 +78,10 @@ async function fetchBybitOI() {
   if (d.retCode !== 0) throw new Error(d.retMsg);
   const list = d.result?.list;
   if (!list?.length) return null;
-  const latest  = parseFloat(list[0].openInterest);
-  const prev    = list[1] ? parseFloat(list[1].openInterest) : latest;
+  const latest  = Number.parseFloat(list[0].openInterest);
+  const prev    = list[1] ? Number.parseFloat(list[1].openInterest) : latest;
   // openInterestValue from Bybit is the notional USD value of the OI
-  const oiUsd   = parseFloat(list[0].openInterestValue || 0);
+  const oiUsd   = Number.parseFloat(list[0].openInterestValue || 0);
   return {
     openInterest:    latest,
     openInterestUsd: oiUsd,
