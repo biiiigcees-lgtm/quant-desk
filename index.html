@@ -711,6 +711,7 @@ function handleWsMessage(d) {
 }
 
 function handleTicker(d) {
+  _msgCount++;
   const prev = marketStore.price;
   marketStore.price   = parseFloat(d.price) || prev;
   marketStore.bestBid = parseFloat(d.best_bid) || 0;
@@ -765,6 +766,7 @@ function rebuildObLists() {
 }
 
 function handleTrade(d) {
+  _msgCount++;
   const trade = {
     price: parseFloat(d.price),
     size:  parseFloat(d.size),
@@ -2082,7 +2084,10 @@ function renderBetSignal(){
 // ─────────────────────────────────────────────
 // AI ANALYST
 // ─────────────────────────────────────────────
+let _aiCooldownTs = 0;
 async function runAI(){
+  if(_aiCooldownTs>0 && Date.now()-_aiCooldownTs<8000) return;
+  _aiCooldownTs = Date.now();
   const btn=document.getElementById('aiBtn');
   const out=document.getElementById('aiOut');
   btn.disabled=true; btn.textContent='⟳ ANALYZING…';
@@ -2090,12 +2095,17 @@ async function runAI(){
 
   const s=marketStore;
   const pch=s.price&&s.open24?((s.price-s.open24)/s.open24*100).toFixed(2):0;
+  const sc=s.scoutScores||{};
 
   const prompt=`BTC LIVE DATA — ${new Date().toISOString()}
 
 PRICE: $${s.price?.toLocaleString()} (${pch>=0?'+':''}${pch}% 24H)
 HIGH24: $${s.high24?.toLocaleString()} | LOW24: $${s.low24?.toLocaleString()}
 SPREAD: $${s.bestAsk&&s.bestBid?(s.bestAsk-s.bestBid).toFixed(2):'—'} | IMBALANCE: ${(s.imbalance*100).toFixed(1)}%
+
+MULTI-SOURCE ORACLE:
+- Oracle price: $${s.oraclePrice?.toLocaleString()||'—'} | Deviation: ${s.oracleDeviation?(s.oracleDeviation*100).toFixed(3)+'%':'—'} | Confidence: ${s.oracleConf||'—'}/100
+- Sources: ${(s.oracleSources||[]).map(x=>x.exchange+(x.outlier?' [OUTLIER]':' ✓')).join(', ')||'—'}
 
 EMA STRUCTURE:
 - EMA9: $${s.ema9?.toFixed(0)} | EMA21: $${s.ema21?.toFixed(0)}
@@ -2112,25 +2122,53 @@ ORDERFLOW (LIVE WS):
 - CVD: ${s.cvd?.toFixed(2)} (${s.cvd>0?'BUY DOM':'SELL DOM'})
 - Trade delta: Buy ${s.tradeDeltaBuy?.toFixed(3)} / Sell ${s.tradeDeltaSell?.toFixed(3)}
 - Bid/Ask imbalance: ${(s.imbalance*100)?.toFixed(1)}%
-- Aggression: ${(s.aggression*100)?.toFixed(1)}%
+- Aggression: ${(s.aggression*100)?.toFixed(1)}% | Flow toxicity: ${s.flowToxicity?.toFixed(1)||'—'}%
 - Anomaly: ${s.anomalies[0]?.type||'NONE'} | Sweeps: ${s.sweeps?.length} | FVGs: ${s.fvgs?.length}
 
-REGIME: ${s.regime} | BAYESIAN P(ABOVE): ${(s.pAbove*100)?.toFixed(1)}%
+REGIME INTELLIGENCE:
+- Regime: ${s.regime} (conf: ${s.regimeConf?.toFixed(0)||'—'}%) | ADX: ${s.adxVal?.toFixed(1)||'—'} | Realized Vol: ${s.realizedVol?.toFixed(1)||'—'}%
+- Ensemble P(ABOVE): ${(s.pAbove*100)?.toFixed(1)}%
+
+ENSEMBLE SCOUTS:
+- Trend: ${sc.trend?.toFixed(2)||'—'} | MeanRev: ${sc.meanRev?.toFixed(2)||'—'} | Volatility: ${sc.volatility?.toFixed(2)||'—'} | Flow: ${sc.flow?.toFixed(2)||'—'}
+
+4-SCENARIO PROBABILITIES:
+- Bull Drift: ${((s.pBullDrift||0)*100).toFixed(1)}% | Range-Bound: ${((s.pRangeBound||0)*100).toFixed(1)}% | Vol Expansion: ${((s.pVolExpansion||0)*100).toFixed(1)}% | Tail Risk: ${((s.pTailRisk||0)*100).toFixed(1)}%
+
+KALMAN FILTER:
+- Price: $${s.kalmanPrice?.toFixed(0)||'—'} | Velocity: ${s.kalmanVelocity!=null?(s.kalmanVelocity>=0?'+':'')+s.kalmanVelocity.toFixed(2):' —'}/tick | Uncertainty: ±$${s.kalmanUncertainty?.toFixed(0)||'—'}
+
+DERIVATIVES:
+- Funding rate: ${s.fundingRatePct!=null?((s.fundingRatePct>=0?'+':'')+s.fundingRatePct.toFixed(4)+'%'):'—'} (${s.annualizedPct!=null?(s.annualizedPct>0?'+':'')+s.annualizedPct.toFixed(1)+'% ann':'—'}) | Next: ${s.fundingCountdown||'—'}
+- Open interest: ${s.openInterest?(s.openInterest/1e9).toFixed(2)+'B':'—'} | OI vs price: ${s.oiPriceDiv||'NEUTRAL'}
+- Mark: $${s.markPrice?.toFixed(0)||'—'} | Index: $${s.indexPrice?.toFixed(0)||'—'}
+
 KALSHI: Market ${s.kalshiAbove}% | Model ${(s.pAbove*100)?.toFixed(1)}% | Edge ${((s.pAbove-s.kalshiAbove/100)*100)?.toFixed(1)}%
-BET ENGINE: ${s.betData?.active?`ACTIVE — ${s.betData.verdict} (${s.betData.conviction}% conviction)`:'MONITORING'}`;
+BET ENGINE: ${s.betData?.active?`ACTIVE — ${s.betData.verdict} (${s.betData.conviction}% conviction)`:'MONITORING'}
+SIGNAL ACCURACY: ${s.signalAccuracy||'—'}% | BRIER: ${s.brierScore||'—'}`;
 
   const system=`You are the world's most elite BTC quant analyst. 20 years institutional experience.
 DECISIVE. CONFIDENT. Data-driven. No disclaimers.
 
-FORMAT (plain text, no markdown):
-STRUCTURE: [EMA9/21 alignment, price vs key levels]
-TRAJECTORY: [slope, acceleration, where price is heading next 15min]
-ORDERFLOW: [CVD, trade delta, bid/ask pressure, whale activity]
-SIGNALS: [bullish/bearish count, key confluences]
-KALSHI EDGE: [edge size, bet direction if warranted]
-VERDICT: ABOVE or BELOW — with conviction statement
+You have access to: multi-source oracle consensus, ensemble scout scores (Trend/MeanRev/Vol/Flow, range -1 to +1 where positive=bullish), 4-scenario probability distribution, Kalman filter price/velocity/uncertainty, derivatives (funding rate, open interest), and live signal accuracy tracking.
 
-Under 220 words. Pure institutional signal.`;
+Interpret data as follows:
+- Scout scores near ±1 = strong signal, near 0 = neutral/conflicted
+- ADX >25 = established trend (trust trend-following scouts); ADX <20 = range-bound (trust mean-rev)
+- Kalman velocity confirms or contradicts price direction — divergence is early warning
+- Funding rate >0.05% = leveraged longs; <-0.02% = leveraged shorts dominant
+- Dominant scenario (highest %) drives the trade thesis
+
+FORMAT (plain text, no markdown):
+STRUCTURE: [EMA9/21 + Kalman alignment, oracle vs WS price delta if notable]
+TRAJECTORY: [slope, Kalman velocity, ensemble direction, where price is heading next 15min]
+ORDERFLOW: [CVD, toxicity, delta, bid/ask pressure, whale activity, OI signal]
+REGIME: [regime state, ADX, realized vol, dominant scenario probability]
+SIGNALS: [scout scores synthesis, key confluences]
+KALSHI EDGE: [edge size, bet direction if warranted]
+VERDICT: ABOVE or BELOW — with conviction % and single key risk factor
+
+Under 250 words. Pure institutional signal.`;
 
   try {
     const resp=await fetch('/api/analyze',{
@@ -2148,7 +2186,7 @@ Under 220 words. Pure institutional signal.`;
       .replace(/BULLISH|BUY[\s-]SIDE|ABOVE|LONG|EXPANSION/gi,m=>`<span class="bull">${m}</span>`)
       .replace(/BEARISH|SELL[\s-]SIDE|BELOW|SHORT|CONTRACTION/gi,m=>`<span class="bear">${m}</span>`)
       .replace(/WARNING|RISK|CAUTION|ALERT|CASCADE/gi,m=>`<span class="warn">${m}</span>`)
-      .replace(/EDGE|KALSHI|BAYESIAN|CVD|VWAP|FVG/gi,m=>`<span class="cyan">${m}</span>`);
+      .replace(/EDGE|KALSHI|BAYESIAN|CVD|VWAP|FVG|KALMAN|SCOUT|ORACLE|REGIME/gi,m=>`<span class="cyan">${m}</span>`);
     out.innerHTML=fmt;
   } catch(e){
     out.innerHTML=`<span style="color:var(--red)">API error: ${e.message}</span>`;
