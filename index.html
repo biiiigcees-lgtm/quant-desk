@@ -2509,6 +2509,8 @@ async function init(){
     ms.open24       = state.open24      || ms.open24;
     ms.vol24        = state.vol24       || ms.vol24;
     ms.wsLatency    = state.wsLatency   || ms.wsLatency;
+    ms.wsConnected  = state.wsConnected ?? ms.wsConnected;
+    ms.lastMsgTs    = state.lastMsgTs   ?? ms.lastMsgTs;
     ms.imbalance    = state.imbalance   ?? ms.imbalance;
     ms.cvd          = state.cvd         ?? ms.cvd;
     ms.tradeDeltaBuy  = state.tradeDeltaBuy  ?? ms.tradeDeltaBuy;
