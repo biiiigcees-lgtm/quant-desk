@@ -1592,7 +1592,6 @@ async function fetchKalshiLive(){
     const r=await fetch('/api/kalshi');
     if(!r.ok) return;
     const d=await r.json();
-    if(!marketStore.price) return;
     const bid=Number.parseFloat(d?.yes_bid);
     const ask=Number.parseFloat(d?.yes_ask);
     const midRaw=Number.isFinite(d?.mid)
