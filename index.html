@@ -765,6 +765,24 @@ function computeRSI(arr, p=14) {
   }
   return al===0?100:100-100/(1+ag/al);
 }
+function computeRSISeries(arr, p=14) {
+  const res = new Array(arr.length).fill(null);
+  if (arr.length < p+1) return res;
+  let g=0, l=0;
+  for (let i=1; i<=p; i++) {
+    const d=arr[i]-arr[i-1];
+    if (d > 0) g += d;
+    else l -= d;
+  }
+  let ag=g/p, al=l/p;
+  res[p] = al===0?100:100-100/(1+ag/al);
+  for (let i=p+1; i<arr.length; i++) {
+    const d=arr[i]-arr[i-1];
+    ag=(ag*(p-1)+Math.max(d,0))/p; al=(al*(p-1)+Math.max(-d,0))/p;
+    res[i] = al===0?100:100-100/(1+ag/al);
+  }
+  return res;
+}
 function computeMACD(arr) {
   const e12=computeEMA(arr,12), e26=computeEMA(arr,26);
   const ml=e12.map((v,i)=>v!=null&&e26[i]!=null?v-e26[i]:null);
@@ -1392,7 +1410,7 @@ function drawRSI(){
   const C=marketStore.candles;
   if(C.length<15) return;
   const closes=C.map(c=>c.close);
-  const rsiArr=computeRSI(closes,14);
+  const rsiArr=computeRSISeries(closes,14);
   const pad=40,rpad=70;
   const cw=Math.max(2,Math.floor((W-pad-rpad)/C.length)-1);
   const y70=H*(1-70/100),y30=H*(1-30/100);
@@ -1665,7 +1683,7 @@ function setupCrosshair(){
     setTxt('ctL',c.low.toFixed(0));setTxt('ctC',c.close.toFixed(0));
     setTxt('ctV',(c.volume||0).toFixed(2));
     const closes=C.slice(0,idx+1).map(x=>x.close);
-    const rsiArr=computeRSI(closes,14);
+    const rsiArr=computeRSISeries(closes,14);
     const rsiV=rsiArr[rsiArr.length-1];
     setTxt('ctR',rsiV?rsiV.toFixed(1):'—');
     const t=new Date(c.time*1000);
@@ -2474,8 +2492,9 @@ async function init(){
   // Subscribe: mirror WS store state into the legacy inline marketStore
   // so all indicator + render code works without changes
   let _bridgeLastTrade = null;
+  let _bridgeUpdating = false;
   marketStore.subscribe(state => { // NOSONAR
-    if (!globalThis.marketStore) return;
+    if (!globalThis.marketStore || _bridgeUpdating) return;
     const ms = globalThis.marketStore;
 
     // Count every state notification for the MPS display
@@ -2525,7 +2544,11 @@ async function init(){
           if (ms.candles.length > 300) ms.candles.shift();
           _bridgeLastTrade = null;
         }
-        if (globalThis._mStore) globalThis._mStore.setState({ candles: ms.candles });
+        if (globalThis._mStore) {
+          _bridgeUpdating = true;
+          globalThis._mStore.setState({ candles: ms.candles });
+          _bridgeUpdating = false;
+        }
       }
     }
   });
