@@ -88,7 +88,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Pl
 
 /* ── CHART ── */
 #chart-wrap{background:var(--bg1);position:relative}
-#chart-hdr{padding:6px 10px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0}
+#chart-hdr{padding:6px 10px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;min-width:0;overflow:hidden}
 #canvasWrap{position:relative;height:280px}
 canvas{width:100%;height:100%;display:block}
 #heatmap-canvas{position:absolute;top:0;left:0;pointer-events:none;opacity:.45}
@@ -281,7 +281,8 @@ canvas{width:100%;height:100%;display:block}
 .flex-fill{flex:1}
 .panel-fixed{flex:0 0 auto}
 .panel-grow{flex:1}
-.chart-title{font-size:10px;font-weight:700;color:var(--white)}
+.chart-title{font-size:10px;font-weight:700;color:var(--white);white-space:nowrap;flex-shrink:0}
+#crossTag{white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis;flex-shrink:1}
 .ema-dot-9{background:#ff9800}
 .ema-dot-21{background:#2979ff}
 .ema-dot-vwap{background:rgba(0,229,255,.6);border-top:1px dashed rgba(0,229,255,.6);height:0}
@@ -293,7 +294,19 @@ canvas{width:100%;height:100%;display:block}
 .bb-legend-ema50{border-color:rgba(170,0,255,.5)}
 .ema-label-bb{color:rgba(255,171,0,.7)}
 .ema-label-ema50{color:rgba(170,0,255,.7)}
-.ohlc-text{font-size:8px;color:var(--t2)}
+.ohlc-text{font-size:8px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px;flex-shrink:1}
+
+@media (max-width:1180px){
+  #chart-hdr{gap:6px;padding:6px 8px}
+  #chart-hdr .ema-legend-tight{display:none}
+  .ohlc-text{max-width:190px}
+}
+
+@media (max-width:980px){
+  #chart-hdr .ema-legend{display:none}
+  #crossTag{max-width:120px}
+  .ohlc-text{max-width:170px}
+}
 .of-bar-init{width:50%;background:var(--green)}
 .bet-ts{font-size:8px;color:var(--t3)}
 .bet-loading{color:var(--t3);font-size:9px}
