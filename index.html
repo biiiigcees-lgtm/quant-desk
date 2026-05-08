@@ -426,6 +426,9 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
   <span class="sb-sep">|</span>
   <div class="sb-item">RV <span class="sb-val" id="sbRv">—</span></div>
   <div class="sb-item">ADX <span class="sb-val" id="sbAdx">—</span></div>
+  <span class="sb-sep">|</span>
+  <div class="sb-item">K ROUND <span class="sb-val" id="sbKRound">—:——</span></div>
+  <div class="sb-item">K TARGET <span class="sb-val" id="sbKTarget">$——</span></div>
   <div class="flex-fill"></div>
   <button class="ws-toggle" id="wsToggle" onclick="toggleWsFallback()" title="Force Kraken websocket feed">KRAKEN OFF</button>
   <button class="ws-toggle" id="wsRestToggle" onclick="toggleWsRest()" title="Force Coinbase REST polling mode">REST OFF</button>
@@ -2414,6 +2417,10 @@ function renderAll(){ // NOSONAR
   const kw2=document.getElementById('kWin2');
   if(kw2) kw2.textContent=new Date(Math.ceil(Date.now()/900000)*900000).toLocaleTimeString();
   updateKalshiCountdownDisplay(kalshiRound());
+  const sbKRoundEl=document.getElementById('sbKRound');
+  if(sbKRoundEl){const kRoundSb=kalshiRound();sbKRoundEl.textContent=kRoundSb.mmss;sbKRoundEl.classList.remove('up','dn');if(kRoundSb.phase==='open')sbKRoundEl.classList.add('up');else if(kRoundSb.phase==='closing')sbKRoundEl.classList.add('dn');}
+  const sbKTargetEl=document.getElementById('sbKTarget');
+  if(sbKTargetEl){sbKTargetEl.textContent=p?'$'+p.toLocaleString(undefined,{maximumFractionDigits:0}):'$——';}
   const keb=document.getElementById('kEdgeBox');
   if(keb){
     if (edge > 0.05) keb.textContent=`▲ EDGE +${(edge*100).toFixed(1)}% — BET ABOVE`;
