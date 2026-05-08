@@ -1589,14 +1589,14 @@ function checkSignalAlert(verdict){
 
 async function fetchKalshiLive(){
   try{
-    const r=await fetch('https://api.elections.kalshi.com/trade-api/v2/markets?series_ticker=KXBTC&limit=5',{headers:{Accept:'application/json'}});
+    const r=await fetch('/api/kalshi');
     if(!r.ok) return;
     const d=await r.json();
-    const mkts=d.markets||[];
-    if(!marketStore.price||!mkts.length) return;
-    const m=mkts.find(mk=>mk.yes_bid!=null&&mk.yes_ask!=null);
-    if(!m) return;
-    const mid=((m.yes_bid+m.yes_ask)/2)/100;
+    if(!marketStore.price) return;
+    const bid=Number.parseFloat(d?.yes_bid);
+    const ask=Number.parseFloat(d?.yes_ask);
+    if(!Number.isFinite(bid)||!Number.isFinite(ask)) return;
+    const mid=((bid+ask)/2)/100;
     marketStore.kalshiAbove=Math.round(mid*100);
     marketStore.kalshiBelow=Math.round((1-mid)*100);
     marketStore._kalshiLive=true;
