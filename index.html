@@ -873,6 +873,7 @@ function kalmanUpdate(price) {
 function computeIndicators() {
   const C = marketStore.candles;
   if (C.length < 22) return;
+  const p=marketStore.price;
   const closes = C.map(c=>c.close);
 
   const e9a=computeEMA(closes,9), e21a=computeEMA(closes,21);
@@ -908,8 +909,6 @@ function computeIndicators() {
   if(anom&&(!marketStore.anomalies.length||marketStore.anomalies[0].type!==anom))
     marketStore.anomalies.unshift({type:anom,price:marketStore.price,ts:Date.now()});
   if(marketStore.anomalies.length>6) marketStore.anomalies.pop();
-
-  const p=marketStore.price;
 
   // ── Realized Volatility (annualized) ──
   if (closes.length >= 21) {
@@ -2395,8 +2394,16 @@ let lastRender=0;
 function renderLoop(ts){
   if(ts-lastRender>=100){  // ~10fps max for chart, UI
     lastRender=ts;
-    computeIndicators();
-    renderAll();
+    try {
+      computeIndicators();
+    } catch(e) {
+      console.error('[renderLoop] computeIndicators:', e);
+    }
+    try {
+      renderAll();
+    } catch(e) {
+      console.error('[renderLoop] renderAll:', e);
+    }
   }
   requestAnimationFrame(renderLoop);
 }
