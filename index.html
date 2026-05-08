@@ -1595,8 +1595,13 @@ async function fetchKalshiLive(){
     if(!marketStore.price) return;
     const bid=Number.parseFloat(d?.yes_bid);
     const ask=Number.parseFloat(d?.yes_ask);
-    if(!Number.isFinite(bid)||!Number.isFinite(ask)) return;
-    const mid=((bid+ask)/2)/100;
+    const midRaw=Number.isFinite(d?.mid)
+      ? d.mid
+      : (Number.isFinite(bid)&&Number.isFinite(ask)
+          ? (bid+ask)/2
+          : (Number.isFinite(bid)?bid:(Number.isFinite(ask)?ask:null)));
+    if(midRaw==null) return;
+    const mid = midRaw > 1.5 ? midRaw / 100 : midRaw;
     marketStore.kalshiAbove=Math.round(mid*100);
     marketStore.kalshiBelow=Math.round((1-mid)*100);
     marketStore._kalshiLive=true;
