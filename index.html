@@ -621,74 +621,8 @@ var marketStore = {
 };
 
 // ─────────────────────────────────────────────
-// WEBSOCKET ENGINE
+// WS STATUS — called by module bridge
 // ─────────────────────────────────────────────
-let ws = null;
-let wsReconnectTimer = null;
-let wsPingInterval = null;
-let wsConnectTs = 0;
-
-function wsConnect() {
-  if (ws && ws.readyState === WebSocket.OPEN) return;
-  setWsStatus('connecting');
-
-  try {
-    ws = new WebSocket('wss://ws-feed.exchange.coinbase.com');
-  } catch(e) {
-    setWsStatus('error');
-    scheduleReconnect();
-    return;
-  }
-
-  wsConnectTs = Date.now();
-
-  ws.onopen = () => {
-    ws.send(JSON.stringify({
-      type: 'subscribe',
-      product_ids: ['BTC-USD'],
-      channels: ['ticker', 'level2_50', 'matches'],
-    }));
-    setWsStatus('connected');
-    marketStore.wsConnected = true;
-    marketStore.reconnectCount = 0;
-    clearTimeout(wsReconnectTimer);
-
-    // Heartbeat ping every 20s
-    clearInterval(wsPingInterval);
-    wsPingInterval = setInterval(() => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'heartbeat', on: true, product_ids: ['BTC-USD'] }));
-      }
-    }, 20000);
-  };
-
-  ws.onmessage = (evt) => {
-    const now = Date.now();
-    marketStore.lastMsgTs = now;
-    marketStore.msgCount++;
-    try {
-      handleWsMessage(JSON.parse(evt.data));
-    } catch(e) { /* skip malformed */ }
-  };
-
-  ws.onerror = () => { setWsStatus('error'); };
-
-  ws.onclose = () => {
-    marketStore.wsConnected = false;
-    setWsStatus('error');
-    clearInterval(wsPingInterval);
-    scheduleReconnect();
-  };
-}
-
-function scheduleReconnect() {
-  clearTimeout(wsReconnectTimer);
-  const delay = Math.min(1000 * Math.pow(2, marketStore.reconnectCount), 30000);
-  marketStore.reconnectCount++;
-  setWsStatus('connecting');
-  wsReconnectTimer = setTimeout(wsConnect, delay);
-}
-
 function setWsStatus(status) {
   const dot = document.getElementById('wsDot');
   const lbl = document.getElementById('wsLabel');
@@ -696,97 +630,6 @@ function setWsStatus(status) {
   dot.className = 'ws-dot ' + status;
   lbl.textContent = status === 'connected' ? 'WS LIVE' : status === 'connecting' ? 'connecting…' : 'RECONNECTING';
   lbl.style.color = status === 'connected' ? 'var(--green)' : status === 'connecting' ? 'var(--amber)' : 'var(--red)';
-}
-
-// ─────────────────────────────────────────────
-// WS MESSAGE HANDLER
-// ─────────────────────────────────────────────
-function handleWsMessage(d) {
-  const t = d.type;
-
-  if (t === 'ticker') handleTicker(d);
-  else if (t === 'snapshot') handleObSnapshot(d);
-  else if (t === 'l2update') handleObUpdate(d);
-  else if (t === 'match' || t === 'last_match') handleTrade(d);
-}
-
-function handleTicker(d) {
-  _msgCount++;
-  const prev = marketStore.price;
-  marketStore.price   = parseFloat(d.price) || prev;
-  marketStore.bestBid = parseFloat(d.best_bid) || 0;
-  marketStore.bestAsk = parseFloat(d.best_ask) || 0;
-  marketStore.high24  = parseFloat(d.high_24h) || 0;
-  marketStore.low24   = parseFloat(d.low_24h)  || 0;
-  marketStore.open24  = parseFloat(d.open_24h) || 0;
-  marketStore.vol24   = parseFloat(d.volume_24h) || 0;
-
-  // WS latency from exchange time
-  if (d.time) {
-    const exchTs = new Date(d.time).getTime();
-    marketStore.wsLatency = Date.now() - exchTs;
-  }
-
-  // Update current candle close
-  updateCurrentCandle(marketStore.price);
-}
-
-function handleObSnapshot(d) {
-  marketStore.bids.clear();
-  marketStore.asks.clear();
-  (d.bids || []).forEach(([p, s]) => { const ps = parseFloat(p), ss = parseFloat(s); if(ss>0) marketStore.bids.set(ps, ss); });
-  (d.asks || []).forEach(([p, s]) => { const ps = parseFloat(p), ss = parseFloat(s); if(ss>0) marketStore.asks.set(ps, ss); });
-  rebuildObLists();
-}
-
-function handleObUpdate(d) {
-  (d.changes || []).forEach(([side, p, s]) => {
-    const ps = parseFloat(p), ss = parseFloat(s);
-    const map = side === 'buy' ? marketStore.bids : marketStore.asks;
-    if (ss === 0) map.delete(ps);
-    else map.set(ps, ss);
-  });
-  rebuildObLists();
-}
-
-function rebuildObLists() {
-  // Bids: sorted descending (best first)
-  marketStore.bidsList = [...marketStore.bids.entries()]
-    .sort((a,b) => b[0]-a[0]).slice(0, 20)
-    .map(([p,s]) => ({price:p, size:s}));
-  // Asks: sorted ascending (best first)
-  marketStore.asksList = [...marketStore.asks.entries()]
-    .sort((a,b) => a[0]-b[0]).slice(0, 20)
-    .map(([p,s]) => ({price:p, size:s}));
-
-  // Imbalance
-  const bidVol = marketStore.bidsList.slice(0,10).reduce((a,b)=>a+b.size,0);
-  const askVol = marketStore.asksList.slice(0,10).reduce((a,b)=>a+b.size,0);
-  marketStore.imbalance = (bidVol+askVol)>0 ? (bidVol-askVol)/(bidVol+askVol) : 0;
-}
-
-function handleTrade(d) {
-  _msgCount++;
-  const trade = {
-    price: parseFloat(d.price),
-    size:  parseFloat(d.size),
-    side:  d.side,  // 'buy' or 'sell'
-    time:  d.time,
-    ts:    Date.now(),
-  };
-  marketStore.trades.unshift(trade);
-  if (marketStore.trades.length > 80) marketStore.trades.pop();
-
-  // CVD — running total
-  if (d.side === 'buy') marketStore.cvd += trade.size;
-  else marketStore.cvd -= trade.size;
-
-  // Rolling delta (last 50)
-  const last50 = marketStore.trades.slice(0, 50);
-  marketStore.tradeDeltaBuy  = last50.filter(t=>t.side==='buy').reduce((a,t)=>a+t.size,0);
-  marketStore.tradeDeltaSell = last50.filter(t=>t.side==='sell').reduce((a,t)=>a+t.size,0);
-  marketStore.aggression     = (marketStore.tradeDeltaBuy - marketStore.tradeDeltaSell) /
-                               (marketStore.tradeDeltaBuy + marketStore.tradeDeltaSell + 0.0001);
 }
 
 // ─────────────────────────────────────────────
@@ -809,23 +652,6 @@ async function bootstrapCandles() {
     requestAnimationFrame(()=>{ resizeChart(); renderAll(); });
   } catch(e) {
     console.warn('Candle bootstrap failed:', e.message);
-  }
-}
-
-function updateCurrentCandle(price) {
-  if (!marketStore.candles.length || !price) return;
-  const now15 = Math.floor(Date.now() / 900000) * 900;
-  const last = marketStore.candles[marketStore.candles.length - 1];
-
-  if (last.time === now15) {
-    // Update current candle
-    last.close = price;
-    if (price > last.high) last.high = price;
-    if (price < last.low)  last.low  = price;
-  } else if (now15 > last.time) {
-    // New candle
-    marketStore.candles.push({ time: now15, open: price, high: price, low: price, close: price, volume: 0 });
-    if (marketStore.candles.length > 300) marketStore.candles.shift();
   }
 }
 
@@ -1107,6 +933,23 @@ function computeIndicators() {
     marketStore.pRangeBound   *= f;
     marketStore.pVolExpansion *= f;
     marketStore.pTailRisk     *= f;
+  }
+
+  // ── Funding-rate weighted liquidation zones ──
+  if (p) {
+    const fr = marketStore.fundingRate || 0;
+    const longBias  = 1 + Math.min(0.4, Math.max(-0.4, fr / 0.001 * 0.2));
+    const shortBias = 1 - Math.min(0.4, Math.max(-0.4, fr / 0.001 * 0.2));
+    marketStore.liquidationZones = [
+      { price: p * 1.012, strength: Math.min(1, 0.90 * longBias),  side: 'long',  leverage: '10x' },
+      { price: p * 0.988, strength: Math.min(1, 0.85 * shortBias), side: 'short', leverage: '10x' },
+      { price: p * 1.025, strength: Math.min(1, 0.65 * longBias),  side: 'long',  leverage: '5x'  },
+      { price: p * 0.975, strength: Math.min(1, 0.70 * shortBias), side: 'short', leverage: '5x'  },
+      { price: p * 1.050, strength: Math.min(1, 0.40 * longBias),  side: 'long',  leverage: '3x'  },
+      { price: p * 0.950, strength: Math.min(1, 0.45 * shortBias), side: 'short', leverage: '3x'  },
+      { price: p * 1.100, strength: Math.min(1, 0.25 * longBias),  side: 'long',  leverage: '2x'  },
+      { price: p * 0.900, strength: Math.min(1, 0.30 * shortBias), side: 'short', leverage: '2x'  },
+    ];
   }
 
   // ── Kalshi: update OI divergence direction ──
@@ -2258,6 +2101,7 @@ async function init(){
   pollOracle(); setInterval(pollOracle, 8000);
   pollDerivatives(); setInterval(pollDerivatives, 15000);
   fetchKalshiLive(); setInterval(fetchKalshiLive, 60000);
+  setInterval(bootstrapCandles, 1800000); // refresh candle history every 30 min
   // WS engine started by module script — see bottom of <body>
   requestAnimationFrame(renderLoop);
 }
@@ -2284,9 +2128,14 @@ async function init(){
 
   // Subscribe: mirror WS store state into the legacy inline marketStore
   // so all indicator + render code works without changes
+  let _bridgeLastTrade = null;
   marketStore.subscribe(state => {
     if (!window.marketStore) return;
     const ms = window.marketStore;
+
+    // Count every state notification for the MPS display
+    if (typeof _msgCount !== 'undefined') _msgCount++;
+
     // Mirror live fields
     ms.price        = state.price       || ms.price;
     ms.bestBid      = state.bestBid     || ms.bestBid;
@@ -2303,7 +2152,6 @@ async function init(){
     ms.aggression   = state.aggression  ?? ms.aggression;
     ms.trades       = state.trades      || ms.trades;
     ms.liquidityWalls = state.liquidityWalls || [];
-    ms.liquidationZones = state.liquidationZones || [];
     ms.absorption   = state.absorption  || null;
     ms.spoofLevels  = state.spoofLevels || [];
 
@@ -2313,7 +2161,7 @@ async function init(){
       ms.asksList = state.orderbook.asks.slice(0,20).map(([p,s]) => ({price:+p, size:+s}));
     }
 
-    // Sync candle current tick
+    // Sync candle current tick + accumulate trade volume
     if (state.price && ms.candles?.length) {
       const now15 = Math.floor(Date.now()/900000)*900;
       const last  = ms.candles[ms.candles.length-1];
@@ -2322,9 +2170,15 @@ async function init(){
           last.close = state.price;
           if (state.price > last.high) last.high = state.price;
           if (state.price < last.low)  last.low  = state.price;
+          // Accumulate trade volume when a new trade arrives
+          if (state.lastTrade && state.lastTrade !== _bridgeLastTrade) {
+            last.volume = (last.volume || 0) + (state.lastTrade.size || 0);
+            _bridgeLastTrade = state.lastTrade;
+          }
         } else if (now15 > last.time) {
           ms.candles.push({ time:now15, open:state.price, high:state.price, low:state.price, close:state.price, volume:0 });
           if (ms.candles.length > 300) ms.candles.shift();
+          _bridgeLastTrade = null;
         }
         if (window._mStore) window._mStore.setState({ candles: ms.candles });
       }
