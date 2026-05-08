@@ -1287,11 +1287,17 @@ function computeIndicators() {
   const kf = Math.max(0, Math.min((marketStore.pAbove - (1 - marketStore.pAbove)) / 1, 0.25));
   marketStore.kellyFull = kf; marketStore.kellyEdge = edge; marketStore.kellyWR = marketStore.pAbove;
 
+  // ── Bet signal (current cycle) ──
+  marketStore.betData = computeBetSignal();
+
   // ── Trust layer: resolve past signals ──
   resolveSignalLog();
 
-  // ── Log current signal ──
-  if (marketStore.betData?.active && (marketStore.dataQuality || 1) >= 0.55) {
+  // ── Log current signal for calibration ──
+  const shouldLogSample =
+    ((marketStore.betData?.active === true) || (marketStore.confidence || 0) >= 65)
+    && (marketStore.dataQuality || 1) >= 0.55;
+  if (shouldLogSample) {
     const log = marketStore.signalLog || [];
     const last = log[log.length - 1];
     if (!last || Date.now() - last.ts > 60000) {
@@ -1313,9 +1319,6 @@ function computeIndicators() {
   if(marketStore.absorption) _ftox=Math.min(100,_ftox*1.25);
   if(marketStore.spoofLevels?.length>0) _ftox=Math.min(100,_ftox*1.15);
   marketStore.flowToxicity=Math.round(_ftox);
-
-  // ── Bet signal ──
-  marketStore.betData = computeBetSignal();
 }
 
 function computeBetSignal() { // NOSONAR
