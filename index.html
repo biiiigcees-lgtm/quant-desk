@@ -2182,14 +2182,17 @@ Under 250 words. Pure institutional signal.`;
     const modelInfo=data.model||'';
     const aiModelEl=document.getElementById('aiModel');
     if(aiModelEl) aiModelEl.textContent='OpenRouter · '+(modelInfo.split('/')[1]||modelInfo).split(':')[0];
-    const fmt=text
+    // Sanitize AI text before HTML injection — escape tags, then re-apply safe spans
+    const safe=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const fmt=safe
       .replace(/BULLISH|BUY[\s-]SIDE|ABOVE|LONG|EXPANSION/gi,m=>`<span class="bull">${m}</span>`)
       .replace(/BEARISH|SELL[\s-]SIDE|BELOW|SHORT|CONTRACTION/gi,m=>`<span class="bear">${m}</span>`)
       .replace(/WARNING|RISK|CAUTION|ALERT|CASCADE/gi,m=>`<span class="warn">${m}</span>`)
       .replace(/EDGE|KALSHI|BAYESIAN|CVD|VWAP|FVG|KALMAN|SCOUT|ORACLE|REGIME/gi,m=>`<span class="cyan">${m}</span>`);
     out.innerHTML=fmt;
   } catch(e){
-    out.innerHTML=`<span style="color:var(--red)">API error: ${e.message}</span>`;
+    const safeMsg=String(e.message).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    out.innerHTML=`<span style="color:var(--red)">API error: ${safeMsg}</span>`;
   }
   btn.disabled=false; btn.textContent='⟳ GENERATE ANALYSIS';
 }

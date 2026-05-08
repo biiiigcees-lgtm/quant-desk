@@ -54,6 +54,10 @@ export default async function handler(req, res) {
 
   const { prompt, system } = req.body || {};
   if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
+  if (typeof prompt !== 'string' || prompt.length > 8000)
+    return res.status(400).json({ error: 'Prompt exceeds maximum length' });
+  if (system && (typeof system !== 'string' || system.length > 2000))
+    return res.status(400).json({ error: 'System prompt exceeds maximum length' });
 
   const systemPrompt = system || 'You are an expert BTC quantitative analyst. Be decisive and concise.';
 

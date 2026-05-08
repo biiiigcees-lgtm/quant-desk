@@ -80,9 +80,11 @@ async function fetchBybitOI() {
   if (!list?.length) return null;
   const latest  = parseFloat(list[0].openInterest);
   const prev    = list[1] ? parseFloat(list[1].openInterest) : latest;
+  // openInterestValue from Bybit is the notional USD value of the OI
+  const oiUsd   = parseFloat(list[0].openInterestValue || 0);
   return {
     openInterest:    latest,
-    openInterestUsd: latest * parseFloat(list[0].openInterestValue || 0) / (latest || 1),
+    openInterestUsd: oiUsd,
     oiDelta:         latest - prev,
     oiDeltaPct:      prev > 0 ? ((latest - prev) / prev * 100) : 0,
   };
