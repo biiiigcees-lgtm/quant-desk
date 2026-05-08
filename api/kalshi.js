@@ -38,9 +38,10 @@ export default async function handler(req, res) {
       if (Number.isFinite(yesBid) && yesBid > 1.5) yesBid /= 100;
       if (Number.isFinite(yesAsk) && yesAsk > 1.5) yesAsk /= 100;
 
-      const mid = Number.isFinite(yesBid) && Number.isFinite(yesAsk)
-        ? (yesBid + yesAsk) / 2
-        : (Number.isFinite(yesBid) ? yesBid : (Number.isFinite(yesAsk) ? yesAsk : null));
+      let mid = null;
+      if (Number.isFinite(yesBid) && Number.isFinite(yesAsk)) mid = (yesBid + yesAsk) / 2;
+      else if (Number.isFinite(yesBid)) mid = yesBid;
+      else if (Number.isFinite(yesAsk)) mid = yesAsk;
 
       if (mid == null || mid <= 0) continue;
 
