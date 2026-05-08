@@ -941,8 +941,10 @@ function kalmanUpdate(price) {
   const dt=1, Q=[[0.01,0],[0,0.01]], R=2.5;
   // Predict
   const xp=[_kX[0]+_kX[1]*dt, _kX[1]];
-  const Pp=[[_kP[0][0]+_kP[1][1]*dt*dt+Q[0][0], _kP[0][1]+_kP[1][1]*dt+Q[0][1]],
-            [_kP[1][0]+Q[1][0],                   _kP[1][1]+Q[1][1]]];
+  const Pp=[
+    [_kP[0][0]+2*_kP[0][1]*dt+_kP[1][1]*dt*dt+Q[0][0], _kP[0][1]+_kP[1][1]*dt+Q[0][1]],
+    [_kP[1][0]+_kP[1][1]*dt+Q[1][0],                    _kP[1][1]+Q[1][1]],
+  ];
   // Update
   const S=Pp[0][0]+R;
   const K=[Pp[0][0]/S, Pp[1][0]/S];
@@ -964,7 +966,7 @@ function computeIndicators() {
 
   marketStore.ema9=e9||0; marketStore.ema21=e21||0;
   marketStore.ema9prev=e9p||0; marketStore.ema21prev=e21p||0;
-  marketStore.emaSpread=e9&&e21?(e9-e21)/marketStore.price*1000:0;
+  marketStore.emaSpread=e9&&e21&&p?(e9-e21)/p*1000:0;
   marketStore.emaCross=e9p&&e21p?(e9p<=e21p&&e9>e21?'GOLDEN_CROSS':e9p>=e21p&&e9<e21?'DEATH_CROSS':e9>e21?'BULL_ALIGNED':'BEAR_ALIGNED'):'NONE';
 
   marketStore.rsi=computeRSI(closes);
@@ -1001,7 +1003,7 @@ function computeIndicators() {
 
   // ── Regime v2 (5 states with confidence) ──
   const rv = marketStore.realizedVol || 0;
-  const spread = marketStore.bestAsk && marketStore.bestBid
+  const spread = marketStore.bestAsk && marketStore.bestBid && p > 0
     ? (marketStore.bestAsk - marketStore.bestBid) / p * 100 : 0;
   const emaAligned = (p>e9&&e9>e21) || (p<e9&&e9<e21);
   const emaSpreadAbs = Math.abs(marketStore.emaSpread);
@@ -1140,18 +1142,28 @@ function computeIndicators() {
     }
   }
 
+  // ── Flow Toxicity ──
+  const _ftBuy=marketStore.tradeDeltaBuy||0,_ftSell=marketStore.tradeDeltaSell||0;
+  const _ftTot=_ftBuy+_ftSell;
+  let _ftox=_ftTot>0?Math.abs(_ftBuy-_ftSell)/_ftTot*100:0;
+  if(marketStore.absorption) _ftox=Math.min(100,_ftox*1.25);
+  if(marketStore.spoofLevels?.length>0) _ftox=Math.min(100,_ftox*1.15);
+  marketStore.flowToxicity=Math.round(_ftox);
+
   // ── Bet signal ──
   marketStore.betData = computeBetSignal();
 }
 
 function computeBetSignal() {
   const s=marketStore;
-  if(!s.candles.length||!s.price) return {active:false,alignment:0,bullSigs:0};
+  const _emptyBet={active:false,alignment:0,bullSigs:0,verdict:'WAIT',conviction:0,
+    reasons:[],crossType:'NONE',emaSpread:s.emaSpread||0,slopeP:0,kEdge:0};
+  if(!s.candles.length||!s.price) return _emptyBet;
   const closes=s.candles.map(c=>c.close);
   const e9a=computeEMA(closes,9), e21a=computeEMA(closes,21);
   const e9=e9a[e9a.length-1], e21=e21a[e21a.length-1];
   const e9p=e9a[e9a.length-2], e21p=e21a[e21a.length-2];
-  if(!e9||!e21||!e9p||!e21p) return {active:false,alignment:0,bullSigs:0};
+  if(!e9||!e21||!e9p||!e21p) return _emptyBet;
 
   const slopeE9=trajectorySlope(e9a,6), slopeE21=trajectorySlope(e21a,6);
   const slopeP=s.trajectorySlope;
@@ -1162,7 +1174,7 @@ function computeBetSignal() {
     s.price>s.vwap, s.rsi>50&&s.rsi<75,
     s.macd>s.macdSig, e9>e21, s.cvd>0,
     slopeE9>0, slopeE21>0, slopeP>0,
-    s.regime==='BULL_TREND', s.imbalance>0,
+    (s.regime==='TRENDING'||s.regime==='VOL_EXPANSION')&&s.pAbove>=0.5, s.imbalance>0,
   ].filter(Boolean).length;
   const align=bsigs/10;
 
@@ -1183,8 +1195,10 @@ function computeBetSignal() {
     reasons.push({t:d?'bull':'bear',txt:`EMA9 ${d?'>':'<'} EMA21 · ${Math.abs(s.emaSpread).toFixed(1)} bps spread`});
     reasons.push({t:d?'bull':'bear',txt:`Trajectory slope ${slopeP>0?'▲':'▼'} ${Math.abs(slopeP).toFixed(1)}/bar`});
     reasons.push({t:d?'bull':'bear',txt:`${bsigs}/10 signals ${d?'bullish':'bearish'}`});
-    reasons.push({t:s.regime===(d?'BULL_TREND':'BEAR_TREND')?d?'bull':'bear':'warn',
-      txt:`Regime: ${s.regime.replace('_',' ')} ${s.regime===(d?'BULL_TREND':'BEAR_TREND')?'✓':'⚠'}`});
+    const _regimeBull=['TRENDING','VOL_EXPANSION'],_regimeBear=['MEAN_REVERTING','RANGING'];
+    const _regimeMatch=d?_regimeBull.includes(s.regime):_regimeBear.includes(s.regime);
+    reasons.push({t:_regimeMatch?(d?'bull':'bear'):'warn',
+      txt:`Regime: ${s.regime.replace(/_/g,' ')} ${_regimeMatch?'✓':'⚠'}`});
     reasons.push({t:kEdge>=0.08?d?'bull':'bear':'warn',
       txt:`Kalshi edge ${(kEdge*100).toFixed(1)}% ${kEdge>=0.08?'— strong':'— moderate'}`});
   }
@@ -2046,7 +2060,8 @@ function renderBetSignal(){
     <div style="display:flex;justify-content:space-between;margin-top:2px"><span style="font-size:8px;color:var(--t2)">CONVICTION</span><span style="font-size:9px;font-weight:700;color:${col}">${bet.conviction}%</span></div>
     <div style="font-size:8px;color:var(--t2);text-align:center;margin-top:3px;letter-spacing:.5px">HIGH CONVICTION</div>`;
 
-    const reasonsHtml=(bet.reasons||[]).map(r=>`<div class="reason r-${r.t}"><div class="rdot"></div><div class="rtxt">${r.txt}</div></div>`).join('');
+    const _esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const reasonsHtml=(bet.reasons||[]).map(r=>`<div class="reason r-${r.t}"><div class="rdot"></div><div class="rtxt">${_esc(r.txt)}</div></div>`).join('');
     centerEl.innerHTML=`<div style="font-size:8px;color:${col};font-weight:700;letter-spacing:.8px;margin-bottom:5px">⚡ SIGNAL ACTIVE — ${bet.verdict}</div><div class="reason-list">${reasonsHtml}</div><div style="margin-top:5px;padding:4px 6px;background:var(--bg2);border-radius:2px;border:1px solid ${col}22;font-size:8px"><span style="color:var(--t2)">CROSS: </span><span style="color:${col};font-weight:700">${(bet.crossType||'').replace('_',' ')}</span><span style="color:var(--t2);margin-left:8px">SPREAD: </span><span style="color:var(--cyan);font-weight:700">${Math.abs(bet.emaSpread||0).toFixed(1)} bps</span></div>`;
   } else {
     leftEl.innerHTML=`<div class="bet-badge bb-wait">MONITORING</div>
