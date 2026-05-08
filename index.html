@@ -1593,10 +1593,10 @@ async function pollOracle(){
     const r=await fetch('/api/oracle');
     if(!r.ok) return;
     const d=await r.json();
-    if(!d.price) return;
+    if(d?.price==null) return;
     marketStore.oraclePrice=d.price;
-    marketStore.oracleDeviation=d.deviation||0;
-    marketStore.oracleConf=d.confidence||0;
+    marketStore.oracleDeviation=d.deviation ?? 0;
+    marketStore.oracleConf=d.confidence ?? 0;
     marketStore.oracleSources=d.sources||[];
   }catch(e){
     console.debug('oracle poll skipped:', e?.message || e);
@@ -1613,11 +1613,11 @@ async function pollDerivatives(){
       marketStore.fundingRatePct=d.fundingRatePct;
       marketStore.annualizedPct=d.annualizedPct;
       marketStore.fundingCountdown=d.fundingCountdown||'--:--';
-      marketStore.openInterest=d.openInterest;
-      marketStore.oiDelta=d.oiDelta;
-      marketStore.oiDeltaPct=d.oiDeltaPct;
-      marketStore.markPrice=d.markPrice;
-      marketStore.indexPrice=d.indexPrice;
+      if(d.openInterest!=null) marketStore.openInterest=d.openInterest;
+      if(d.oiDelta!=null) marketStore.oiDelta=d.oiDelta;
+      if(d.oiDeltaPct!=null) marketStore.oiDeltaPct=d.oiDeltaPct;
+      if(d.markPrice!=null) marketStore.markPrice=d.markPrice;
+      if(d.indexPrice!=null) marketStore.indexPrice=d.indexPrice;
     }
   }catch(e){
     console.debug('derivatives poll skipped:', e?.message || e);
@@ -1972,9 +1972,10 @@ function renderAll(){ // NOSONAR
   if(s.oracleSources&&s.oracleSources.length){
     const src={BNC:null,KRK:null,BYB:null};
     s.oracleSources.forEach(x=>{
-      if(x.exchange==='binance-us') src.BNC=x;
-      if(x.exchange==='kraken') src.KRK=x;
-      if(x.exchange==='bybit') src.BYB=x;
+      const ex=String(x.exchange||'').toLowerCase().replaceAll('_','-');
+      if(ex==='binance-us'||ex==='binanceus') src.BNC=x;
+      if(ex==='kraken') src.KRK=x;
+      if(ex==='bybit') src.BYB=x;
     });
     ['BNC','KRK','BYB'].forEach(k=>{
       const x=src[k];
@@ -1987,13 +1988,13 @@ function renderAll(){ // NOSONAR
       }
       if(priceEl&&x) priceEl.textContent=x.price?'$'+x.price.toLocaleString(undefined,{maximumFractionDigits:0}):'—';
     });
-    if(s.oraclePrice) setTxt('oraclePrice','$'+s.oraclePrice.toLocaleString(undefined,{maximumFractionDigits:0}));
-    if(s.oracleDeviation!=null) setTxt('oracleDev',(s.oracleDeviation*100).toFixed(2)+'%');
+    if(s.oraclePrice!=null) setTxt('oraclePrice','$'+s.oraclePrice.toLocaleString(undefined,{maximumFractionDigits:0}));
+    if(Number.isFinite(s.oracleDeviation)) setTxt('oracleDev',s.oracleDeviation.toFixed(2)+'%');
     setTxt('oracleConf',(s.oracleConf||0).toFixed(0)+'/100');
   }
 
   // Derivatives panel
-  if(s.fundingRatePct!=null&&s.fundingRatePct!==0){
+  if(s.fundingRatePct!=null){
     const fEl=document.getElementById('dFund');
     const fr=s.fundingRatePct||0;
     if(fEl){
@@ -2003,13 +2004,13 @@ function renderAll(){ // NOSONAR
       else fEl.style.color='var(--t2)';
     }
     let ann='';
-    if (s.annualizedPct) ann=(s.annualizedPct>0?'+':'')+s.annualizedPct.toFixed(1)+'%pa';
+    if (s.annualizedPct!=null) ann=(s.annualizedPct>0?'+':'')+s.annualizedPct.toFixed(1)+'%pa';
     setTxt('dFundAnn',ann);
     setTxt('dCountdown',s.fundingCountdown||'--:--');
     const oiEl=document.getElementById('dOI');
-    if(oiEl&&s.openInterest){
+    if(oiEl&&s.openInterest!=null){
       let oiDeltaTxt='';
-      if (s.oiDeltaPct) oiDeltaTxt=(s.oiDeltaPct>0?'▲+':'▼')+s.oiDeltaPct.toFixed(1)+'%';
+      if (s.oiDeltaPct!=null) oiDeltaTxt=(s.oiDeltaPct>0?'▲+':'▼')+s.oiDeltaPct.toFixed(1)+'%';
       oiEl.textContent=(s.openInterest/1e9).toFixed(2)+'B '+oiDeltaTxt;
     }
     const divEl=document.getElementById('dOIDiv');
@@ -2020,7 +2021,13 @@ function renderAll(){ // NOSONAR
       else divEl.style.color='var(--t2)';
     }
     const mEl=document.getElementById('dMark');
-    if(mEl&&s.markPrice) mEl.textContent='$'+s.markPrice.toFixed(0)+' / $'+(s.indexPrice||0).toFixed(0);
+    const hasMark=Number.isFinite(s.markPrice);
+    const hasIndex=Number.isFinite(s.indexPrice);
+    if(mEl&&(hasMark||hasIndex)){
+      const markTxt=hasMark?'$'+s.markPrice.toFixed(0):'—';
+      const indexTxt=hasIndex?'$'+s.indexPrice.toFixed(0):'—';
+      mEl.textContent=markTxt+' / '+indexTxt;
+    }
   }
   const tox=s.flowToxicity||0;
   setTxt('toxVal',tox.toFixed(1)+'%');
@@ -2281,6 +2288,8 @@ async function runAI(){ // NOSONAR
   if (s.annualizedPct != null) {
     annualizedTxt=(s.annualizedPct>0?'+':'')+s.annualizedPct.toFixed(1)+'% ann';
   }
+  const hasOracleDeviation=Number.isFinite(s.oracleDeviation);
+  const hasOpenInterest=Number.isFinite(s.openInterest);
 
   const prompt=`BTC LIVE DATA — ${new Date().toISOString()}
 
@@ -2289,7 +2298,7 @@ HIGH24: $${s.high24?.toLocaleString()} | LOW24: $${s.low24?.toLocaleString()}
 SPREAD: $${s.bestAsk&&s.bestBid?(s.bestAsk-s.bestBid).toFixed(2):'—'} | IMBALANCE: ${(s.imbalance*100).toFixed(1)}%
 
 MULTI-SOURCE ORACLE:
-- Oracle price: $${s.oraclePrice?.toLocaleString()||'—'} | Deviation: ${s.oracleDeviation?(s.oracleDeviation*100).toFixed(3)+'%':'—'} | Confidence: ${s.oracleConf||'—'}/100
+- Oracle price: $${s.oraclePrice?.toLocaleString()||'—'} | Deviation: ${hasOracleDeviation?s.oracleDeviation.toFixed(3)+'%':'—'} | Confidence: ${s.oracleConf||'—'}/100
 - Sources: ${(s.oracleSources||[]).map(x=>x.exchange+(x.outlier?' [OUTLIER]':' ✓')).join(', ')||'—'}
 
 EMA STRUCTURE:
@@ -2325,7 +2334,7 @@ KALMAN FILTER:
 
 DERIVATIVES:
 - Funding rate: ${fundingRateTxt} (${annualizedTxt}) | Next: ${s.fundingCountdown||'—'}
-- Open interest: ${s.openInterest?(s.openInterest/1e9).toFixed(2)+'B':'—'} | OI vs price: ${s.oiPriceDiv||'NEUTRAL'}
+- Open interest: ${hasOpenInterest?(s.openInterest/1e9).toFixed(2)+'B':'—'} | OI vs price: ${s.oiPriceDiv||'NEUTRAL'}
 - Mark: $${s.markPrice?.toFixed(0)||'—'} | Index: $${s.indexPrice?.toFixed(0)||'—'}
 
 KALSHI: Market ${s.kalshiAbove}% | Model ${(s.pAbove*100)?.toFixed(1)}% | Edge ${((s.pAbove-s.kalshiAbove/100)*100)?.toFixed(1)}%

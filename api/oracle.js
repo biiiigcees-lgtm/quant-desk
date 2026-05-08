@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   ]);
 
   const results = sources.map((s, i) => {
-    const name = ['BINANCE_US', 'KRAKEN', 'BYBIT', 'COINGECKO'][i];
+    const name = ['binance-us', 'kraken', 'bybit', 'coingecko'][i];
     if (s.status === 'fulfilled') return { exchange: name, ...s.value, ok: true };
     return { exchange: name, price: null, mid: null, ok: false, err: s.reason?.message };
   });
@@ -61,7 +61,7 @@ export default async function handler(req, res) {
 }
 
 async function fetchBinanceUs() {
-  const r = await fetch('https://api.binance.us/api/v3/bookTicker?symbol=BTCUSDT', {
+  const r = await fetch('https://api.binance.us/api/v3/ticker/bookTicker?symbol=BTCUSDT', {
     signal: AbortSignal.timeout(3000),
   });
   if (!r.ok) throw new Error(`Binance.us HTTP ${r.status}`);
