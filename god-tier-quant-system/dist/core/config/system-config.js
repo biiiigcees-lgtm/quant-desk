@@ -7,6 +7,10 @@ export function loadConfig() {
         initialCapital: Number(process.env.INITIAL_CAPITAL ?? 10000),
         riskLimit: Number(process.env.RISK_LIMIT ?? 0.02),
         minEdge: Number(process.env.MIN_EDGE ?? 0.01),
+        snapshot: {
+            maxSourceAgeMs: Number(process.env.SNAPSHOT_MAX_SOURCE_AGE_MS ?? 2500),
+            maxClockDriftMs: Number(process.env.SNAPSHOT_MAX_CLOCK_DRIFT_MS ?? 1200),
+        },
         orchestration: {
             enabled: (process.env.AI_ORCHESTRATION_ENABLED ?? (openRouterApiKey ? 'true' : 'false')).toLowerCase() === 'true',
             defaultContractId: process.env.AI_ORCHESTRATION_DEFAULT_CONTRACT_ID ?? 'KXBTC-DEMO',

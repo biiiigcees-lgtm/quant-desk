@@ -14,6 +14,8 @@ export interface AgentTaskContext {
   contractId: string;
   triggerEvent: string;
   timestamp: number;
+  snapshotId: string;
+  marketStateHash: string;
   payload: unknown;
   sharedState?: Record<string, unknown>;
 }

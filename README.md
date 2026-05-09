@@ -10,17 +10,34 @@ Live BTC prediction market terminal built for Kalshi 15-minute contracts.
 - Fair Value Gap detection + chart overlay
 - Liquidity sweep detection (BSL/SSL)
 - Kalshi divergence + Kelly criterion sizing
-- Live order book (Coinbase Exchange)
-- Claude Sonnet AI analyst (expert trajectory + ABOVE/BELOW verdict)
+- Live order book and price stream (Coinbase Exchange)
+- Shared backend system truth gate for risk, execution, and UI lock state
+- Snapshot-aware AI analysis with stale-request rejection and retry
+- Closed-loop performance tracking for the last 50 resolved calls
 
 ## Data Sources
-- **Candles + Price + Order Book**: Coinbase Exchange (full CORS, no key required)
-- **AI Analysis**: OpenRouter → meta-llama/llama-3.3-70b-instruct:free (free tier)
+- **OHLCV Candles**: CryptoCompare 15-minute BTC/USD history
+- **Live Price + Order Book + Trades**: Coinbase Exchange public API / websocket
+- **Oracle Reference**: Coinbase spot plus CryptoCompare reference candles
+- **Derivatives**: Bybit primary with OKX fallback
+- **AI Analysis**: OpenRouter chat completions via serverless function
 
 ## Architecture
-- **Frontend**: Vercel Static (single HTML file)
-- **Backend**: Vercel Serverless (`/api/analyze.js`)
-- **AI**: OpenRouter free tier — key stored in `OPENROUTER_API_KEY` env var, never in browser
+- **Frontend**: Static `index.html` with no build step
+- **Backend**: Vercel Serverless functions in `api/*`
+- **Truth Layer**: `GET/POST /api/system-truth`
+- **Execution Gate**: `/api/analyze` enforces risk lock and snapshot freshness before any AI call
+- **Feedback Loop**: `/api/record-result` and `/api/performance`
+- **AI**: OpenRouter key stored in `OPENROUTER_API_KEY`, never exposed to the browser
+
+## Core Endpoints
+- `GET/POST /api/system-truth` — canonical execution state shared across subsystems
+- `POST /api/analyze` — gated AI analysis request; blocks on high risk or stale snapshots
+- `GET /api/ohlcv` — normalized CryptoCompare 15-minute candles
+- `GET /api/oracle` — Coinbase/CryptoCompare feed-health composite
+- `GET /api/derivatives` — Bybit with OKX fallback
+- `POST /api/record-result` — record one resolved prediction outcome
+- `GET /api/performance` — rolling performance stats for last 10 / last 50 outcomes
 
 ## Environment Variables (Vercel Dashboard)
 | Variable | Value |
@@ -28,4 +45,4 @@ Live BTC prediction market terminal built for Kalshi 15-minute contracts.
 | `OPENROUTER_API_KEY` | Your key from https://openrouter.ai/keys |
 
 ## Deploy
-Static single-file HTML — deploys to Vercel as-is.
+Static HTML plus serverless functions — deploys to Vercel as-is, with no build step and no browser storage requirements.

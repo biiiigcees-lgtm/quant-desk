@@ -117,14 +117,23 @@ export interface OrderEvent {
   direction: Side;
   size: number;
   price: number;
-  status: 'pending' | 'filled' | 'partial' | 'rejected' | 'cancelled';
+  status: 'pending' | 'acknowledged' | 'filled' | 'partial' | 'rejected' | 'cancelled' | 'expired';
   timestamp: number;
 }
 
 export interface ExecutionStateEvent {
   executionId: string;
   contractId: string;
-  phase: 'created' | 'routed' | 'acknowledged' | 'partial' | 'filled' | 'rejected' | 'cancelled' | 'blocked';
+  phase:
+    | 'created'
+    | 'submitted'
+    | 'acknowledged'
+    | 'partially_filled'
+    | 'filled'
+    | 'rejected'
+    | 'cancelled'
+    | 'expired'
+    | 'blocked';
   reason: string;
   orderId?: string;
   safetyMode: ExecutionMode;
@@ -253,10 +262,6 @@ export interface SimulationUniverseEvent {
   scenarioCount: number;
   worstCasePnl: number;
   tailProbability: number;
-  executionPathDivergence: number;
-  candidateDivergences: Record<string, number>;
-  bestCandidatePlan: string;
-  mirrorConfidence: number;
   timestamp: number;
 }
 
@@ -264,6 +269,54 @@ export interface AiMemoryWriteEvent {
   key: string;
   value: string;
   confidence: number;
+  timestamp: number;
+}
+
+export type SnapshotSourceKind =
+  | 'market_data'
+  | 'microstructure'
+  | 'features'
+  | 'probability'
+  | 'calibration'
+  | 'drift'
+  | 'anomaly'
+  | 'execution_plan';
+
+export interface SnapshotSourceMeta {
+  source: SnapshotSourceKind;
+  eventTimestamp: number;
+  ageMs: number;
+  version: number;
+  required: boolean;
+}
+
+export interface DecisionSnapshotEvent {
+  snapshot_id: string;
+  contractId: string;
+  triggerEvent: string;
+  timestamp: number;
+  market_state_hash: string;
+  eventSequence: number;
+  sourceMeta: SnapshotSourceMeta[];
+  state: {
+    marketData: MarketDataEvent;
+    microstructure: MicrostructureEvent;
+    features: FeatureEvent;
+    probability: ProbabilityEvent;
+    calibration: CalibrationEvent;
+    drift: DriftEvent;
+    anomaly: AnomalyEvent | null;
+    executionPlan: ExecutionPlan | null;
+  };
+}
+
+export interface DecisionSnapshotInvalidEvent {
+  contractId: string;
+  triggerEvent: string;
+  reason: 'missing-source' | 'stale-source' | 'clock-drift';
+  missingSources?: SnapshotSourceKind[];
+  staleSources?: Array<{ source: SnapshotSourceKind; ageMs: number }>;
+  driftMs?: number;
   timestamp: number;
 }
 
@@ -290,6 +343,8 @@ export interface AgentRequestEvent {
   agent: AgentKind;
   contractId: string;
   triggerEvent: string;
+  snapshot_id: string;
+  market_state_hash: string;
   timestamp: number;
 }
 
@@ -309,6 +364,8 @@ export interface AgentResponseEvent {
   agent: AgentKind;
   contractId: string;
   triggerEvent: string;
+  snapshot_id: string;
+  market_state_hash: string;
   output: unknown;
   metrics: AgentRunMetrics;
   timestamp: number;
@@ -319,6 +376,8 @@ export interface AgentFailureEvent {
   agent: AgentKind;
   contractId: string;
   triggerEvent: string;
+  snapshot_id: string;
+  market_state_hash: string;
   error: string;
   timestamp: number;
 }
@@ -326,6 +385,8 @@ export interface AgentFailureEvent {
 export interface AgentRoutingDecisionEvent {
   triggerEvent: string;
   contractId: string;
+  snapshot_id: string;
+  market_state_hash: string;
   agents: AgentKind[];
   dedupeKey: string;
   timestamp: number;
@@ -335,6 +396,8 @@ export interface AiOrchestrationMetricsEvent extends AgentRunMetrics {
   agent: AgentKind;
   contractId: string;
   triggerEvent: string;
+  snapshot_id: string;
+  market_state_hash: string;
   timestamp: number;
 }
 
@@ -372,82 +435,6 @@ export interface AnomalyFlagIntelligence {
   score: number;
 }
 
-export interface BeliefNode {
-  id: string;
-  type: 'microstructure' | 'calibration' | 'drift' | 'anomaly' | 'regime';
-  belief: number;
-  confidence: number;
-  weight: number;
-  updatedAt: number;
-}
-
-export interface BeliefGraphEvent {
-  contractId: string;
-  nodes: BeliefNode[];
-  constitutionalAdjustment: number;
-  graphConfidence: number;
-  timestamp: number;
-}
-
-export type StrategyLifecyclePhase = 'birth' | 'growth' | 'maturity' | 'decay' | 'extinction';
-
-export interface StrategyLifecycleEvent {
-  strategyId: string;
-  phase: StrategyLifecyclePhase;
-  previousPhase: StrategyLifecyclePhase;
-  fitness: number;
-  auditScore: number;
-  reason: string;
-  timestamp: number;
-}
-
-export interface ExecutionPathMirrorEvent {
-  contractId: string;
-  actualStyle: string;
-  candidateDivergences: Record<string, number>;
-  bestCandidatePlan: string;
-  klDivergence: number;
-  timestamp: number;
-}
-
-export type SystemState = 'nominal' | 'cautious' | 'degraded' | 'halted';
-export type ParticipantType = 'liquidity-provider' | 'momentum' | 'panic-flow' | 'arbitrage' | 'trapped-trader';
-
-export interface RealitySnapshot {
-  contractId: string;
-  systemState: SystemState;
-  actionableState: boolean;
-  uncertaintyState: 'low' | 'medium' | 'high' | 'extreme';
-  executionPermission: boolean;
-  canonicalSnapshotId: string;
-  truthScore: number;
-  calibrationFactor: number;
-  driftFactor: number;
-  anomalyFactor: number;
-  beliefFactor: number;
-  timestamp: number;
-}
-
-export interface CausalInsight {
-  contractId: string;
-  cause: string;
-  effect: string;
-  causalStrength: number;
-  reverseStrength: number;
-  confidence: number;
-  spurious: boolean;
-  timestamp: number;
-}
-
-export interface ParticipantFlowEvent {
-  contractId: string;
-  dominant: ParticipantType;
-  distribution: Record<ParticipantType, number>;
-  aggressionIndex: number;
-  trappedTraderSignal: boolean;
-  timestamp: number;
-}
-
 export interface AggregatedIntelligenceEvent {
   contractId: string;
   market_state: MarketStateIntelligence;
@@ -459,56 +446,48 @@ export interface AggregatedIntelligenceEvent {
   timestamp: number;
 }
 
-export interface SystemConsciousnessEvent {
-  contractId: string;
-  beliefState: { probability: number; confidence: number; beliefAdjustment: number };
-  uncertaintyTopology: { calibration: number; drift: number; anomaly: number; belief: number; composite: number };
-  contradictionDensity: number;
-  contradictions: Array<{ source: string; target: string; description: string }>;
-  cognitiveStressState: 'stable' | 'stressed' | 'critical';
+export interface GovernanceRuleTrace {
+  rule: string;
+  outcome: 'pass' | 'block' | 'adjust';
+  detail: string;
   timestamp: number;
 }
 
-export interface EpistemicHealthEvent {
-  contractId: string;
-  epistemicHealthScore: number;
-  calibrationHealth: number;
-  driftHealth: number;
-  anomalyHealth: number;
-  stabilityHealth: number;
-  healthGrade: 'A' | 'B' | 'C' | 'D' | 'F';
-  timestamp: number;
+export interface AgentConflict {
+  category: 'risk-vs-execution' | 'risk-vs-direction' | 'liquidity-vs-execution' | 'anomaly-vs-trade';
+  severity: 'low' | 'medium' | 'high';
+  detail: string;
 }
 
-export interface AdversarialAuditEvent {
-  contractId: string;
-  targetExecutionId?: string;
-  weakAssumptions: string[];
-  contradictingEvidence: string[];
-  overconfidenceFlags: string[];
-  hiddenRegimeRisk: boolean;
-  adversarialScore: number;
-  counterNarrative: string;
-  timestamp: number;
+export interface SimulationResult {
+  passed: boolean;
+  divergenceScore: number;
+  scenarioCount: number;
+  tailProbability: number;
+  worstCasePnl: number;
+  reason: string;
 }
 
-export interface MarketMemoryEvent {
+export interface ConstitutionalDecisionEvent {
+  cycle_id: string;
+  snapshot_id: string;
+  market_state_hash: string;
   contractId: string;
-  recurrenceScore: number;
-  stressPatternMatch: boolean;
-  historicalOutcomeSignal: number;
-  regimeSignature: string;
-  memoryDepth: number;
-  timestamp: number;
-}
-
-export interface MultiTimescaleViewEvent {
-  contractId: string;
-  tick:   { direction: 1 | 0 | -1; strength: number };
-  local:  { direction: 1 | 0 | -1; strength: number };
-  regime: { direction: 1 | 0 | -1; strength: number };
-  macro:  { direction: 1 | 0 | -1; strength: number };
-  coherenceScore: number;
-  temporalAlignment: 'aligned' | 'mixed' | 'divergent';
+  trade_allowed: boolean;
+  final_probability: number;
+  edge_score: number;
+  risk_level: number;
+  execution_mode: 'market' | 'passive' | 'blocked';
+  regime_state: string;
+  confidence_score: number;
+  simulation_result: SimulationResult;
+  governance_log: GovernanceRuleTrace[];
+  agent_conflicts: AgentConflict[];
+  agent_consensus: {
+    market_confidence: number;
+    risk_confidence: number;
+    execution_confidence: number;
+    calibration_score: number;
+  };
   timestamp: number;
 }

@@ -30,19 +30,11 @@ import { AiIntelligenceService } from './services/ai-intelligence/service.js';
 import { AiMemoryService } from './services/ai-memory/service.js';
 import { AutonomousResearchService } from './services/autonomous-research/service.js';
 import { OptimizationEngine } from './services/optimization-engine/service.js';
+import { SnapshotSyncService } from './services/snapshot-sync/service.js';
+import { ConstitutionalDecisionService } from './services/constitutional-decision/service.js';
 import { AiAgentRouterService } from './services/ai-orchestration/router/service.js';
 import { AiAggregationService } from './services/ai-orchestration/aggregation/service.js';
 import { OpenRouterProvider } from './services/ai-orchestration/providers/openrouter.js';
-import { BeliefGraphService } from './services/belief-graph/service.js';
-import { StrategyGenomeService } from './services/strategy-genome/service.js';
-import { RealityLayerService } from './services/reality-layer/service.js';
-import { CausalWorldModelService } from './services/causal-world-model/service.js';
-import { MarketParticipantModelService } from './services/market-participant-model/service.js';
-import { SystemConsciousnessService } from './services/system-consciousness/service.js';
-import { EpistemicHealthService } from './services/epistemic-health/service.js';
-import { AdversarialAuditorService } from './services/adversarial-auditor/service.js';
-import { MarketMemoryService } from './services/market-memory/service.js';
-import { MultiTimescaleCognitionService } from './services/multiscale-cognition/service.js';
 async function main() {
     const config = loadConfig();
     const bus = new EventBus();
@@ -73,16 +65,12 @@ async function main() {
     const aiMemory = new AiMemoryService(bus);
     const autonomousResearch = new AutonomousResearchService(bus);
     const optimization = new OptimizationEngine(bus, ecology, signal);
-    const beliefGraph = new BeliefGraphService(bus);
-    const strategyGenome = new StrategyGenomeService(bus, ecology);
-    const realityLayer = new RealityLayerService(bus);
-    const causalWorldModel = new CausalWorldModelService(bus);
-    const marketParticipantModel = new MarketParticipantModelService(bus);
-    const systemConsciousness = new SystemConsciousnessService(bus);
-    const epistemicHealth = new EpistemicHealthService(bus);
-    const adversarialAuditor = new AdversarialAuditorService(bus);
-    const marketMemory = new MarketMemoryService(bus);
-    const multiTimescale = new MultiTimescaleCognitionService(bus);
+    const snapshotSync = new SnapshotSyncService(bus, {
+        defaultContractId: config.orchestration.defaultContractId,
+        maxSourceAgeMs: config.snapshot.maxSourceAgeMs,
+        maxClockDriftMs: config.snapshot.maxClockDriftMs,
+    });
+    const constitutionalDecision = new ConstitutionalDecisionService(bus);
     const aiAggregation = new AiAggregationService(bus);
     const openRouterProvider = new OpenRouterProvider({
         apiKey: config.openRouter.apiKey,
@@ -106,22 +94,12 @@ async function main() {
     const researchLab = new ResearchLabServer(bus, config.apiHost, config.apiPort + 1);
     globalContext.start();
     micro.start();
-    marketParticipantModel.start();
     features.start();
     featureIntelligence.start();
-    beliefGraph.start();
-    realityLayer.start();
-    causalWorldModel.start();
-    marketMemory.start();
-    multiTimescale.start();
-    systemConsciousness.start();
-    epistemicHealth.start();
-    adversarialAuditor.start();
     probability.start();
     calibration.start();
     drift.start();
     ecology.start();
-    strategyGenome.start();
     risk.start();
     execution.start();
     executionAlpha.start();
@@ -138,7 +116,9 @@ async function main() {
     aiMemory.start();
     autonomousResearch.start();
     aiAggregation.start();
+    snapshotSync.start();
     aiRouter.start();
+    constitutionalDecision.start();
     bus.on(EVENTS.TELEMETRY, (event) => {
         metrics.record(event);
     });

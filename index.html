@@ -40,7 +40,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Pl
 .ws-label{font-size:9px;color:var(--t2)}
 .ws-source{font-size:8px;color:var(--t3);letter-spacing:.6px;text-transform:uppercase}
 .ws-source.coinbase{color:var(--cyan)}
-.ws-source.kraken{color:var(--amber)}
+.ws-source.rest{color:var(--amber)}
 .ws-source.rest{color:var(--t2)}
 .ws-toggle{background:var(--bg2);border:1px solid var(--border);color:var(--t3);font-size:7px;letter-spacing:.6px;padding:2px 6px;border-radius:2px;cursor:pointer}
 .ws-toggle:hover{color:var(--amber);border-color:rgba(255,171,0,.3)}
@@ -58,7 +58,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Pl
 .ti{font-size:9px;color:var(--text)}.ti b{color:var(--white);font-weight:600}
 
 /* ── MAIN GRID ── */
-#app{display:grid;grid-template-columns:220px 1fr 240px;min-height:calc(100vh - 128px);height:auto;gap:1px;background:var(--border)}
+#app{display:grid;grid-template-columns:220px 1fr 240px;min-height:calc(100vh - 128px);height:auto;gap:1px;background:var(--border);align-items:start}
 
 /* ── PANELS ── */
 .col{display:flex;flex-direction:column;gap:1px;background:var(--border)}
@@ -284,6 +284,8 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
   #app{height:auto;min-height:calc(100dvh - 128px);grid-template-columns:1fr}
   #chart-hdr{flex-wrap:wrap;gap:4px;padding:6px 8px}
   #canvasWrap{height:220px}
+  .system-banner-stack{top:128px;width:100%;padding:0 10px}
+  .system-banner{min-width:0;width:100%}
   #rsiWrap{height:48px}
   .k-top-target-input{min-width:0;max-width:none;width:100%}
   #sigs{grid-template-columns:repeat(5,1fr)}
@@ -302,6 +304,7 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
   #kTopTargetBar{padding:5px 6px}
   #chart-hdr .ema-legend,#chart-hdr .ema-legend-tight{display:none}
   #canvasWrap{height:180px}
+  .system-banner-stack{top:110px}
   #sigs{grid-template-columns:repeat(2,1fr)}
   #of-row{grid-template-columns:1fr}
   #signalAlert{top:64px}
@@ -358,6 +361,12 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
 /* ── SIGNAL ALERT ── */
 #signalAlert{position:fixed;top:76px;left:50%;transform:translateX(-50%);z-index:999;pointer-events:none;transition:opacity .3s;opacity:0}
 #signalAlert.show{opacity:1}
+.system-banner-stack{position:fixed;top:110px;left:50%;transform:translateX(-50%);z-index:998;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.system-banner{min-width:320px;max-width:min(86vw,760px);padding:10px 14px;border-radius:3px;border:1px solid var(--border);font-size:10px;font-weight:700;letter-spacing:.8px;box-shadow:0 8px 24px rgba(0,0,0,.28);transition:opacity .2s ease,transform .2s ease}
+.system-banner.hidden{display:none;opacity:0;transform:translateY(-6px)}
+.system-banner-detail{display:block;font-size:8px;font-weight:500;letter-spacing:.45px;color:rgba(255,255,255,.78);margin-top:3px}
+.system-banner-lock{background:rgba(213,0,0,.92);border-color:rgba(255,23,68,.65);color:#fff5f6}
+.system-banner-stale{background:rgba(255,171,0,.92);border-color:rgba(255,171,0,.55);color:#201400}
 @keyframes sa-drop{0%{transform:translateY(-8px);opacity:0}100%{transform:translateY(0);opacity:1}}
 .sa-inner{padding:7px 22px;border-radius:3px;font-weight:700;font-size:12px;letter-spacing:2px;animation:sa-drop .35s ease-out}
 .sa-above{background:rgba(0,230,118,.14);border:1px solid rgba(0,230,118,.55);color:var(--green);box-shadow:0 4px 28px rgba(0,230,118,.22)}
@@ -514,10 +523,20 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
 </div>
 
 <div id="signalAlert"><div class="sa-inner sa-above" id="saInner">&#x26A1; SIGNAL ACTIVE</div></div>
+<div class="system-banner-stack" id="systemBannerStack">
+  <div class="system-banner system-banner-lock hidden" id="executionLockBanner">
+    <span id="executionLockText">🔒 EXECUTION LOCKED</span>
+    <span class="system-banner-detail" id="executionLockDetail">Risk conditions currently block execution.</span>
+  </div>
+  <div class="system-banner system-banner-stale hidden" id="staleDataBanner">
+    <span id="staleDataText">⚠️ STALE DATA</span>
+    <span class="system-banner-detail" id="staleDataDetail">Refreshing market state before retry.</span>
+  </div>
+</div>
 <div id="oracleBar">
-  <div class="ob-src"><div class="ob-dot wait" id="obDotBnc"></div><span class="ob-src-label">BNC</span><span id="obPriceBnc" class="ob-src-price">—</span></div>
-  <div class="ob-src"><div class="ob-dot wait" id="obDotKrk"></div><span class="ob-src-label">KRK</span><span id="obPriceKrk" class="ob-src-price">—</span></div>
-  <div class="ob-src"><div class="ob-dot wait" id="obDotByb"></div><span class="ob-src-label">BYB</span><span id="obPriceByb" class="ob-src-price">—</span></div>
+  <div class="ob-src"><div class="ob-dot wait" id="obDotBnc"></div><span class="ob-src-label">CBT</span><span id="obPriceBnc" class="ob-src-price">—</span></div>
+  <div class="ob-src"><div class="ob-dot wait" id="obDotKrk"></div><span class="ob-src-label">BOOK</span><span id="obPriceKrk" class="ob-src-price">—</span></div>
+  <div class="ob-src"><div class="ob-dot wait" id="obDotByb"></div><span class="ob-src-label">CCP</span><span id="obPriceByb" class="ob-src-price">—</span></div>
   <span class="ob-sep">│</span>
   <div class="ob-src ob-src-oracle">ORACLE <span id="oraclePrice" class="ob-src-oracle-price">—</span></div>
   <div class="ob-src ob-src-dev">DEV <span id="oracleDev" class="ob-src-dev-val">—</span></div>
@@ -541,9 +560,9 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
   <div class="sb-item">K ROUND <span class="sb-val" id="sbKRound">—:——</span></div>
   <div class="sb-item">K TARGET <span class="sb-val" id="sbKTarget">$——</span></div>
   <div class="flex-fill"></div>
-  <button class="ws-toggle" id="wsToggle" onclick="toggleWsFallback()" title="Force Kraken websocket feed">KRAKEN OFF</button>
+  <button class="ws-toggle" id="wsToggle" onclick="toggleWsFallback()" title="Reconnect or restore Coinbase live feed">LIVE OK</button>
   <button class="ws-toggle" id="wsRestToggle" onclick="toggleWsRest()" title="Force Coinbase REST polling mode">REST OFF</button>
-  <span id="kbHint" title="A=AI  S=Sound  F=Fullscreen  K=Kraken  R=REST">A · S · F · K · R</span>
+  <span id="kbHint" title="A=AI  S=Sound  F=Fullscreen  K=Live Reconnect  R=REST">A · S · F · K · R</span>
 </div>
 <div id="kTopTargetBar">
   <div class="k-top-target-title">KALSHI ROUND TARGET</div>
@@ -774,6 +793,15 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
       <div class="mr mr-no-border"><span class="ml">LAST 5</span><div class="acc-dots" id="accDots"></div></div>
     </div>
   </div>
+  <div class="panel panel-fixed">
+    <div class="ph"><span class="ph-title">SYSTEM PERFORMANCE</span><span class="badge badge-live">LAST 50</span></div>
+    <div class="pb">
+      <div class="mr"><span class="ml">WIN RATE</span><span class="mv num" id="perfWinRate">—</span></div>
+      <div class="mr"><span class="ml">CONF WINS</span><span class="mv num" id="perfConfWins">—</span></div>
+      <div class="mr"><span class="ml">BEST RISK</span><span class="mv num" id="perfBestRisk">—</span></div>
+      <div class="mr mr-no-border"><span class="ml">WINDOW</span><span class="mv num" id="perfWindow">—</span></div>
+    </div>
+  </div>
   <!-- Kalshi -->
   <div class="panel panel-fixed">
     <div class="ph"><span class="ph-title">KALSHI DIVERGENCE</span><span class="badge badge-live">15MIN</span></div>
@@ -904,6 +932,16 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
 // ║  Backend: /api/analyze (OpenRouter proxy)                   ║
 // ╚══════════════════════════════════════════════════════════════╝
 
+// Avoid restoring stale scroll offsets that can hide chart sections behind sticky bars.
+if (typeof history !== 'undefined' && 'scrollRestoration' in history) {
+  history.scrollRestoration = 'manual';
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('load', () => {
+    window.scrollTo(0, 0);
+  }, { once: true });
+}
+
 // ─────────────────────────────────────────────
 // MARKET STORE — single source of truth
 // ─────────────────────────────────────────────
@@ -977,7 +1015,270 @@ var marketStore = {
   wsLatencyP50: null,
   wsLatencyP95: null,
   wsGapP95: null,
+  systemTruth: {
+    currentBelief: { direction: 'NEUTRAL', confidence: 0 },
+    executionAllowed: false,
+    riskLevel: 'MEDIUM',
+    snapshotId: '',
+    lastUpdated: 0,
+  },
+  systemTruthMeta: { riskScalar: 0, secureDecision: false, verdict: 'ABOVE' },
+  systemTruthReady: false,
+  executionLockReason: '',
+  staleWarning: '',
+  performanceStats: null,
 };
+
+const DEFAULT_SYSTEM_TRUTH = {
+  currentBelief: { direction: 'NEUTRAL', confidence: 0 },
+  executionAllowed: false,
+  riskLevel: 'MEDIUM',
+  snapshotId: '',
+  lastUpdated: 0,
+};
+
+let _truthPublishTimer = null;
+let _truthPublishInFlight = false;
+let _lastTruthPublishSignature = '';
+let _performanceRefreshInFlight = false;
+let _resultSyncInFlight = false;
+
+function getSystemTruthClient() {
+  if (globalThis._systemTruthClient) return globalThis._systemTruthClient;
+  return {
+    deriveSystemTruth(input) {
+      const pDecisionAbove = Number.isFinite(input.pDecisionAbove) ? input.pDecisionAbove : input.pAbove;
+      const quality = Number.isFinite(input.dataQuality) ? input.dataQuality : 1;
+      const confidence = Number.isFinite(input.confidence) ? input.confidence : 0;
+      const directionalEdge = Math.abs((Number.isFinite(pDecisionAbove) ? pDecisionAbove : 0.5) - 0.5) * 2;
+      const roundPhase = input.roundPhase ?? 'open';
+      const secureDecision = confidence >= (roundPhase === 'closing' ? 50 : 35) && quality >= 0.65 && directionalEdge >= (roundPhase === 'closing' ? 0.12 : 0.08);
+      const riskScalar = clamp(Math.max((input.flowToxicity || 0) / 100, clamp((input.realizedVol || 0) / 120, 0, 1)), 0, 1);
+      let riskLevel = 'LOW';
+      if (riskScalar >= 0.75) riskLevel = 'CRITICAL';
+      else if (riskScalar >= 0.55) riskLevel = 'HIGH';
+      else if (riskScalar >= 0.35) riskLevel = 'MEDIUM';
+      const verdict = (Number.isFinite(pDecisionAbove) ? pDecisionAbove : 0.5) >= 0.5 ? 'ABOVE' : 'BELOW';
+      const direction = !secureDecision ? 'NEUTRAL' : verdict === 'ABOVE' ? 'UP' : 'DOWN';
+      return {
+        currentBelief: { direction, confidence: clamp(confidence, 0, 100) },
+        executionAllowed: secureDecision && direction !== 'NEUTRAL' && riskLevel !== 'HIGH' && riskLevel !== 'CRITICAL',
+        riskLevel,
+        riskScalar,
+        secureDecision,
+        verdict,
+      };
+    },
+    shouldRetryStale(response, attempt) {
+      return Boolean(response?.stale) && attempt === 0;
+    },
+  };
+}
+
+function createClientSnapshotId() {
+  return `${Date.now()}-${Math.random().toString(16).slice(2, 10).padEnd(8, '0').slice(0, 8)}`;
+}
+
+function deriveLocalSystemTruth() {
+  const client = getSystemTruthClient();
+  return client.deriveSystemTruth({
+    ...marketStore,
+    roundPhase: kalshiRound().phase,
+  });
+}
+
+function buildTruthPublishSignature(derivedTruth) {
+  return JSON.stringify([
+    derivedTruth.currentBelief.direction,
+    derivedTruth.currentBelief.confidence,
+    derivedTruth.executionAllowed,
+    derivedTruth.riskLevel,
+    marketStore.price,
+    marketStore.lastMsgTs,
+    marketStore.pDecisionAbove,
+    marketStore.flowToxicity,
+    marketStore.realizedVol,
+  ]);
+}
+
+function syncSystemTruthMirror(nextTruth, meta = {}) {
+  const currentBelief = nextTruth?.currentBelief || DEFAULT_SYSTEM_TRUTH.currentBelief;
+  marketStore.systemTruth = {
+    currentBelief: {
+      direction: currentBelief.direction || 'NEUTRAL',
+      confidence: Number.isFinite(currentBelief.confidence) ? currentBelief.confidence : 0,
+    },
+    executionAllowed: typeof nextTruth?.executionAllowed === 'boolean' ? nextTruth.executionAllowed : false,
+    riskLevel: nextTruth?.riskLevel || 'MEDIUM',
+    snapshotId: typeof nextTruth?.snapshotId === 'string' ? nextTruth.snapshotId : '',
+    lastUpdated: Number.isFinite(nextTruth?.lastUpdated) ? nextTruth.lastUpdated : 0,
+  };
+  marketStore.systemTruthMeta = {
+    riskScalar: Number.isFinite(meta.riskScalar) ? meta.riskScalar : marketStore.systemTruthMeta?.riskScalar || 0,
+    secureDecision: typeof meta.secureDecision === 'boolean' ? meta.secureDecision : Boolean(marketStore.systemTruthMeta?.secureDecision),
+    verdict: meta.verdict || marketStore.systemTruthMeta?.verdict || 'ABOVE',
+  };
+  marketStore.systemTruthReady = true;
+
+  if (marketStore.systemTruth.executionAllowed) {
+    marketStore.executionLockReason = '';
+  } else if (marketStore.systemTruth.riskLevel === 'HIGH' || marketStore.systemTruth.riskLevel === 'CRITICAL') {
+    marketStore.executionLockReason = `EXECUTION_LOCKED: Risk level ${marketStore.systemTruth.riskLevel}`;
+  } else {
+    marketStore.executionLockReason = 'EXECUTION_LOCKED: Execution disabled by system truth';
+  }
+
+  updateSystemStatusBanners();
+}
+
+function setStaleWarning(reason = '') {
+  marketStore.staleWarning = reason;
+  updateSystemStatusBanners();
+}
+
+function updateSystemStatusBanners() {
+  const lockBanner = document.getElementById('executionLockBanner');
+  const lockText = document.getElementById('executionLockText');
+  const lockDetail = document.getElementById('executionLockDetail');
+  const staleBanner = document.getElementById('staleDataBanner');
+  const staleText = document.getElementById('staleDataText');
+  const staleDetail = document.getElementById('staleDataDetail');
+
+  if (lockBanner) {
+    const shouldShowLock = marketStore.systemTruthReady && !marketStore.systemTruth.executionAllowed && !!marketStore.executionLockReason;
+    lockBanner.classList.toggle('hidden', !shouldShowLock);
+    if (lockText) lockText.textContent = '🔒 EXECUTION LOCKED';
+    if (lockDetail) {
+      const belief = marketStore.systemTruth?.currentBelief?.direction || 'NEUTRAL';
+      const confidence = Number.isFinite(marketStore.systemTruth?.currentBelief?.confidence) ? marketStore.systemTruth.currentBelief.confidence.toFixed(0) : '0';
+      lockDetail.textContent = `${marketStore.executionLockReason} · belief ${belief} @ ${confidence}%`;
+    }
+  }
+
+  if (staleBanner) {
+    const shouldShowStale = Boolean(marketStore.staleWarning);
+    staleBanner.classList.toggle('hidden', !shouldShowStale);
+    if (staleText) staleText.textContent = '⚠️ STALE DATA';
+    if (staleDetail) staleDetail.textContent = marketStore.staleWarning || 'Refreshing market state before retry.';
+  }
+}
+
+async function publishSystemTruth(force = false) {
+  const derivedTruth = deriveLocalSystemTruth();
+  const signature = buildTruthPublishSignature(derivedTruth);
+  if (!force && signature === _lastTruthPublishSignature) {
+    return marketStore.systemTruth;
+  }
+  if (_truthPublishInFlight && !force) {
+    return marketStore.systemTruth;
+  }
+
+  _truthPublishInFlight = true;
+  try {
+    const response = await fetch('/api/system-truth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        currentBelief: derivedTruth.currentBelief,
+        executionAllowed: derivedTruth.executionAllowed,
+        riskLevel: derivedTruth.riskLevel,
+        snapshotId: createClientSnapshotId(),
+        lastUpdated: Date.now(),
+      }),
+    });
+    if (!response.ok) throw new Error(`system-truth HTTP ${response.status}`);
+
+    const acknowledgedTruth = await response.json();
+    syncSystemTruthMirror(acknowledgedTruth, derivedTruth);
+    _lastTruthPublishSignature = signature;
+    return marketStore.systemTruth;
+  } catch (error) {
+    console.debug('system truth publish skipped:', error?.message || error);
+    return marketStore.systemTruth;
+  } finally {
+    _truthPublishInFlight = false;
+  }
+}
+
+function scheduleSystemTruthPublish(force = false) {
+  if (force) {
+    void publishSystemTruth(true);
+    return;
+  }
+  if (_truthPublishTimer) return;
+  _truthPublishTimer = setTimeout(() => {
+    _truthPublishTimer = null;
+    void publishSystemTruth();
+  }, 250);
+}
+
+async function forceMarketRefresh() {
+  await Promise.allSettled([
+    bootstrapCandles(),
+    pollOracle(),
+    pollDerivatives(),
+    fetchKalshiLive(),
+  ]);
+  await publishSystemTruth(true);
+}
+
+async function refreshPerformancePanel() {
+  if (_performanceRefreshInFlight) return;
+  _performanceRefreshInFlight = true;
+  try {
+    const response = await fetch('/api/performance', {
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!response.ok) throw new Error(`performance HTTP ${response.status}`);
+    marketStore.performanceStats = await response.json();
+  } catch (error) {
+    console.debug('performance refresh skipped:', error?.message || error);
+  } finally {
+    _performanceRefreshInFlight = false;
+  }
+}
+
+async function syncResolvedResults() {
+  if (_resultSyncInFlight) return;
+  const pending = (marketStore.signalLog || []).filter((entry) =>
+    entry?.resolved === true
+    && entry?.reported !== true
+    && (entry?.direction === 'UP' || entry?.direction === 'DOWN')
+    && (entry?.actual === 'UP' || entry?.actual === 'DOWN')
+    && Number.isFinite(entry?.confidence)
+  );
+  if (!pending.length) return;
+
+  _resultSyncInFlight = true;
+  let recordedAny = false;
+  try {
+    for (const entry of pending) {
+      const response = await fetch('/api/record-result', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(4000),
+        body: JSON.stringify({
+          direction: entry.direction,
+          actual: entry.actual,
+          confidence: entry.confidence,
+          riskLevel: entry.riskLevel || 'MEDIUM',
+        }),
+      });
+      if (!response.ok) throw new Error(`record-result HTTP ${response.status}`);
+      entry.reported = true;
+      recordedAny = true;
+    }
+
+    if (recordedAny) {
+      marketStore.signalLog = [...(marketStore.signalLog || [])];
+      await refreshPerformancePanel();
+    }
+  } catch (error) {
+    console.debug('result sync skipped:', error?.message || error);
+  } finally {
+    _resultSyncInFlight = false;
+  }
+}
 
 // ─────────────────────────────────────────────
 // WS STATUS — called by module bridge
@@ -1011,8 +1312,7 @@ function updateWsSourceUI() {
   const src = marketStore.wsSource || '—';
   const sourceHelp = {
     coinbase: 'Primary Coinbase websocket feed',
-    kraken: 'Fallback Kraken websocket feed',
-    rest: 'REST polling fallback feed',
+    rest: 'Coinbase REST polling mode',
     '—': 'Waiting for first market update',
   };
   if (srcEl) {
@@ -1021,21 +1321,20 @@ function updateWsSourceUI() {
     srcEl.title = sourceHelp[src] || sourceHelp['—'];
   }
 
-  const fallbackEnabled = !!marketStore.manualFallback;
   const restEnabled = !!marketStore.manualRest;
 
   if (toggle) {
-    toggle.classList.toggle('active', fallbackEnabled);
-    toggle.textContent = fallbackEnabled ? 'KRAKEN ON' : 'KRAKEN OFF';
-    toggle.title = fallbackEnabled ? 'Disable Kraken override (return to auto)' : 'Force Kraken websocket feed';
-    toggle.disabled = restEnabled;
+    toggle.classList.toggle('active', !restEnabled);
+    toggle.textContent = restEnabled ? 'LIVE OFF' : 'LIVE OK';
+    toggle.title = restEnabled ? 'Return to Coinbase live mode' : 'Reconnect Coinbase live feed';
+    toggle.disabled = false;
   }
 
   if (restToggle) {
     restToggle.classList.toggle('rest-active', restEnabled);
     restToggle.textContent = restEnabled ? 'REST ON' : 'REST OFF';
     restToggle.title = restEnabled ? 'Disable REST override (return to auto)' : 'Force Coinbase REST polling mode';
-    restToggle.disabled = fallbackEnabled;
+    restToggle.disabled = false;
   }
 
   if (typeof updateWsFreshnessUI === 'function') updateWsFreshnessUI();
@@ -1067,8 +1366,8 @@ function updateWsFreshnessUI() {
 }
 
 function setWsControlMode(mode) {
-  const nextMode = ['auto', 'fallback', 'rest'].includes(mode) ? mode : 'auto';
-  marketStore.manualFallback = nextMode === 'fallback';
+  const nextMode = ['auto', 'rest'].includes(mode) ? mode : 'auto';
+  marketStore.manualFallback = false;
   marketStore.manualRest = nextMode === 'rest';
 
   const ws = globalThis._wsEngine;
@@ -1076,7 +1375,6 @@ function setWsControlMode(mode) {
     if (typeof ws.setManualMode === 'function') {
       ws.setManualMode(nextMode);
     } else {
-      if (typeof ws.setManualFallback === 'function') ws.setManualFallback(nextMode === 'fallback');
       if (typeof ws.setForceRest === 'function') ws.setForceRest(nextMode === 'rest');
     }
   }
@@ -1085,7 +1383,18 @@ function setWsControlMode(mode) {
 }
 
 function toggleWsFallback() {
-  setWsControlMode(marketStore.manualFallback ? 'auto' : 'fallback');
+  if (marketStore.manualRest) {
+    setWsControlMode('auto');
+    return;
+  }
+
+  const ws = globalThis._wsEngine;
+  if (ws && typeof ws.reconnect === 'function') {
+    ws.reconnect();
+    return;
+  }
+
+  setWsControlMode('auto');
 }
 
 function toggleWsRest() {
@@ -1097,18 +1406,17 @@ function toggleWsRest() {
 // ─────────────────────────────────────────────
 async function bootstrapCandles() {
   try {
-    const r = await fetch(
-      'https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=900&limit=200'
-    );
+    const r = await fetch('/api/ohlcv');
     const d = await r.json();
-    if (!Array.isArray(d)) throw new Error('bad candles');
-    const normalized = d.map(c => ({
-      time: Number(c?.[0]),
-      low: Number(c?.[1]),
-      high: Number(c?.[2]),
-      open: Number(c?.[3]),
-      close: Number(c?.[4]),
-      volume: Number(c?.[5]),
+    const rows = Array.isArray(d) ? d : d?.candles;
+    if (!Array.isArray(rows)) throw new Error('bad candles');
+    const normalized = rows.map(c => ({
+      time: Number(c?.time ?? c?.[0]),
+      low: Number(c?.low ?? c?.[1]),
+      high: Number(c?.high ?? c?.[2]),
+      open: Number(c?.open ?? c?.[3]),
+      close: Number(c?.close ?? c?.[4]),
+      volume: Number(c?.volume ?? c?.[5]),
     })).filter(c =>
       Number.isFinite(c.time)
       && Number.isFinite(c.low)
@@ -1628,7 +1936,23 @@ function computeIndicators() {
     const log = marketStore.signalLog || [];
     const last = log[log.length - 1];
     if (!last || Date.now() - last.ts > 60000) {
-      log.push({ ts: Date.now(), verdict: marketStore.verdict, price: p, pAbove: marketStore.pAbove, conf: marketStore.confidence, resolved: false });
+      const beliefDirection = marketStore.systemTruth?.currentBelief?.direction;
+      const direction = beliefDirection === 'UP' || beliefDirection === 'DOWN'
+        ? beliefDirection
+        : (marketStore.verdict === 'ABOVE' ? 'UP' : 'DOWN');
+      log.push({
+        ts: Date.now(),
+        verdict: marketStore.verdict,
+        direction,
+        price: p,
+        pAbove: marketStore.pAbove,
+        conf: marketStore.confidence,
+        confidence: clamp(marketStore.confidence, 0, 100),
+        resolved: false,
+        reported: false,
+        riskLevel: marketStore.systemTruth?.riskLevel || deriveLocalSystemTruth().riskLevel,
+        snapshotId: marketStore.systemTruth?.snapshotId || '',
+      });
       const entry = log[log.length - 1];
       entry.regime = marketStore.regime;
       entry.trendP = clamp((marketStore.scoutScores?.trend + 1) / 2, 0.01, 0.99);
@@ -1636,11 +1960,6 @@ function computeIndicators() {
       entry.flowP = clamp((marketStore.scoutScores?.flow + 1) / 2, 0.01, 0.99);
       if (log.length > 100) log.shift();
       marketStore.signalLog = log;
-      try {
-        localStorage.setItem('qdSignalLog', JSON.stringify(log));
-      } catch(e) {
-        console.debug('qdSignalLog persist skipped:', e?.message || e);
-      }
     }
   }
 
@@ -2186,54 +2505,12 @@ function kalshiRound() {
   return { msLeft, secsLeft, mmss, phase, roundStart, nextClose };
 }
 
-const KALSHI_TARGET_STORAGE_KEY = 'qdKalshiTargetPrice';
-const KALSHI_TARGET_ROUND_STORAGE_KEY = 'qdKalshiTargetRoundTs';
-
 function getKalshiRoundStartMs(ts = Date.now()) {
   return Math.floor(ts / 900000) * 900000;
 }
 
 function formatKalshiTargetPrice(value) {
   return Number.isFinite(value) ? `$${Math.round(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—';
-}
-
-function readKalshiTargetStorage() {
-  try {
-    const raw = localStorage.getItem(KALSHI_TARGET_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = Number.parseFloat(raw);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-  } catch (e) {
-    console.debug('kalshi target hydrate skipped:', e?.message || e);
-    return null;
-  }
-}
-
-function readKalshiTargetRoundStorage() {
-  try {
-    const raw = localStorage.getItem(KALSHI_TARGET_ROUND_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = Number.parseInt(raw, 10);
-    return Number.isFinite(parsed) ? parsed : null;
-  } catch (e) {
-    console.debug('kalshi target round hydrate skipped:', e?.message || e);
-    return null;
-  }
-}
-
-function persistKalshiTargetStorage(value, roundTs = null) {
-  try {
-    if (Number.isFinite(value) && value > 0) {
-      localStorage.setItem(KALSHI_TARGET_STORAGE_KEY, String(value));
-      if (Number.isFinite(roundTs)) localStorage.setItem(KALSHI_TARGET_ROUND_STORAGE_KEY, String(roundTs));
-      else localStorage.removeItem(KALSHI_TARGET_ROUND_STORAGE_KEY);
-    } else {
-      localStorage.removeItem(KALSHI_TARGET_STORAGE_KEY);
-      localStorage.removeItem(KALSHI_TARGET_ROUND_STORAGE_KEY);
-    }
-  } catch (e) {
-    console.debug('kalshi target persist skipped:', e?.message || e);
-  }
 }
 
 function getAutoKalshiTargetPrice() {
@@ -2456,7 +2733,6 @@ function setKalshiManualTargetPrice(value) {
   marketStore.kalshiManualTargetRoundTs = roundStart;
   marketStore.kalshiTargetSource = 'manual';
   marketStore.kalshiTargetExpiryNotice = '';
-  persistKalshiTargetStorage(parsed, roundStart);
   updateKalshiTargetDecisionMetrics(marketStore);
   syncKalshiTargetUI();
   return parsed;
@@ -2467,7 +2743,6 @@ function clearKalshiManualTargetPrice(reason = 'manual') {
   marketStore.kalshiManualTargetRoundTs = null;
   marketStore.kalshiTargetSource = 'auto';
   marketStore.kalshiTargetExpiryNotice = reason === 'round' ? 'ROUND RESET' : '';
-  persistKalshiTargetStorage(null, null);
   updateKalshiTargetDecisionMetrics(marketStore);
   syncKalshiTargetUI();
   return null;
@@ -2487,15 +2762,10 @@ function enforceKalshiManualTargetRoundScope(roundInfo = kalshiRound()) {
 }
 
 function hydrateKalshiTargetPrice() {
-  const stored = readKalshiTargetStorage();
-  const storedRound = readKalshiTargetRoundStorage();
-  const currentRound = getKalshiRoundStartMs();
-  const validStored = Number.isFinite(stored) && stored > 0 && Number.isFinite(storedRound) && storedRound === currentRound;
-  marketStore.kalshiManualTargetPrice = validStored ? stored : null;
-  marketStore.kalshiManualTargetRoundTs = validStored ? storedRound : null;
-  marketStore.kalshiTargetSource = validStored ? 'manual' : 'auto';
+  marketStore.kalshiManualTargetPrice = null;
+  marketStore.kalshiManualTargetRoundTs = null;
+  marketStore.kalshiTargetSource = 'auto';
   marketStore.kalshiTargetExpiryNotice = '';
-  if (!validStored && (stored !== null || storedRound !== null)) persistKalshiTargetStorage(null, null);
   updateKalshiTargetDecisionMetrics(marketStore);
   syncKalshiTargetUI();
 }
@@ -2553,29 +2823,6 @@ function setupKalshiTargetControls() {
   });
 }
 
-const KALSHI_MANUAL_ABOVE_STORAGE_KEY = 'qdKalshiManualAbovePct';
-
-function readKalshiManualAboveStorage() {
-  try {
-    const raw = localStorage.getItem(KALSHI_MANUAL_ABOVE_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = Number.parseFloat(raw);
-    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 100 ? parsed : null;
-  } catch (e) {
-    console.debug('kalshi above hydrate skipped:', e?.message || e);
-    return null;
-  }
-}
-
-function persistKalshiManualAboveStorage(value) {
-  try {
-    if (Number.isFinite(value) && value >= 0 && value <= 100) localStorage.setItem(KALSHI_MANUAL_ABOVE_STORAGE_KEY, String(value));
-    else localStorage.removeItem(KALSHI_MANUAL_ABOVE_STORAGE_KEY);
-  } catch (e) {
-    console.debug('kalshi above persist skipped:', e?.message || e);
-  }
-}
-
 function syncKalshiManualUI() {
   const input = document.getElementById('kManualInput');
   const meta = document.getElementById('kManualMeta');
@@ -2605,7 +2852,6 @@ function applyKalshiManual(value) {
   marketStore.kalshiBelow = 100 - nextAbove;
   marketStore.kalshiAboveSource = 'manual';
   marketStore._kalshiLive = true;
-  persistKalshiManualAboveStorage(nextAbove);
   syncKalshiManualUI();
   if (typeof render === 'function') render();
   return nextAbove;
@@ -2615,7 +2861,6 @@ function clearKalshiManual() {
   marketStore.kalshiManualAbovePct = null;
   marketStore.kalshiAboveSource = 'live';
   marketStore._kalshiLive = false;
-  persistKalshiManualAboveStorage(null);
   syncKalshiManualUI();
   if (typeof render === 'function') render();
   void fetchKalshiLive();
@@ -2623,15 +2868,8 @@ function clearKalshiManual() {
 }
 
 function hydrateKalshiManualAbove() {
-  const stored = readKalshiManualAboveStorage();
-  marketStore.kalshiManualAbovePct = stored;
-  marketStore.kalshiAboveSource = stored === null ? 'live' : 'manual';
-  if (Number.isFinite(stored)) {
-    const nextAbove = Math.round(stored);
-    marketStore.kalshiAbove = nextAbove;
-    marketStore.kalshiBelow = 100 - nextAbove;
-    marketStore._kalshiLive = true;
-  }
+  marketStore.kalshiManualAbovePct = null;
+  marketStore.kalshiAboveSource = 'live';
   syncKalshiManualUI();
 }
 
@@ -2888,26 +3126,30 @@ function resolveSignalLog(){
   const log=marketStore.signalLog||[];
   const price=marketStore.price;
   const now=Date.now();
+  let changed=false;
   log.forEach(entry=>{
     if(entry.resolved||!price) return;
     if(now-entry.ts>=900000){
+      const actual = price > entry.price ? 'UP' : price < entry.price ? 'DOWN' : (entry.direction || 'UP');
       entry.resolved=true;
-      entry.correct=(entry.verdict==='ABOVE'&&price>entry.price)||(entry.verdict==='BELOW'&&price<entry.price);
+      entry.actual=actual;
+      entry.correct=entry.direction===actual;
+      changed=true;
     }
   });
   while(log.length>100) log.shift();
   marketStore.signalLog=log;
   computeBrierScore(log);
-  try{
-    localStorage.setItem('qdSignalLog',JSON.stringify(log));
-  }catch(e){
-    console.debug('signal log save skipped:', e?.message || e);
-  }
+  if (changed) void syncResolvedResults();
 }
 
 function computeBrierScore(log){
   const resolved=log.filter(e=>e.resolved&&e.pAbove!=null);
-  if(!resolved.length) return;
+  if(!resolved.length){
+    marketStore.brierScore=null;
+    marketStore.signalAccuracy=null;
+    return;
+  }
   let bs=0;
   resolved.forEach(e=>{const outcome=e.correct?1:0;bs+=(e.pAbove-outcome)**2;});
   marketStore.brierScore=(bs/resolved.length).toFixed(3);
@@ -2916,23 +3158,9 @@ function computeBrierScore(log){
 }
 
 function hydrateSignalLog(){
-  try{
-    const raw=localStorage.getItem('qdSignalLog');
-    if(!raw) return;
-    const parsed=JSON.parse(raw);
-    if(!Array.isArray(parsed)) return;
-    const clean=parsed.filter(e=>
-      Number.isFinite(e?.ts)
-      && Number.isFinite(e?.price)
-      && Number.isFinite(e?.pAbove)
-      && typeof e?.verdict==='string'
-      && typeof e?.resolved==='boolean'
-    ).slice(-100);
-    marketStore.signalLog=clean;
-    computeBrierScore(clean);
-  }catch(e){
-    console.debug('signal log hydrate skipped:', e?.message || e);
-  }
+  marketStore.signalLog=[];
+  marketStore.brierScore=null;
+  marketStore.signalAccuracy=null;
 }
 
 // ─────────────────────────────────────────────
@@ -3288,9 +3516,9 @@ function renderAll(){ // NOSONAR
     const src={BNC:null,KRK:null,BYB:null};
     s.oracleSources.forEach(x=>{
       const ex=String(x.exchange||'').toLowerCase().replaceAll('_','-');
-      if(ex==='binance-us'||ex==='binanceus') src.BNC=x;
-      if(ex==='kraken') src.KRK=x;
-      if(ex==='bybit') src.BYB=x;
+      if(ex==='coinbase-ticker') src.BNC=x;
+      if(ex==='coinbase-book') src.KRK=x;
+      if(ex==='cryptocompare-ref') src.BYB=x;
     });
     ['BNC','KRK','BYB'].forEach(k=>{
       const x=src[k];
@@ -3402,6 +3630,14 @@ function renderAll(){ // NOSONAR
       const px=e.price?.toFixed(0)||'?';
       return `<div class="acc-dot ${cls}" title="${e.verdict} @ ${px}"></div>`;
     }).join('');
+  }
+
+  const perf = s.performanceStats;
+  if (perf) {
+    setTxt('perfWinRate', `${(perf.winRateLast10 ?? 0).toFixed(1)}% / ${(perf.winRateLast50 ?? 0).toFixed(1)}%`);
+    setTxt('perfConfWins', `${(perf.avgConfidenceWins ?? 0).toFixed(1)}% / ${(perf.avgConfidenceLosses ?? 0).toFixed(1)}%`);
+    setTxt('perfBestRisk', perf.bestRiskLevel || 'NONE');
+    setTxt('perfWindow', `10:${perf.sampleSize ? Math.min(10, perf.sampleSize) : 0} · 50:${perf.sampleSize ?? 0}`);
   }
 
   // Flash & alert
@@ -3701,6 +3937,7 @@ async function runAI(){ // NOSONAR
   const out=document.getElementById('aiOut');
   btn.disabled=true; btn.textContent='⟳ ANALYZING…';
   out.innerHTML='<span class="ai-status-loading">Generating report</span><span class="ai-cursor"></span>';
+  setStaleWarning('');
 
   const s=marketStore;
   const pch=s.price&&s.open24?((s.price-s.open24)/s.open24*100).toFixed(2):0;
@@ -3820,26 +4057,73 @@ VERDICT: ABOVE or BELOW — with conviction % and single key risk factor
 Under 250 words. Pure institutional signal.`;
 
   try {
-    const resp=await fetch('/api/analyze',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      signal: AbortSignal.timeout(6500),
-      body:JSON.stringify({prompt,system}),
-    });
-    if(!resp.ok){const e=await resp.json().catch(()=>({error:resp.statusText}));throw new Error(e.error||`HTTP ${resp.status}`);}
-    const data=await resp.json();
-    const text=data.content?.[0]?.text||buildLocalAnalystFallback(s, trajFc);
-    const modelInfo=data.model||'';
     const aiModelEl=document.getElementById('aiModel');
-    if(aiModelEl) aiModelEl.textContent='OpenRouter · '+(modelInfo.split('/')[1]||modelInfo).split(':')[0];
-    // Sanitize AI text before HTML injection — escape tags, then re-apply safe spans
-    const safe=text.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
-    const fmt=safe
-      .replaceAll(/BULLISH|BUY[\s-]SIDE|ABOVE|LONG|EXPANSION/gi,m=>`<span class="bull">${m}</span>`)
-      .replaceAll(/BEARISH|SELL[\s-]SIDE|BELOW|SHORT|CONTRACTION/gi,m=>`<span class="bear">${m}</span>`)
-      .replaceAll(/WARNING|RISK|CAUTION|ALERT|CASCADE/gi,m=>`<span class="warn">${m}</span>`)
-      .replaceAll(/EDGE|KALSHI|BAYESIAN|CVD|VWAP|FVG|KALMAN|SCOUT|ORACLE|REGIME/gi,m=>`<span class="cyan">${m}</span>`);
-    out.innerHTML=fmt;
+    const retryHelper = getSystemTruthClient();
+
+    async function requestAttempt(attempt = 0) {
+      const truth = await publishSystemTruth(true);
+      const snapshotId = truth?.snapshotId || marketStore.systemTruth?.snapshotId || createClientSnapshotId();
+      const snapshotTimestamp = truth?.lastUpdated || marketStore.systemTruth?.lastUpdated || Date.now();
+
+      const resp = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(6500),
+        body: JSON.stringify({
+          prompt,
+          system,
+          snapshotId,
+          snapshotTimestamp,
+        }),
+      });
+      if (!resp.ok) {
+        const errorPayload = await resp.json().catch(() => ({ error: resp.statusText }));
+        throw new Error(errorPayload.error || `HTTP ${resp.status}`);
+      }
+
+      const data = await resp.json();
+
+      if (data.blocked) {
+        marketStore.systemTruth.executionAllowed = false;
+        marketStore.systemTruth.riskLevel = data.riskLevel || marketStore.systemTruth.riskLevel || 'HIGH';
+        marketStore.systemTruth.snapshotId = data.snapshotId || marketStore.systemTruth.snapshotId || '';
+        marketStore.systemTruth.lastUpdated = Date.now();
+        marketStore.systemTruthReady = true;
+        marketStore.executionLockReason = data.reason || 'EXECUTION_LOCKED: Execution disabled by system truth';
+        updateSystemStatusBanners();
+        if (aiModelEl) aiModelEl.textContent = 'System Truth Gate · Locked';
+        out.innerHTML = '<span class="ai-status-error">Execution locked by system truth. AI call skipped.</span>';
+        return null;
+      }
+
+      if (retryHelper.shouldRetryStale(data, attempt)) {
+        setStaleWarning(data.reason || 'Snapshot too old — market state has changed');
+        await forceMarketRefresh();
+        return requestAttempt(attempt + 1);
+      }
+
+      if (data.stale) {
+        setStaleWarning(data.reason || 'Snapshot too old — market state has changed');
+        if (aiModelEl) aiModelEl.textContent = 'System Truth Gate · Stale';
+        out.innerHTML = '<span class="ai-status-error">Snapshot stale after refresh. Pulling fresh market state is required.</span>';
+        return null;
+      }
+
+      setStaleWarning('');
+      const text=data.content?.[0]?.text||buildLocalAnalystFallback(s, trajFc);
+      const modelInfo=data.model||'';
+      if(aiModelEl) aiModelEl.textContent='OpenRouter · '+(modelInfo.split('/')[1]||modelInfo).split(':')[0];
+      const safe=text.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+      const fmt=safe
+        .replaceAll(/BULLISH|BUY[\s-]SIDE|ABOVE|LONG|EXPANSION/gi,m=>`<span class="bull">${m}</span>`)
+        .replaceAll(/BEARISH|SELL[\s-]SIDE|BELOW|SHORT|CONTRACTION/gi,m=>`<span class="bear">${m}</span>`)
+        .replaceAll(/WARNING|RISK|CAUTION|ALERT|CASCADE/gi,m=>`<span class="warn">${m}</span>`)
+        .replaceAll(/EDGE|KALSHI|BAYESIAN|CVD|VWAP|FVG|KALMAN|SCOUT|ORACLE|REGIME/gi,m=>`<span class="cyan">${m}</span>`);
+      out.innerHTML=fmt;
+      return data;
+    }
+
+    await requestAttempt(0);
   } catch(e){
     console.debug('[runAI] remote analysis fallback:', e?.message || e);
     const aiModelEl=document.getElementById('aiModel');
@@ -3878,6 +4162,7 @@ function renderLoop(ts){
     } catch(e) {
       console.error('[renderLoop] renderAll:', e);
     }
+    scheduleSystemTruthPublish();
   }
   requestAnimationFrame(renderLoop);
 }
@@ -3921,6 +4206,11 @@ async function init(){
     updateKalshiCountdownDisplay(kr);
   }, 250);
   setInterval(bootstrapCandles, 1800000); // refresh candle history every 30 min
+  await publishSystemTruth(true);
+  await refreshPerformancePanel();
+  setInterval(() => { void refreshPerformancePanel(); }, 30000);
+  setInterval(() => { void syncResolvedResults(); }, 5000);
+  updateSystemStatusBanners();
   // WS engine started by module script — see bottom of <body>
   requestAnimationFrame(renderLoop);
 }
@@ -3933,9 +4223,11 @@ async function init(){
   /* eslint-disable sonarjs/cognitive-complexity */
   import { marketStore } from './lib/marketStore.js';
   import { CoinbaseWS } from './lib/coinbaseWebsocket.js';
+  import { deriveSystemTruth, shouldRetryStale } from './lib/systemTruthClient.js';
 
   // Expose to non-module script
   globalThis._mStore = marketStore;
+  globalThis._systemTruthClient = { deriveSystemTruth, shouldRetryStale };
 
   // WS engine
   const ws = new CoinbaseWS();

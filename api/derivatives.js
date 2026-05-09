@@ -1,5 +1,4 @@
-// BTC derivatives data — funding rate, OI from Bybit
-// Server-side to avoid CORS/geo issues (fapi.binance.com is geo-blocked from US)
+// BTC derivatives data — funding rate, OI from Bybit with OKX fallback
 
 const STALE_CACHE_TTL_MS = 180000;
 let lastGoodSnapshot = null;
@@ -78,13 +77,6 @@ async function fetchTickerWithFallback() {
   }
 
   try {
-    const binance = await fetchBinanceFuturesTicker();
-    return { ...binance, source: 'binance-futures' };
-  } catch (binanceErr) {
-    errors.push(`Binance fallback failed (${binanceErr.message})`);
-  }
-
-  try {
     const okx = await fetchOkxTicker();
     return { ...okx, source: 'okx' };
   } catch (okxErr) {
@@ -100,12 +92,6 @@ async function fetchOpenInterestWithFallback() {
     return await fetchBybitOI();
   } catch (bybitErr) {
     errors.push(`Bybit OI failed (${bybitErr.message})`);
-  }
-
-  try {
-    return await fetchBinanceFuturesOI();
-  } catch (binanceErr) {
-    errors.push(`Binance fallback failed (${binanceErr.message})`);
   }
 
   try {
@@ -158,42 +144,6 @@ async function fetchBybitOI() {
     openInterestUsd: oiUsd,
     oiDelta:         latest - prev,
     oiDeltaPct:      prev > 0 ? ((latest - prev) / prev * 100) : 0,
-  };
-}
-
-async function fetchBinanceFuturesTicker() {
-  const r = await fetch(
-    'https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT',
-    { signal: AbortSignal.timeout(3000) }
-  );
-  if (!r.ok) throw new Error(`Binance futures ticker HTTP ${r.status}`);
-  const d = await r.json();
-  const fundingRate = Number.parseFloat(d.lastFundingRate);
-  const nextFundingTime = Number.parseInt(d.nextFundingTime, 10);
-  const markPrice = Number.parseFloat(d.markPrice);
-  const indexPrice = Number.parseFloat(d.indexPrice);
-  return {
-    fundingRate: Number.isFinite(fundingRate) ? fundingRate : 0,
-    nextFundingTime: Number.isFinite(nextFundingTime) ? nextFundingTime : Date.now() + 28800000,
-    markPrice: Number.isFinite(markPrice) ? markPrice : null,
-    indexPrice: Number.isFinite(indexPrice) ? indexPrice : null,
-  };
-}
-
-async function fetchBinanceFuturesOI() {
-  const r = await fetch(
-    'https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT',
-    { signal: AbortSignal.timeout(3000) }
-  );
-  if (!r.ok) throw new Error(`Binance futures OI HTTP ${r.status}`);
-  const d = await r.json();
-  const openInterest = Number.parseFloat(d.openInterest);
-  if (!Number.isFinite(openInterest)) throw new Error('No Binance futures OI data');
-  return {
-    openInterest,
-    openInterestUsd: null,
-    oiDelta: 0,
-    oiDeltaPct: 0,
   };
 }
 

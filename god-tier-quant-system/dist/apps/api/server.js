@@ -10,7 +10,6 @@ export class ApiServer {
         this.orchestrationMetrics = [];
         this.orchestrationFailures = [];
         this.routingDecisions = [];
-        this.causalInsights = [];
     }
     start() {
         this.bus.on(EVENTS.PROBABILITY, (event) => {
@@ -43,32 +42,8 @@ export class ApiServer {
         this.bus.on(EVENTS.AI_AGGREGATED_INTELLIGENCE, (event) => {
             this.latest.aiAggregatedIntelligence = event;
         });
-        this.bus.on(EVENTS.REALITY_SNAPSHOT, (event) => {
-            this.latest.realitySnapshot = event;
-        });
-        this.bus.on(EVENTS.CAUSAL_INSIGHT, (event) => {
-            this.causalInsights.unshift(event);
-            if (this.causalInsights.length > 20)
-                this.causalInsights.pop();
-            this.latest.causalInsights = this.causalInsights.slice(0, 5);
-        });
-        this.bus.on(EVENTS.PARTICIPANT_FLOW, (event) => {
-            this.latest.participantFlow = event;
-        });
-        this.bus.on(EVENTS.SYSTEM_CONSCIOUSNESS, (event) => {
-            this.latest.systemConsciousness = event;
-        });
-        this.bus.on(EVENTS.EPISTEMIC_HEALTH, (event) => {
-            this.latest.epistemicHealth = event;
-        });
-        this.bus.on(EVENTS.ADVERSARIAL_AUDIT, (event) => {
-            this.latest.adversarialAudit = event;
-        });
-        this.bus.on(EVENTS.MARKET_MEMORY, (event) => {
-            this.latest.marketMemory = event;
-        });
-        this.bus.on(EVENTS.MULTI_TIMESCALE_VIEW, (event) => {
-            this.latest.multiTimescaleView = event;
+        this.bus.on(EVENTS.CONSTITUTIONAL_DECISION, (event) => {
+            this.latest.constitutionalDecision = event;
         });
         this.bus.on(EVENTS.AI_ORCHESTRATION_METRICS, (event) => {
             this.orchestrationMetrics.unshift(event);
@@ -112,6 +87,14 @@ export class ApiServer {
                     drift: this.latest.drift ?? null,
                     validation: this.latest.validation ?? null,
                     aiAggregatedIntelligence: this.latest.aiAggregatedIntelligence ?? null,
+                    constitutionalDecision: this.latest.constitutionalDecision ?? null,
+                }));
+                return;
+            }
+            if (path === '/decision') {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    constitutionalDecision: this.latest.constitutionalDecision ?? null,
                 }));
                 return;
             }

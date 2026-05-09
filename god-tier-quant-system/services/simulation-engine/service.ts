@@ -9,6 +9,18 @@ export class SimulationEngine {
 
   start(): void {
     this.bus.on<ExecutionPlan>(EVENTS.EXECUTION_PLAN, (plan) => {
+      const acknowledged: OrderEvent = {
+        orderId: `ord-${++this.orderCounter}`,
+        executionId: plan.executionId,
+        contractId: plan.contractId,
+        direction: plan.direction,
+        size: 0,
+        price: plan.limitPrice,
+        status: 'acknowledged',
+        timestamp: Date.now(),
+      };
+      this.bus.emit(EVENTS.ORDER_EVENT, acknowledged);
+
       const slip = plan.expectedSlippage * (0.85 + Math.min(0.1, plan.slices * 0.015));
       const price = plan.direction === 'YES' ? plan.limitPrice + slip : plan.limitPrice - slip;
       const fillRatio = Math.max(0.2, Math.min(1, plan.fillProbability * (plan.safetyMode === 'hard-stop' ? 0.4 : 1)));
@@ -16,6 +28,8 @@ export class SimulationEngine {
       let status: OrderEvent['status'];
       if (fillRatio > 0.85) {
         status = 'filled';
+      } else if (fillRatio < 0.25) {
+        status = 'expired';
       } else if (fillRatio < 0.35) {
         status = 'rejected';
       } else {
@@ -23,7 +37,7 @@ export class SimulationEngine {
       }
 
       const order: OrderEvent = {
-        orderId: `ord-${++this.orderCounter}`,
+        orderId: acknowledged.orderId,
         executionId: plan.executionId,
         contractId: plan.contractId,
         direction: plan.direction,

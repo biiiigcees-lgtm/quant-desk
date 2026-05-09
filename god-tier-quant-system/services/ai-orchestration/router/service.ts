@@ -1,5 +1,6 @@
 import { EventBus } from '../../../core/event-bus/bus.js';
 import { EVENTS } from '../../../core/event-bus/events.js';
+import { DecisionSnapshotEvent } from '../../../core/schemas/events.js';
 import { AGENT_SPECS } from '../agents/index.js';
 import {
   AgentCircuitBreakerOptions,
@@ -41,24 +42,21 @@ export class AiAgentRouterService {
       return;
     }
 
-    this.bus.on(EVENTS.MICROSTRUCTURE, (payload) => this.routeEvent(EVENTS.MICROSTRUCTURE, payload));
-    this.bus.on(EVENTS.PROBABILITY, (payload) => this.routeEvent(EVENTS.PROBABILITY, payload));
-    this.bus.on(EVENTS.EXECUTION_PLAN, (payload) => this.routeEvent(EVENTS.EXECUTION_PLAN, payload));
-    this.bus.on(EVENTS.ANOMALY, (payload) => this.routeEvent(EVENTS.ANOMALY, payload));
-    this.bus.on(EVENTS.DRIFT_EVENT, (payload) => this.routeEvent(EVENTS.DRIFT_EVENT, payload));
+    this.bus.on<DecisionSnapshotEvent>(EVENTS.DECISION_SNAPSHOT, (snapshot) => this.routeSnapshot(snapshot));
   }
 
-  private async routeEvent(triggerEvent: string, payload: unknown): Promise<void> {
-    const contractId = getContractId(payload, this.options.defaultContractId);
-    const agents = routeAgentsForTrigger(triggerEvent);
+  private async routeSnapshot(snapshot: DecisionSnapshotEvent): Promise<void> {
+    const agents = routeAgentsForTrigger(snapshot.triggerEvent);
     if (agents.length === 0) {
       return;
     }
 
-    const dedupeKey = `${triggerEvent}:${contractId}:${Math.floor(Date.now() / 1000)}`;
+    const dedupeKey = `${snapshot.triggerEvent}:${snapshot.snapshot_id}`;
     this.bus.emit(EVENTS.AI_ROUTING_DECISION, {
-      triggerEvent,
-      contractId,
+      triggerEvent: snapshot.triggerEvent,
+      contractId: snapshot.contractId,
+      snapshot_id: snapshot.snapshot_id,
+      market_state_hash: snapshot.market_state_hash,
       agents,
       dedupeKey,
       timestamp: Date.now(),
@@ -67,7 +65,7 @@ export class AiAgentRouterService {
     const tasks: Array<() => Promise<void>> = [];
     for (const agent of agents) {
       const spec = AGENT_SPECS[agent];
-      const agentKey = `${contractId}:${agent}`;
+      const agentKey = `${snapshot.contractId}:${agent}`;
       const now = Date.now();
       const lastRun = this.lastRunByAgentKey.get(agentKey) ?? 0;
       if (now - lastRun < spec.debounceMs) {
@@ -79,10 +77,12 @@ export class AiAgentRouterService {
         const requestId = `${agent}-${now}-${Math.random().toString(36).slice(2, 8)}`;
         const context: AgentTaskContext = {
           requestId,
-          contractId,
-          triggerEvent,
+          contractId: snapshot.contractId,
+          triggerEvent: snapshot.triggerEvent,
           timestamp: now,
-          payload,
+          snapshotId: snapshot.snapshot_id,
+          marketStateHash: snapshot.market_state_hash,
+          payload: snapshot,
         };
         await this.runAgent(spec.kind, context);
       });
@@ -99,6 +99,8 @@ export class AiAgentRouterService {
         agent,
         contractId: context.contractId,
         triggerEvent: context.triggerEvent,
+        snapshot_id: context.snapshotId,
+        market_state_hash: context.marketStateHash,
         error: 'circuit-open',
         timestamp: Date.now(),
       });
@@ -126,6 +128,8 @@ export class AiAgentRouterService {
       agent,
       contractId: context.contractId,
       triggerEvent: context.triggerEvent,
+      snapshot_id: context.snapshotId,
+      market_state_hash: context.marketStateHash,
       timestamp: context.timestamp,
     });
 
@@ -169,6 +173,8 @@ export class AiAgentRouterService {
           agent,
           contractId: context.contractId,
           triggerEvent: context.triggerEvent,
+          snapshot_id: context.snapshotId,
+          market_state_hash: context.marketStateHash,
           latencyMs,
           model: providerResult.model,
           promptTokens: providerResult.promptTokens,
@@ -188,6 +194,8 @@ export class AiAgentRouterService {
         agent,
         contractId: context.contractId,
         triggerEvent: context.triggerEvent,
+        snapshot_id: context.snapshotId,
+        market_state_hash: context.marketStateHash,
         error: (error as Error).message,
         timestamp: Date.now(),
       });
@@ -221,6 +229,8 @@ export class AiAgentRouterService {
       agent: result.agent,
       contractId: context.contractId,
       triggerEvent: context.triggerEvent,
+      snapshot_id: context.snapshotId,
+      market_state_hash: context.marketStateHash,
       output: result.output,
       metrics: result.metrics,
       timestamp: Date.now(),
@@ -230,6 +240,8 @@ export class AiAgentRouterService {
       agent: result.agent,
       contractId: context.contractId,
       triggerEvent: context.triggerEvent,
+      snapshot_id: context.snapshotId,
+      market_state_hash: context.marketStateHash,
       ...result.metrics,
       timestamp: Date.now(),
     });
@@ -274,14 +286,4 @@ function stableHash(payload: unknown): string {
     hash |= 0;
   }
   return hash.toString(16);
-}
-
-function getContractId(payload: unknown, fallback: string): string {
-  if (payload && typeof payload === 'object' && 'contractId' in payload) {
-    const value = (payload as { contractId?: unknown }).contractId;
-    if (typeof value === 'string' && value.length > 0) {
-      return value;
-    }
-  }
-  return fallback;
 }

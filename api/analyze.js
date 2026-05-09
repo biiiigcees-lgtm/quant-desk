@@ -1,3 +1,5 @@
+import { systemTruth } from './system-truth.js';
+
 // Model priority list — tries each in order, skips on 429/error
 const MODELS = [
   'nvidia/nemotron-3-super-120b-a12b:free',   // 120B, fast when available
@@ -56,10 +58,59 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
 
+  if (systemTruth.riskLevel === 'HIGH' || systemTruth.riskLevel === 'CRITICAL') {
+    return res.status(200).json({
+      blocked: true,
+      reason: 'EXECUTION_LOCKED: Risk level too high',
+      executionAllowed: false,
+      riskLevel: systemTruth.riskLevel,
+      snapshotId: systemTruth.snapshotId,
+    });
+  }
+
+  if (systemTruth.executionAllowed === false) {
+    return res.status(200).json({
+      blocked: true,
+      reason: 'EXECUTION_LOCKED: Execution disabled by system truth',
+      executionAllowed: false,
+      riskLevel: systemTruth.riskLevel,
+      snapshotId: systemTruth.snapshotId,
+    });
+  }
+
+  const requestBody = req.body ?? {};
+  const requestSnapshotId = requestBody.snapshotId;
+  const snapshotTimestamp = Number(requestBody.snapshotTimestamp);
+
+  if (typeof requestSnapshotId !== 'string' || !Number.isFinite(snapshotTimestamp)) {
+    return res.status(200).json({
+      stale: true,
+      reason: 'Missing or invalid snapshot metadata',
+      snapshotId: systemTruth.snapshotId,
+    });
+  }
+
+  const snapshotAge = Date.now() - snapshotTimestamp;
+  if (snapshotAge > 5000) {
+    return res.status(200).json({
+      stale: true,
+      reason: 'Snapshot too old — market state has changed',
+      snapshotId: systemTruth.snapshotId,
+    });
+  }
+
+  if (requestSnapshotId !== systemTruth.snapshotId) {
+    return res.status(200).json({
+      stale: true,
+      reason: 'Snapshot mismatch — market state has changed',
+      snapshotId: systemTruth.snapshotId,
+    });
+  }
+
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'OPENROUTER_API_KEY not configured' });
 
-  const { prompt, system } = req.body || {};
+  const { prompt, system } = requestBody;
   if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
   if (typeof prompt !== 'string' || prompt.length > 8000)
     return res.status(400).json({ error: 'Prompt exceeds maximum length' });
