@@ -2354,9 +2354,10 @@ function syncKalshiTargetUI() {
   const heroVal = document.getElementById('kTargetHeroVal');
   const heroPill = document.getElementById('kTargetHeroPill');
   if (input) {
+    const isEditing = document.activeElement === input;
     const hasManual = Number.isFinite(marketStore.kalshiManualTargetPrice) && marketStore.kalshiManualTargetPrice > 0;
     const nextValue = hasManual ? String(Math.round(marketStore.kalshiManualTargetPrice)) : '';
-    if (input.value !== nextValue) input.value = nextValue;
+    if (!isEditing && input.value !== nextValue) input.value = nextValue;
   }
   if (meta) {
     const manual = Number.isFinite(marketStore.kalshiManualTargetPrice) && marketStore.kalshiManualTargetPrice > 0;
