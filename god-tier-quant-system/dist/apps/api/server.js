@@ -7,6 +7,7 @@ export class ApiServer {
         this.port = port;
         this.server = null;
         this.latest = {};
+        this.orchestrationMetrics = [];
     }
     start() {
         this.bus.on(EVENTS.PROBABILITY, (event) => {
@@ -36,6 +37,16 @@ export class ApiServer {
         this.bus.on(EVENTS.ANOMALY, (event) => {
             this.latest.anomaly = event;
         });
+        this.bus.on(EVENTS.AI_AGGREGATED_INTELLIGENCE, (event) => {
+            this.latest.aiAggregatedIntelligence = event;
+        });
+        this.bus.on(EVENTS.AI_ORCHESTRATION_METRICS, (event) => {
+            this.orchestrationMetrics.unshift(event);
+            if (this.orchestrationMetrics.length > 100) {
+                this.orchestrationMetrics.pop();
+            }
+            this.latest.aiOrchestrationMetrics = this.orchestrationMetrics;
+        });
         this.server = http.createServer((req, res) => {
             const path = req.url ?? '/';
             if (path === '/health') {
@@ -56,6 +67,15 @@ export class ApiServer {
                     calibration: this.latest.calibration ?? null,
                     drift: this.latest.drift ?? null,
                     validation: this.latest.validation ?? null,
+                    aiAggregatedIntelligence: this.latest.aiAggregatedIntelligence ?? null,
+                }));
+                return;
+            }
+            if (path === '/orchestration') {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    aiAggregatedIntelligence: this.latest.aiAggregatedIntelligence ?? null,
+                    aiOrchestrationMetrics: this.latest.aiOrchestrationMetrics ?? [],
                 }));
                 return;
             }

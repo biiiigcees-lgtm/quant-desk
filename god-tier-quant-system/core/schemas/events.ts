@@ -269,3 +269,112 @@ export interface ResearchNoteEvent {
   tags: string[];
   timestamp: number;
 }
+
+export type AgentKind =
+  | 'market-analyst'
+  | 'probability-calibration'
+  | 'risk-governor'
+  | 'strategy-evolution'
+  | 'microstructure-intelligence'
+  | 'execution-intelligence'
+  | 'memory-research'
+  | 'anomaly-detection'
+  | 'meta-orchestrator';
+
+export interface AgentRequestEvent {
+  requestId: string;
+  agent: AgentKind;
+  contractId: string;
+  triggerEvent: string;
+  timestamp: number;
+}
+
+export interface AgentRunMetrics {
+  latencyMs: number;
+  model: string;
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
+  estimatedCostUsd?: number;
+  fallbackDepth: number;
+  cacheHit: boolean;
+}
+
+export interface AgentResponseEvent {
+  requestId: string;
+  agent: AgentKind;
+  contractId: string;
+  triggerEvent: string;
+  output: unknown;
+  metrics: AgentRunMetrics;
+  timestamp: number;
+}
+
+export interface AgentFailureEvent {
+  requestId: string;
+  agent: AgentKind;
+  contractId: string;
+  triggerEvent: string;
+  error: string;
+  timestamp: number;
+}
+
+export interface AgentRoutingDecisionEvent {
+  triggerEvent: string;
+  contractId: string;
+  agents: AgentKind[];
+  dedupeKey: string;
+  timestamp: number;
+}
+
+export interface AiOrchestrationMetricsEvent extends AgentRunMetrics {
+  agent: AgentKind;
+  contractId: string;
+  triggerEvent: string;
+  timestamp: number;
+}
+
+export interface MarketStateIntelligence {
+  regime: string;
+  narrative: string;
+  observations: string[];
+  confidence: number;
+}
+
+export interface ProbabilityAdjustmentIntelligence {
+  recommendedAdjustment: number;
+  calibrationScore: number;
+  overconfidenceDetected: boolean;
+}
+
+export interface RiskLevelIntelligence {
+  score: number;
+  recommendation: string;
+  confidence: number;
+}
+
+export interface ExecutionRecommendationIntelligence {
+  orderStyle: 'market' | 'passive' | 'sliced';
+  slices: number;
+  timingMs: number;
+  expectedSlippage: number;
+  fillProbability: number;
+  confidence: number;
+}
+
+export interface AnomalyFlagIntelligence {
+  type: string;
+  severity: string;
+  score: number;
+}
+
+export interface AggregatedIntelligenceEvent {
+  contractId: string;
+  market_state: MarketStateIntelligence;
+  probability_adjustment: ProbabilityAdjustmentIntelligence;
+  risk_level: RiskLevelIntelligence;
+  execution_recommendation: ExecutionRecommendationIntelligence;
+  anomaly_flags: AnomalyFlagIntelligence[];
+  strategy_weights: Record<string, number>;
+  timestamp: number;
+}

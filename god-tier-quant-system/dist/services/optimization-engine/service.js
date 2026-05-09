@@ -5,6 +5,7 @@ export class OptimizationEngine {
         this.ecology = ecology;
         this.signal = signal;
         this.blockedStrategies = new Set();
+        this.aiSuggestedWeights = {};
     }
     start() {
         this.bus.on(EVENTS.VALIDATION_RESULT, (event) => {
@@ -19,12 +20,20 @@ export class OptimizationEngine {
         this.bus.on(EVENTS.RECONCILIATION, () => {
             this.refreshWeights();
         });
+        this.bus.on(EVENTS.AI_AGGREGATED_INTELLIGENCE, (event) => {
+            this.aiSuggestedWeights = event.strategy_weights ?? {};
+            this.refreshWeights();
+        });
     }
     refreshWeights() {
         const fit = this.ecology.currentFitness();
         const adjusted = {};
         for (const [strategyId, weight] of Object.entries(fit)) {
-            adjusted[strategyId] = this.blockedStrategies.has(strategyId) ? 0 : weight;
+            const aiWeight = this.aiSuggestedWeights[strategyId];
+            const blendedWeight = typeof aiWeight === 'number' && aiWeight >= 0
+                ? weight * 0.8 + aiWeight * 0.2
+                : weight;
+            adjusted[strategyId] = this.blockedStrategies.has(strategyId) ? 0 : blendedWeight;
         }
         this.signal.updateStrategyWeights(adjusted);
     }

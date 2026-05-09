@@ -9,6 +9,8 @@ export class AdaptiveRiskEngine {
             timestamp: Date.now(),
         };
         this.executionDegradation = 0;
+        this.aiRiskLevel = 50;
+        this.aiRiskRecommendation = 'neutral';
         this.portfolio = {
             capital: initialCapital,
             exposure: 0,
@@ -76,6 +78,22 @@ export class AdaptiveRiskEngine {
                 this.bus.emit(EVENTS.EXECUTION_CONTROL, this.control);
             }
         });
+        this.bus.on(EVENTS.AI_AGGREGATED_INTELLIGENCE, (event) => {
+            const score = Number(event.risk_level?.score ?? 50);
+            this.aiRiskLevel = Math.max(0, Math.min(100, score));
+            const recommendation = event.risk_level?.recommendation;
+            this.aiRiskRecommendation =
+                recommendation === 'de-risk' || recommendation === 'scale-up' ? recommendation : 'neutral';
+            if (this.control.mode !== 'hard-stop' && this.aiRiskLevel >= 90) {
+                this.control = {
+                    contractId: event.contractId,
+                    mode: 'safe-mode',
+                    reason: 'ai-risk-caution',
+                    timestamp: event.timestamp ?? Date.now(),
+                };
+                this.bus.emit(EVENTS.EXECUTION_CONTROL, this.control);
+            }
+        });
         this.bus.on(EVENTS.AGGREGATED_SIGNAL, (signal) => {
             if (signal.direction === 'FLAT')
                 return;
@@ -97,7 +115,12 @@ export class AdaptiveRiskEngine {
             const liquidityFactor = signal.regime === 'low-liquidity' ? 0.4 : 1;
             const regimeConfidence = signal.regime === 'panic' ? 0.3 : 0.9;
             const calibrationThrottle = this.control.mode === 'safe-mode' ? 0.45 : 1;
-            const size = this.portfolio.capital * edge * liquidityFactor * regimeConfidence * this.riskLimit * calibrationThrottle;
+            const aiThrottle = this.aiRiskRecommendation === 'de-risk'
+                ? 0.6
+                : this.aiRiskRecommendation === 'scale-up' && this.aiRiskLevel < 40
+                    ? 1.05
+                    : 1;
+            const size = this.portfolio.capital * edge * liquidityFactor * regimeConfidence * this.riskLimit * calibrationThrottle * aiThrottle;
             const ruinProbability = this.estimateRuinProbability(edge, size);
             const approved = ruinProbability < 0.2 && this.portfolio.exposure + size < this.portfolio.capital * 0.35;
             const decision = {

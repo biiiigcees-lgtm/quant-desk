@@ -5,10 +5,42 @@ import { ExecutionPlan, ExecutionStateEvent, OrderEvent, RiskDecision } from '..
 export class ExecutionIntelligenceEngine {
   private readonly idempotency = new Set<string>();
   private readonly states = new Map<string, ExecutionStateEvent>();
+  private aiExecutionAdvisory: {
+    orderStyle: 'market' | 'passive' | 'sliced';
+    slices: number;
+    expectedSlippage: number;
+    fillProbability: number;
+    confidence: number;
+  } | null = null;
 
   constructor(private readonly bus: EventBus) {}
 
   start(): void {
+    this.bus.on(
+      EVENTS.AI_AGGREGATED_INTELLIGENCE,
+      (event: {
+        execution_recommendation?: {
+          orderStyle?: 'market' | 'passive' | 'sliced';
+          slices?: number;
+          expectedSlippage?: number;
+          fillProbability?: number;
+          confidence?: number;
+        };
+      }) => {
+        const exec = event.execution_recommendation;
+        if (!exec) {
+          return;
+        }
+        this.aiExecutionAdvisory = {
+          orderStyle: exec.orderStyle === 'passive' || exec.orderStyle === 'sliced' ? exec.orderStyle : 'market',
+          slices: Math.max(1, Math.min(10, Number(exec.slices ?? 1))),
+          expectedSlippage: Math.max(0, Math.min(1, Number(exec.expectedSlippage ?? 0.01))),
+          fillProbability: Math.max(0, Math.min(1, Number(exec.fillProbability ?? 0.5))),
+          confidence: Math.max(0, Math.min(1, Number(exec.confidence ?? 0))),
+        };
+      },
+    );
+
     this.bus.on<RiskDecision>(EVENTS.RISK_DECISION, (decision) => {
       const executionId = this.buildExecutionId(decision);
       if (!decision.approved || decision.size <= 0) {
@@ -47,6 +79,15 @@ export class ExecutionIntelligenceEngine {
         expectedSlippage = 0.008;
       }
       const fillProbability = orderStyle === 'passive' ? 0.72 : 0.93;
+
+      if (this.aiExecutionAdvisory && this.aiExecutionAdvisory.confidence >= 0.55 && decision.safetyMode !== 'hard-stop') {
+        orderStyle = this.aiExecutionAdvisory.orderStyle;
+        expectedSlippage = (expectedSlippage + this.aiExecutionAdvisory.expectedSlippage) / 2;
+      }
+      const advisorySlices = this.aiExecutionAdvisory ? this.aiExecutionAdvisory.slices : slices;
+      const advisoryFillProbability = this.aiExecutionAdvisory
+        ? (fillProbability + this.aiExecutionAdvisory.fillProbability) / 2
+        : fillProbability;
       const latencyBudgetMs = decision.safetyMode === 'hard-stop' ? 25 : orderStyle === 'market' ? 60 : orderStyle === 'passive' ? 110 : 80;
 
       const plan: ExecutionPlan = {
@@ -54,13 +95,13 @@ export class ExecutionIntelligenceEngine {
         contractId: decision.contractId,
         direction: decision.direction,
         orderStyle,
-        slices,
+        slices: Math.max(1, Math.min(10, advisorySlices)),
         expectedSlippage,
-        fillProbability,
+        fillProbability: advisoryFillProbability,
         limitPrice: decision.limitPrice,
         size: decision.size,
         latencyBudgetMs,
-        routeReason,
+        routeReason: this.aiExecutionAdvisory ? `${routeReason}+ai-advisory` : routeReason,
         safetyMode: decision.safetyMode,
         timestamp: Date.now(),
       };

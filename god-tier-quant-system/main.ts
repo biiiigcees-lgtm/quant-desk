@@ -30,6 +30,9 @@ import { AiIntelligenceService } from './services/ai-intelligence/service.js';
 import { AiMemoryService } from './services/ai-memory/service.js';
 import { AutonomousResearchService } from './services/autonomous-research/service.js';
 import { OptimizationEngine } from './services/optimization-engine/service.js';
+import { AiAgentRouterService } from './services/ai-orchestration/router/service.js';
+import { AiAggregationService } from './services/ai-orchestration/aggregation/service.js';
+import { OpenRouterProvider } from './services/ai-orchestration/providers/openrouter.js';
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -62,6 +65,20 @@ async function main(): Promise<void> {
   const aiMemory = new AiMemoryService(bus);
   const autonomousResearch = new AutonomousResearchService(bus);
   const optimization = new OptimizationEngine(bus, ecology, signal);
+  const aiAggregation = new AiAggregationService(bus);
+  const openRouterProvider = new OpenRouterProvider({
+    apiKey: config.openRouter.apiKey,
+    timeoutMs: config.openRouter.timeoutMs,
+    referer: config.openRouter.referer,
+    title: config.openRouter.title,
+    maxTokens: config.openRouter.maxTokens,
+    temperature: config.openRouter.temperature,
+  });
+  const aiRouter = new AiAgentRouterService(bus, openRouterProvider, {
+    enabled: config.orchestration.enabled,
+    defaultContractId: config.orchestration.defaultContractId,
+    scheduler: { maxParallel: config.orchestration.maxParallel },
+  });
   const api = new ApiServer(bus, config.apiHost, config.apiPort);
   const researchLab = new ResearchLabServer(bus, config.apiHost, config.apiPort + 1);
 
@@ -88,6 +105,8 @@ async function main(): Promise<void> {
   ai.start();
   aiMemory.start();
   autonomousResearch.start();
+  aiAggregation.start();
+  aiRouter.start();
 
   bus.on(EVENTS.TELEMETRY, (event: { name: string; value: number; tags?: Record<string, string>; timestamp: number }) => {
     metrics.record(event);
@@ -103,6 +122,7 @@ async function main(): Promise<void> {
   logger.info('god-tier-quant-system started', {
     api: `${config.apiHost}:${config.apiPort}`,
     researchLab: `${config.apiHost}:${config.apiPort + 1}`,
+    aiOrchestration: config.orchestration.enabled,
   });
 
   const shutdown = async () => {

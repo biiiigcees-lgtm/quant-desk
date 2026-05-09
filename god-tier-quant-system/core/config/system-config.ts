@@ -5,9 +5,23 @@ export interface SystemConfig {
   initialCapital: number;
   riskLimit: number;
   minEdge: number;
+  orchestration: {
+    enabled: boolean;
+    defaultContractId: string;
+    maxParallel: number;
+  };
+  openRouter: {
+    apiKey: string;
+    timeoutMs: number;
+    referer?: string;
+    title?: string;
+    maxTokens: number;
+    temperature: number;
+  };
 }
 
 export function loadConfig(): SystemConfig {
+  const openRouterApiKey = process.env.OPENROUTER_API_KEY ?? '';
   return {
     simulationMode: (process.env.SIMULATION_MODE ?? 'true').toLowerCase() === 'true',
     apiHost: process.env.API_HOST ?? '127.0.0.1',
@@ -15,5 +29,18 @@ export function loadConfig(): SystemConfig {
     initialCapital: Number(process.env.INITIAL_CAPITAL ?? 10000),
     riskLimit: Number(process.env.RISK_LIMIT ?? 0.02),
     minEdge: Number(process.env.MIN_EDGE ?? 0.01),
+    orchestration: {
+      enabled: (process.env.AI_ORCHESTRATION_ENABLED ?? (openRouterApiKey ? 'true' : 'false')).toLowerCase() === 'true',
+      defaultContractId: process.env.AI_ORCHESTRATION_DEFAULT_CONTRACT_ID ?? 'KXBTC-DEMO',
+      maxParallel: Number(process.env.AI_ORCHESTRATION_MAX_PARALLEL ?? 3),
+    },
+    openRouter: {
+      apiKey: openRouterApiKey,
+      timeoutMs: Number(process.env.OPENROUTER_TIMEOUT_MS ?? 9000),
+      referer: process.env.OPENROUTER_REFERER,
+      title: process.env.OPENROUTER_TITLE ?? 'god-tier-quant-system',
+      maxTokens: Number(process.env.OPENROUTER_MAX_TOKENS ?? 900),
+      temperature: Number(process.env.OPENROUTER_TEMPERATURE ?? 0.15),
+    },
   };
 }

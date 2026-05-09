@@ -10,6 +10,8 @@ export class AdaptiveRiskEngine {
     timestamp: Date.now(),
   };
   private executionDegradation = 0;
+  private aiRiskLevel = 50;
+  private aiRiskRecommendation: 'de-risk' | 'neutral' | 'scale-up' = 'neutral';
 
   constructor(private readonly bus: EventBus, initialCapital: number, private readonly riskLimit: number) {
     this.portfolio = {
@@ -82,6 +84,27 @@ export class AdaptiveRiskEngine {
       }
     });
 
+    this.bus.on(
+      EVENTS.AI_AGGREGATED_INTELLIGENCE,
+      (event: { risk_level?: { score?: number; recommendation?: string }; timestamp?: number; contractId?: string }) => {
+        const score = Number(event.risk_level?.score ?? 50);
+        this.aiRiskLevel = Math.max(0, Math.min(100, score));
+        const recommendation = event.risk_level?.recommendation;
+        this.aiRiskRecommendation =
+          recommendation === 'de-risk' || recommendation === 'scale-up' ? recommendation : 'neutral';
+
+        if (this.control.mode !== 'hard-stop' && this.aiRiskLevel >= 90) {
+          this.control = {
+            contractId: event.contractId,
+            mode: 'safe-mode',
+            reason: 'ai-risk-caution',
+            timestamp: event.timestamp ?? Date.now(),
+          };
+          this.bus.emit(EVENTS.EXECUTION_CONTROL, this.control);
+        }
+      },
+    );
+
     this.bus.on<AggregatedSignal>(EVENTS.AGGREGATED_SIGNAL, (signal) => {
       if (signal.direction === 'FLAT') return;
       if (this.control.mode === 'hard-stop') {
@@ -103,7 +126,14 @@ export class AdaptiveRiskEngine {
       const liquidityFactor = signal.regime === 'low-liquidity' ? 0.4 : 1;
       const regimeConfidence = signal.regime === 'panic' ? 0.3 : 0.9;
       const calibrationThrottle = this.control.mode === 'safe-mode' ? 0.45 : 1;
-      const size = this.portfolio.capital * edge * liquidityFactor * regimeConfidence * this.riskLimit * calibrationThrottle;
+      const aiThrottle =
+        this.aiRiskRecommendation === 'de-risk'
+          ? 0.6
+          : this.aiRiskRecommendation === 'scale-up' && this.aiRiskLevel < 40
+            ? 1.05
+            : 1;
+      const size =
+        this.portfolio.capital * edge * liquidityFactor * regimeConfidence * this.riskLimit * calibrationThrottle * aiThrottle;
 
       const ruinProbability = this.estimateRuinProbability(edge, size);
       const approved = ruinProbability < 0.2 && this.portfolio.exposure + size < this.portfolio.capital * 0.35;

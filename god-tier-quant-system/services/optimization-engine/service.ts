@@ -6,6 +6,7 @@ import { ValidationResultEvent } from '../../core/schemas/events.js';
 
 export class OptimizationEngine {
   private readonly blockedStrategies = new Set<string>();
+  private aiSuggestedWeights: Record<string, number> = {};
 
   constructor(
     private readonly bus: EventBus,
@@ -26,13 +27,23 @@ export class OptimizationEngine {
     this.bus.on(EVENTS.RECONCILIATION, () => {
       this.refreshWeights();
     });
+
+    this.bus.on(EVENTS.AI_AGGREGATED_INTELLIGENCE, (event: { strategy_weights?: Record<string, number> }) => {
+      this.aiSuggestedWeights = event.strategy_weights ?? {};
+      this.refreshWeights();
+    });
   }
 
   private refreshWeights(): void {
     const fit = this.ecology.currentFitness();
     const adjusted: Record<string, number> = {};
     for (const [strategyId, weight] of Object.entries(fit)) {
-      adjusted[strategyId] = this.blockedStrategies.has(strategyId) ? 0 : weight;
+      const aiWeight = this.aiSuggestedWeights[strategyId];
+      const blendedWeight =
+        typeof aiWeight === 'number' && aiWeight >= 0
+          ? weight * 0.8 + aiWeight * 0.2
+          : weight;
+      adjusted[strategyId] = this.blockedStrategies.has(strategyId) ? 0 : blendedWeight;
     }
     this.signal.updateStrategyWeights(adjusted);
   }
