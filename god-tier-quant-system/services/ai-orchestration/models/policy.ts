@@ -1,5 +1,7 @@
 import { AgentKind } from '../types.js';
 
+export type ModelEnvelope = 'cost' | 'balanced' | 'quality';
+
 export const MODEL_TIERS = {
   fast: ['openai/gpt-oss-20b:free', 'meta-llama/llama-3.3-70b-instruct:free'],
   reasoning: ['meta-llama/llama-3.3-70b-instruct:free', 'nousresearch/hermes-3-llama-3.1-405b:free'],
@@ -17,6 +19,44 @@ export const AGENT_MODEL_POLICY: Record<AgentKind, string[]> = {
   'anomaly-detection': [...MODEL_TIERS.fast],
   'meta-orchestrator': [...MODEL_TIERS.reasoning],
 };
+
+const AGENT_MODEL_POLICY_BY_ENVELOPE: Record<ModelEnvelope, Record<AgentKind, string[]>> = {
+  cost: {
+    'market-analyst': ['openai/gpt-oss-20b:free'],
+    'probability-calibration': ['meta-llama/llama-3.3-70b-instruct:free'],
+    'risk-governor': ['meta-llama/llama-3.3-70b-instruct:free'],
+    'strategy-evolution': ['meta-llama/llama-3.3-70b-instruct:free'],
+    'microstructure-intelligence': ['openai/gpt-oss-20b:free'],
+    'execution-intelligence': ['openai/gpt-oss-20b:free'],
+    'memory-research': ['meta-llama/llama-3.3-70b-instruct:free'],
+    'anomaly-detection': ['openai/gpt-oss-20b:free'],
+    'meta-orchestrator': ['meta-llama/llama-3.3-70b-instruct:free'],
+  },
+  balanced: AGENT_MODEL_POLICY,
+  quality: {
+    'market-analyst': ['meta-llama/llama-3.3-70b-instruct:free', 'openai/gpt-oss-20b:free'],
+    'probability-calibration': ['nousresearch/hermes-3-llama-3.1-405b:free', 'meta-llama/llama-3.3-70b-instruct:free'],
+    'risk-governor': ['nousresearch/hermes-3-llama-3.1-405b:free', 'meta-llama/llama-3.3-70b-instruct:free'],
+    'strategy-evolution': ['nousresearch/hermes-3-llama-3.1-405b:free', 'meta-llama/llama-3.3-70b-instruct:free'],
+    'microstructure-intelligence': ['meta-llama/llama-3.3-70b-instruct:free', 'openai/gpt-oss-20b:free'],
+    'execution-intelligence': ['nvidia/nemotron-3-super-120b-a12b:free', 'openai/gpt-oss-20b:free'],
+    'memory-research': ['nousresearch/hermes-3-llama-3.1-405b:free', 'meta-llama/llama-3.3-70b-instruct:free'],
+    'anomaly-detection': ['meta-llama/llama-3.3-70b-instruct:free', 'openai/gpt-oss-20b:free'],
+    'meta-orchestrator': ['nousresearch/hermes-3-llama-3.1-405b:free', 'meta-llama/llama-3.3-70b-instruct:free'],
+  },
+};
+
+export function getModelEnvelopeFromEnv(): ModelEnvelope {
+  const raw = (process.env.AI_MODEL_ENVELOPE ?? 'balanced').toLowerCase();
+  if (raw === 'cost' || raw === 'quality') {
+    return raw;
+  }
+  return 'balanced';
+}
+
+export function getAgentModelPolicy(envelope: ModelEnvelope = getModelEnvelopeFromEnv()): Record<AgentKind, string[]> {
+  return AGENT_MODEL_POLICY_BY_ENVELOPE[envelope];
+}
 
 // Approximate model costs used for runtime efficiency telemetry.
 export const MODEL_COST_USD_PER_1M_TOKENS: Record<string, { input: number; output: number }> = {

@@ -7,6 +7,7 @@ import { microstructureIntelligenceAgent } from './microstructure-intelligence.j
 import { probabilityCalibrationAgent } from './probability-calibration.js';
 import { riskGovernorAgent } from './risk-governor.js';
 import { strategyEvolutionAgent } from './strategy-evolution.js';
+import { getAgentModelPolicy, getModelEnvelopeFromEnv } from '../models/policy.js';
 export const AGENT_SPECS = {
     'market-analyst': marketAnalystAgent,
     'probability-calibration': probabilityCalibrationAgent,
@@ -18,3 +19,7 @@ export const AGENT_SPECS = {
     'anomaly-detection': anomalyDetectionAgent,
     'meta-orchestrator': metaOrchestratorAgent,
 };
+const envelopePolicy = getAgentModelPolicy(getModelEnvelopeFromEnv());
+for (const [kind, spec] of Object.entries(AGENT_SPECS)) {
+    spec.preferredModels = [...envelopePolicy[kind]];
+}
