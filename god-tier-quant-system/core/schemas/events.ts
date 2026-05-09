@@ -253,6 +253,10 @@ export interface SimulationUniverseEvent {
   scenarioCount: number;
   worstCasePnl: number;
   tailProbability: number;
+  executionPathDivergence: number;
+  candidateDivergences: Record<string, number>;
+  bestCandidatePlan: string;
+  mirrorConfidence: number;
   timestamp: number;
 }
 
@@ -366,6 +370,44 @@ export interface AnomalyFlagIntelligence {
   type: string;
   severity: string;
   score: number;
+}
+
+export interface BeliefNode {
+  id: string;
+  type: 'microstructure' | 'calibration' | 'drift' | 'anomaly' | 'regime';
+  belief: number;
+  confidence: number;
+  weight: number;
+  updatedAt: number;
+}
+
+export interface BeliefGraphEvent {
+  contractId: string;
+  nodes: BeliefNode[];
+  constitutionalAdjustment: number;
+  graphConfidence: number;
+  timestamp: number;
+}
+
+export type StrategyLifecyclePhase = 'birth' | 'growth' | 'maturity' | 'decay' | 'extinction';
+
+export interface StrategyLifecycleEvent {
+  strategyId: string;
+  phase: StrategyLifecyclePhase;
+  previousPhase: StrategyLifecyclePhase;
+  fitness: number;
+  auditScore: number;
+  reason: string;
+  timestamp: number;
+}
+
+export interface ExecutionPathMirrorEvent {
+  contractId: string;
+  actualStyle: string;
+  candidateDivergences: Record<string, number>;
+  bestCandidatePlan: string;
+  klDivergence: number;
+  timestamp: number;
 }
 
 export interface AggregatedIntelligenceEvent {

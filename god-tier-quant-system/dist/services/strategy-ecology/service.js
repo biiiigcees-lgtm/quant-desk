@@ -9,6 +9,9 @@ export class StrategyEcology {
         this.bus.on(EVENTS.PROBABILITY, (event) => {
             queueMicrotask(() => {
                 for (const strategy of this.strategies) {
+                    // Extinct strategies no longer participate in signal generation.
+                    if (strategy.lifecyclePhase === 'extinction')
+                        continue;
                     const signal = strategy.evaluate(event);
                     this.bus.emit(EVENTS.STRATEGY_SIGNAL, signal);
                 }
@@ -18,6 +21,11 @@ export class StrategyEcology {
             const strategy = this.strategies.find((s) => s.id === event.strategyId);
             if (strategy)
                 strategy.updateStats(event.pnl);
+        });
+        this.bus.on(EVENTS.STRATEGY_LIFECYCLE, (event) => {
+            const strategy = this.strategies.find((s) => s.id === event.strategyId);
+            if (strategy)
+                strategy.setLifecycle(event.phase);
         });
     }
     currentFitness() {
