@@ -101,7 +101,7 @@ canvas{width:100%;height:100%;display:block}
 .cross-neut{background:rgba(122,122,136,.1);color:var(--t2);border:1px solid var(--border)}
 
 /* ── SIGNALS STRIP ── */
-#sigs{display:grid;grid-template-columns:repeat(10,1fr);gap:1px;background:var(--border);flex-shrink:0}
+#sigs{display:grid;grid-template-columns:repeat(14,1fr);gap:1px;background:var(--border);flex-shrink:0}
 .sig{background:var(--bg2);padding:5px 2px;text-align:center}
 .sig-n{font-size:7px;color:var(--t3);letter-spacing:.3px;margin-bottom:2px}
 .sig-v{font-size:10px;font-weight:700}
@@ -366,6 +366,42 @@ canvas{width:100%;height:100%;display:block}
 .traj-title{font-size:8px;color:var(--t3);letter-spacing:.8px;margin-bottom:6px}
 .ai-status-loading{color:var(--t3);font-style:italic}
 .ai-status-error{color:var(--red)}
+
+/* ── KALSHI GOD-TIER COUNTDOWN ── */
+.k-arc-wrap{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);margin:4px 0}
+.k-arc-svg{overflow:visible;flex-shrink:0}
+.k-countdown-info{display:flex;flex-direction:column;gap:2px;flex:1}
+.k-countdown-val{font-size:22px;font-weight:700;letter-spacing:1px;font-variant-numeric:tabular-nums;line-height:1}
+.k-closes-at{font-size:8px;color:var(--t3);letter-spacing:.5px}
+.k-entry-guide{font-size:8px;font-weight:700;letter-spacing:.8px;text-align:center;padding:3px 6px;border-radius:2px;margin:3px 0}
+.eg-open{color:var(--green);background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.25)}
+.eg-caution{color:var(--amber);background:rgba(255,171,0,.08);border:1px solid rgba(255,171,0,.25)}
+.eg-closing{color:var(--red);background:rgba(255,23,68,.08);border:1px solid rgba(255,23,68,.25);animation:pulse .5s infinite}
+.k-agree-badge{font-size:7px;font-weight:700;padding:1px 5px;border-radius:2px;letter-spacing:.8px}
+.k-agree{background:rgba(0,230,118,.15);color:var(--green);border:1px solid rgba(0,230,118,.3)}
+.k-diverge{background:rgba(255,171,0,.15);color:var(--amber);border:1px solid rgba(255,171,0,.3)}
+.k-trend-arrow{font-size:11px;font-weight:700}
+.k-bid-ask-row{display:flex;justify-content:space-between;padding:3px 0;font-size:9px;border-bottom:1px solid var(--border)}
+.k-bid-lbl{color:var(--t3);font-size:8px}
+.k-bid-val{color:var(--green);font-weight:700}
+.k-ask-val{color:var(--red);font-weight:700}
+
+/* ── BET SIGNAL GOD-TIER ── */
+.bet-active-dur{font-size:8px;color:var(--cyan);letter-spacing:.5px;margin-bottom:2px;font-weight:600}
+.bet-sig-count{font-size:8px;color:var(--t3);letter-spacing:.3px;margin-bottom:3px}
+.bet-sig-mini-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-top:3px}
+.bet-sig-cell{height:5px;border-radius:1px;background:var(--bg3)}
+.bsc-bull{background:var(--green)}.bsc-bear{background:var(--red)}.bsc-neut{background:var(--amber)}
+.bet-nearest-row{font-size:8px;color:var(--t2);margin-bottom:3px;letter-spacing:.3px}
+.bet-missing-sigs{font-size:8px;color:var(--t3);line-height:1.6;margin-top:3px;border-top:1px solid var(--border);padding-top:3px}
+.bet-ev-row{font-size:9px;font-weight:700;padding:3px 6px;border-radius:2px;margin-bottom:4px;letter-spacing:.2px}
+.bet-ev-pos{color:var(--green);background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.2)}
+.bet-ev-neg{color:var(--red);background:rgba(255,23,68,.08);border:1px solid rgba(255,23,68,.2)}
+.bet-ev-neut{color:var(--t2);background:var(--bg2);border:1px solid var(--border)}
+.bet-timing-row{font-size:8px;font-weight:700;letter-spacing:.8px;padding:2px 6px;border-radius:2px;margin-bottom:6px;text-align:center}
+.bet-timing-open{color:var(--green);background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.2)}
+.bet-timing-caution{color:var(--amber);background:rgba(255,171,0,.08);border:1px solid rgba(255,171,0,.2)}
+.bet-timing-closing{color:var(--red);background:rgba(255,23,68,.08);border:1px solid rgba(255,23,68,.2);animation:pulse .6s infinite}
 </style>
 </head>
 <body>
@@ -499,6 +535,10 @@ canvas{width:100%;height:100%;display:block}
     <div class="sig"><div class="sig-n">STOCH</div><div class="sig-v sv-neut" id="s7">—</div></div>
     <div class="sig"><div class="sig-n">MOM</div><div class="sig-v sv-neut" id="s8">—</div></div>
     <div class="sig"><div class="sig-n">DELTA</div><div class="sig-v sv-neut" id="s9">—</div></div>
+    <div class="sig"><div class="sig-n">STOCH D</div><div class="sig-v sv-neut" id="s10">—</div></div>
+    <div class="sig"><div class="sig-n">KALMAN</div><div class="sig-v sv-neut" id="s11">—</div></div>
+    <div class="sig"><div class="sig-n">FUND</div><div class="sig-v sv-neut" id="s12">—</div></div>
+    <div class="sig"><div class="sig-n">ATR MOM</div><div class="sig-v sv-neut" id="s13">—</div></div>
   </div>
   <!-- Orderflow -->
   <div id="of-row">
@@ -635,17 +675,43 @@ canvas{width:100%;height:100%;display:block}
     <div class="pb">
       <div class="k-summary">
         <span class="k-summary-above">ABOVE <span class="num" id="kAp">—</span></span>
+        <span style="display:flex;align-items:center;gap:4px">
+          <span class="k-agree-badge k-agree" id="kAgreeBadge">AGREE</span>
+          <span class="k-trend-arrow" id="kTrendArrow">—</span>
+        </span>
         <span class="k-summary-below">BELOW <span class="num" id="kBp">—</span></span>
       </div>
       <div class="k-bar-wrap"><div class="k-above k-half" id="kABar"></div><div class="k-below k-half" id="kBBar"></div></div>
+      <!-- SVG Arc Countdown Ring -->
+      <div class="k-arc-wrap">
+        <svg class="k-arc-svg" width="80" height="80" viewBox="0 0 80 80">
+          <circle cx="40" cy="40" r="34" fill="none" stroke="#1e1e22" stroke-width="6"/>
+          <circle id="kArcRing" cx="40" cy="40" r="34" fill="none" stroke="var(--green)" stroke-width="6"
+            stroke-dasharray="213.6" stroke-dashoffset="0" stroke-linecap="round"
+            transform="rotate(-90 40 40)"/>
+          <text id="kArcTime" x="40" y="37" text-anchor="middle" font-family="IBM Plex Mono,monospace"
+            font-size="10" font-weight="700" fill="#eeeef5">—:——</text>
+          <text id="kArcPhase" x="40" y="50" text-anchor="middle" font-family="IBM Plex Mono,monospace"
+            font-size="6" font-weight="700" fill="#72727e" letter-spacing="1">OPEN</text>
+        </svg>
+        <div class="k-countdown-info">
+          <div class="k-countdown-val" id="kCountdown">—:——</div>
+          <div class="k-phase open" id="kPhase">OPEN</div>
+          <div class="k-closes-at" id="kClosesAt">CLOSES AT —</div>
+        </div>
+      </div>
+      <!-- Entry guidance -->
+      <div class="k-entry-guide eg-open" id="kEntryGuide">OPTIMAL ENTRY WINDOW</div>
+      <!-- Market rows -->
       <div class="mr"><span class="ml">KALSHI ABOVE</span><span class="mv num" id="kA">—</span></div>
       <div class="mr"><span class="ml">MODEL ABOVE</span><span class="mv num" id="kM">—</span></div>
       <div class="mr"><span class="ml">EDGE</span><span class="mv num" id="kE">—</span></div>
+      <div class="mr"><span class="ml">EV / $1 BET</span><span class="mv num" id="kEV">—</span></div>
       <div class="mr"><span class="ml">STRIKE</span><span class="mv num" id="kStr">—</span></div>
-      <div class="k-countdown-row">
-        <span class="k-countdown-lbl">ROUND CLOSES</span>
-        <span class="k-countdown-val" id="kCountdown">—:——</span>
-        <span class="k-phase open" id="kPhase">OPEN</span>
+      <!-- YES Bid / Ask -->
+      <div class="k-bid-ask-row">
+        <span><span class="k-bid-lbl">YES BID</span> <span class="k-bid-val" id="kYesBid">—</span></span>
+        <span><span class="k-bid-lbl">YES ASK</span> <span class="k-ask-val" id="kYesAsk">—</span></span>
       </div>
       <div class="k-edge num" id="kEdgeBox">—</div>
     </div>
@@ -728,6 +794,8 @@ var marketStore = {
   regime: 'NEUTRAL', pAbove: 0.5, pBelow: 0.5,
   verdict: 'ABOVE', confidence: 70,
   kalshiAbove: 50, kalshiBelow: 50,
+  kalshiBid: null, kalshiAsk: null, _kalshiHistory: [],
+  evAbove: 0, evBelow: 0, kalshiEV: 0,
   kellyFull: 0, kellyEdge: 0, kellyWR: 0,
   dataQuality: 1,
   calibrationBias: 0,
@@ -1307,10 +1375,19 @@ function computeIndicators() {
   // Only override if no live Kalshi data
   if (!marketStore._kalshiLive) { marketStore.kalshiAbove = ka; marketStore.kalshiBelow = 100 - ka; }
 
-  // ── Kelly ──
-  const edge = marketStore.pAbove - marketStore.kalshiAbove / 100;
-  const kf = Math.max(0, Math.min((marketStore.pAbove - (1 - marketStore.pAbove)) / 1, 0.25));
+  // ── Kelly (Kalshi-correct: uses YES ask/bid prices, not even-money) ──
+  const _yesAsk = Number.isFinite(marketStore.kalshiAsk) ? marketStore.kalshiAsk : marketStore.kalshiAbove / 100;
+  const _yesBid = Number.isFinite(marketStore.kalshiBid) ? marketStore.kalshiBid : marketStore.kalshiAbove / 100;
+  const _noBidImplied = 1 - _yesBid; // cost of buying NO (complement of YES bid)
+  const _evAbove = marketStore.pAbove - _yesAsk;       // EV per $1 buying YES
+  const _evBelow = marketStore.pBelow - _noBidImplied; // EV per $1 buying NO
+  const _kfAbove = _evAbove > 0 ? Math.min(0.25, _evAbove / Math.max(0.01, 1 - _yesAsk)) : 0;
+  const _kfBelow = _evBelow > 0 ? Math.min(0.25, _evBelow / Math.max(0.01, 1 - _noBidImplied)) : 0;
+  const kf = Math.max(_kfAbove, _kfBelow);
+  const edge = marketStore.pAbove >= 0.5 ? _evAbove : _evBelow;
   marketStore.kellyFull = kf; marketStore.kellyEdge = edge; marketStore.kellyWR = marketStore.pAbove;
+  marketStore.evAbove = _evAbove; marketStore.evBelow = _evBelow;
+  marketStore.kalshiEV = edge;
 
   // ── Bet signal (current cycle) ──
   marketStore.betData = computeBetSignal();
@@ -1348,8 +1425,9 @@ function computeIndicators() {
 
 function computeBetSignal() { // NOSONAR
   const s=marketStore;
-  const _emptyBet={active:false,alignment:0,bullSigs:0,verdict:'WAIT',conviction:0,
-    reasons:[],crossType:'NONE',emaSpread:s.emaSpread||0,slopeP:0,kEdge:0};
+  const _emptyBet={active:false,alignment:0,bullSigs:0,totalSignals:14,verdict:'WAIT',conviction:0,
+    reasons:[],crossType:'NONE',emaSpread:s.emaSpread||0,slopeP:0,kEdge:0,
+    ev:0,roundPhase:'open',signalActiveDuration:null,convictionNote:''};
   if(!s.candles.length||!s.price) return _emptyBet;
   const closes=s.candles.map(c=>c.close);
   const e9a=computeEMA(closes,9), e21a=computeEMA(closes,21);
@@ -1365,61 +1443,130 @@ function computeBetSignal() { // NOSONAR
   else if (crossedBear) crossType='DEATH_CROSS';
   else if (e9>e21) crossType='BULL_ALIGNED';
 
-  const bsigs=[
+  // ── 14-Signal ensemble ──
+  // Signals 1-10 (original)
+  const base10=[
     s.price>s.vwap, s.rsi>50&&s.rsi<75,
     s.macd>s.macdSig, e9>e21, s.cvd>0,
     slopeE9>0, slopeE21>0, slopeP>0,
-    (s.regime==='TRENDING'||s.regime==='VOL_EXPANSION')&&s.pAbove>=0.5, s.imbalance>0,
-  ].filter(Boolean).length;
-  const align=bsigs/10;
+    (s.regime==='TRENDING'||s.regime==='VOL_EXPANSION')&&s.pAbove>=0.5,
+    s.imbalance>0,
+  ];
+  const roughBull=base10.filter(Boolean).length>=5;
+  // Last bar price change for ATR momentum
+  const lastClose=closes[closes.length-1]||0;
+  const prev4Close=closes.length>=4?closes[closes.length-4]:lastClose;
+  const lastMove=lastClose-prev4Close;
+  // Signals 11-14 (new)
+  const sig11=roughBull?s.stoch>50:s.stoch<50;                                          // Stoch directional
+  const sig12=roughBull?(s.kalmanVelocity||0)>0:(s.kalmanVelocity||0)<0;               // Kalman velocity
+  const sig13=roughBull?(s.fundingRate||0)<-0.0001:(s.fundingRate||0)>0.0001;           // Funding alignment
+  const sig14=roughBull?(lastMove>0&&Math.abs(lastMove)>(s.atr||0)*0.3)               // ATR momentum
+                       :(lastMove<0&&Math.abs(lastMove)>(s.atr||0)*0.3);
+  const allSigs=[...base10,sig11,sig12,sig13,sig14];
+  const bsigs=allSigs.filter(Boolean).length;
+  const align=bsigs/14;
 
   const trajBull=slopeP>0&&slopeE9>0&&slopeE21>0;
   const trajBear=slopeP<0&&slopeE9<0&&slopeE21<0;
-  const kEdge=Math.abs(s.pAbove-s.kalshiAbove/100);
+  // Use actual Kalshi ask/bid for edge (not mid)
+  const yesAsk=Number.isFinite(s.kalshiAsk)?s.kalshiAsk:s.kalshiAbove/100;
+  const yesBid=Number.isFinite(s.kalshiBid)?s.kalshiBid:s.kalshiAbove/100;
+  const noBidImpl=1-yesBid;
+  const evAbove=s.pAbove-yesAsk;
+  const evBelow=s.pBelow-noBidImpl;
+  const kEdge=Math.max(Math.abs(evAbove),Math.abs(evBelow));
+
   const quality=Number.isFinite(s.dataQuality)?s.dataQuality:1;
   const confGate=clamp((s.confidence||0)/100,0.4,1);
   const probGate=0.63+((1-quality)*0.07);
-  const alignBullGate=0.68+((1-quality)*0.06);
-  const alignBearGate=0.32-((1-quality)*0.06);
+  // Gates scaled for /14 denominator (≈9.5/14 bull, ≈4.5/14 bear)
+  const alignBullGate=0.65+((1-quality)*0.06);
+  const alignBearGate=0.35-((1-quality)*0.06);
+  const edgeGate=0.04+((1-quality)*0.02);
 
   const isBull=align>=alignBullGate&&trajBull&&e9>e21&&slopeE9>0&&s.pAbove>=probGate;
   const isBear=align<=alignBearGate&&trajBear&&e9<e21&&slopeE9<0&&s.pBelow>=probGate;
-  const edgeGate=0.04+((1-quality)*0.02);
-  const active=(isBull||isBear)&&kEdge>=edgeGate&&quality>=0.55&&confGate>=0.5;
-  let verdict='WAIT';
-  if (isBull) verdict='ABOVE';
-  else if (isBear) verdict='BELOW';
-  const conviction=active?Math.round(clamp(Math.max(align,1-align)*quality*confGate*100,0,99)):0;
 
+  // ── Round phase awareness ──
+  const kRound=kalshiRound();
+  const {secsLeft,phase:roundPhase}=kRound;
+
+  // ── Signal lock (prevents direction flip within a round) ──
+  const roundBoundaryMs=Math.ceil(Date.now()/900000)*900000;
+  if(_signalLockRoundTs!==roundBoundaryMs){
+    _signalLockVerdict=null;
+    _signalLockRoundTs=roundBoundaryMs;
+  }
+
+  let rawVerdict='WAIT';
+  if(isBull) rawVerdict='ABOVE';
+  else if(isBear) rawVerdict='BELOW';
+
+  const rawActive=(isBull||isBear)&&kEdge>=edgeGate&&quality>=0.55&&confGate>=0.5;
+
+  // Apply lock: hold direction unless alignment strongly reversed
+  let verdict=rawVerdict;
+  if(rawActive&&rawVerdict!=='WAIT'){
+    if(!_signalLockVerdict) _signalLockVerdict=rawVerdict;
+    // Only allow flip if signal alignment is strong (>65% or <35%)
+    const strongReversal=align>0.65||align<0.35;
+    if(!strongReversal&&_signalLockVerdict&&_signalLockVerdict!==rawVerdict){
+      verdict=_signalLockVerdict; // maintain locked direction
+    }
+  } else if(!rawActive){
+    // Reset lock at round boundary (lock was already reset above via roundBoundaryMs check)
+  }
+  const active=rawActive;
+
+  // ── Signal active duration ──
+  if(active&&!_signalActiveTs) _signalActiveTs=Date.now();
+  if(!active) _signalActiveTs=null;
+  const signalActiveDuration=active&&_signalActiveTs?Math.floor((Date.now()-_signalActiveTs)/1000):null;
+
+  // ── Phase-aware conviction ──
+  let phaseConvMult=1.0, convictionNote='';
+  if(roundPhase==='closing'){phaseConvMult=0.65;convictionNote='CLOSING — HIGH RISK';}
+  else if(roundPhase==='caution'){phaseConvMult=0.85;convictionNote='LATE ENTRY (-15%)';}
+  const conviction=active?Math.round(clamp(Math.max(align,1-align)*quality*confGate*phaseConvMult*100,0,99)):0;
+
+  const isBullDir=verdict==='ABOVE';
+  const ev=isBullDir?evAbove:evBelow;
+
+  // ── Reasons ──
   const reasons=[];
   if(isBull||isBear){
     const d=isBull;
     const reasonsCore=[
       {t:d?'bull':'bear',txt:`EMA9 ${d?'>':'<'} EMA21 · ${Math.abs(s.emaSpread).toFixed(1)} bps spread`},
       {t:d?'bull':'bear',txt:`Trajectory slope ${slopeP>0?'▲':'▼'} ${Math.abs(slopeP).toFixed(1)}/bar`},
-      {t:d?'bull':'bear',txt:`${bsigs}/10 signals ${d?'bullish':'bearish'}`},
+      {t:d?'bull':'bear',txt:`${bsigs}/14 signals ${d?'bullish':'bearish'}`},
     ];
     if(crossedBull||crossedBear){
       reasonsCore.unshift({t:d?'bull':'bear',txt:`⚡ ${crossType.replace('_',' ')} — high-priority entry`});
     }
     const _regimeBull=['TRENDING','VOL_EXPANSION'],_regimeBear=['MEAN_REVERTING','RANGING'];
     const _regimeMatch=d?_regimeBull.includes(s.regime):_regimeBear.includes(s.regime);
-    let regimeType='warn';
-    if (_regimeMatch) regimeType=d?'bull':'bear';
-    let edgeType='warn';
-    if (kEdge>=0.08) edgeType=d?'bull':'bear';
-    let qualityType='warn';
-    if(quality>=0.75) qualityType=d?'bull':'bear';
+    let regimeType='warn'; if(_regimeMatch) regimeType=d?'bull':'bear';
+    let edgeType='warn'; if(kEdge>=0.08) edgeType=d?'bull':'bear';
+    let qualityType='warn'; if(quality>=0.75) qualityType=d?'bull':'bear';
     reasonsCore.push(
       {t:regimeType,txt:`Regime: ${s.regime.replaceAll('_',' ')} ${_regimeMatch?'✓':'⚠'}`},
       {t:edgeType,txt:`Kalshi edge ${(kEdge*100).toFixed(1)}% ${kEdge>=0.08?'— strong':'— moderate'}`},
       {t:qualityType,txt:`Feed quality ${(quality*100).toFixed(0)}% · confidence ${s.confidence||0}%`}
     );
+    // Kalman velocity reason
+    const kVel=s.kalmanVelocity||0;
+    const kVelOk=d?kVel>0:kVel<0;
+    reasonsCore.push({t:kVelOk?(d?'bull':'bear'):'warn',
+      txt:`Kalman velocity ${kVel>0?'▲':'▼'} ${Math.abs(kVel).toFixed(2)}/tick ${kVelOk?'✓':'⚠ diverging'}`});
+    if(convictionNote) reasonsCore.push({t:'warn',txt:`⚠ ${convictionNote}`});
     reasons.push(...reasonsCore);
   }
 
-  return {active,verdict,conviction,bullSigs:bsigs,alignment:align,crossType,reasons,
-    emaSpread:s.emaSpread,slopeP,kEdge};
+  return {active,verdict,conviction,bullSigs:bsigs,totalSignals:14,alignment:align,
+    crossType,reasons,emaSpread:s.emaSpread,slopeP,kEdge,
+    ev,evAbove,evBelow,roundPhase,signalActiveDuration,convictionNote};
 }
 
 // ─────────────────────────────────────────────
@@ -1811,7 +1958,52 @@ function playSignalBeep(direction){
 let _soundEnabled=true;
 let _lastSignalVerdict=null;
 let _signalAlertTimer=null;
+// Signal lock — prevents direction flip-flop within a round
+let _signalLockVerdict=null;
+let _signalLockRoundTs=null;
+let _signalActiveTs=null;
 // ── Kalshi 15-min round countdown helper ──
+function updateKalshiCountdownDisplay(kr) {
+  const {secsLeft,mmss,phase}=kr;
+  // SVG arc (circumference of r=34 circle ≈ 213.6)
+  const arc=document.getElementById('kArcRing');
+  if(arc){
+    const circ=213.6;
+    arc.setAttribute('stroke-dashoffset',(circ*(1-secsLeft/900)).toFixed(2));
+    arc.setAttribute('stroke',phase==='closing'?'var(--red)':phase==='caution'?'var(--amber)':'var(--green)');
+  }
+  const arcTxt=document.getElementById('kArcTime');
+  if(arcTxt){
+    arcTxt.textContent=mmss;
+    arcTxt.setAttribute('fill',phase==='closing'?'#ff1744':phase==='caution'?'#ffab00':'#eeeef5');
+  }
+  const arcPhase=document.getElementById('kArcPhase');
+  if(arcPhase){
+    arcPhase.textContent=phase==='closing'?'CLOSING':phase==='caution'?'CAUTION':'OPEN';
+    arcPhase.setAttribute('fill',phase==='closing'?'#ff1744':phase==='caution'?'#ffab00':'#00e676');
+  }
+  // Closes-at text
+  const closesEl=document.getElementById('kClosesAt');
+  if(closesEl){
+    const nextMs=Math.ceil(Date.now()/900000)*900000;
+    const d=new Date(nextMs);
+    closesEl.textContent=`CLOSES AT ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+  }
+  // Entry guidance
+  const guideEl=document.getElementById('kEntryGuide');
+  if(guideEl){
+    if(secsLeft<=120){guideEl.textContent='CLOSING — LOCK BET / WAIT NEXT';guideEl.className='k-entry-guide eg-closing';}
+    else if(secsLeft<=300){guideEl.textContent='CAUTION ZONE — LATE ENTRY';guideEl.className='k-entry-guide eg-caution';}
+    else{guideEl.textContent='OPTIMAL ENTRY WINDOW';guideEl.className='k-entry-guide eg-open';}
+  }
+  // Keep legacy kCountdown/kPhase for renderAll compat
+  const cdEl=document.getElementById('kCountdown');
+  if(cdEl){cdEl.textContent=mmss;cdEl.style.color=phase==='closing'?'var(--red)':phase==='caution'?'var(--amber)':'var(--green)';}
+  const phEl=document.getElementById('kPhase');
+  if(phEl){phEl.textContent=phase==='closing'?'CLOSING':phase==='caution'?'CAUTION':'OPEN';phEl.className='k-phase '+phase;}
+}
+setInterval(()=>updateKalshiCountdownDisplay(kalshiRound()),250);
+
 function kalshiRound() {
   const now = Date.now();
   const roundMs = 900000; // 15 min in ms
@@ -1866,6 +2058,15 @@ async function fetchKalshiLive(){
     marketStore.kalshiBelow=100-above;
     marketStore._kalshiLive=true;
     marketStore._kalshiTs=Date.now();
+    // Store raw bid/ask for correct EV/Kelly calculations
+    const normBid=Number.isFinite(bid)?(bid>1.5?bid/100:bid):null;
+    const normAsk=Number.isFinite(ask)?(ask>1.5?ask/100:ask):null;
+    if(Number.isFinite(normBid)&&normBid>0&&normBid<1) marketStore.kalshiBid=normBid;
+    if(Number.isFinite(normAsk)&&normAsk>0&&normAsk<1) marketStore.kalshiAsk=normAsk;
+    // Track mid history for trend arrow
+    if(!Array.isArray(marketStore._kalshiHistory)) marketStore._kalshiHistory=[];
+    marketStore._kalshiHistory.push({mid,ts:Date.now()});
+    if(marketStore._kalshiHistory.length>10) marketStore._kalshiHistory.shift();
   }catch(e){
     console.debug('kalshi fetch skipped:', e?.message || e);
   }
@@ -2164,6 +2365,15 @@ function renderAll(){ // NOSONAR
   if (s.aggression > 0.1) agClass='sv-bull';
   else if (s.aggression < -0.1) agClass='sv-bear';
   sigsData.push({v:(s.aggression*100).toFixed(0)+'%',c:agClass});
+  // Signals 11-14 (new)
+  sigsData.push({v:s.stoch>50?'BULL':'BEAR',c:s.stoch>50?'sv-bull':'sv-bear'});
+  const kVelVal=s.kalmanVelocity||0;
+  sigsData.push({v:kVelVal>0?'▲'+kVelVal.toFixed(1):'▼'+Math.abs(kVelVal).toFixed(1),c:kVelVal>0?'sv-bull':'sv-bear'});
+  const frVal=s.fundingRate||0;
+  sigsData.push({v:frVal<-0.0001?'BULL':frVal>0.0001?'BEAR':'NEUT',c:frVal<-0.0001?'sv-bull':frVal>0.0001?'sv-bear':'sv-neut'});
+  const atrMomVal=s.atr&&s.candles.length>=4?s.price-s.candles[s.candles.length-4].close:0;
+  const atrMomBull=atrMomVal>(s.atr||0)*0.3,atrMomBear=atrMomVal<-(s.atr||0)*0.3;
+  sigsData.push({v:atrMomBull?'BULL':atrMomBear?'BEAR':'NEUT',c:atrMomBull?'sv-bull':atrMomBear?'sv-bear':'sv-neut'});
   sigsData.forEach((d,i)=>{const el=document.getElementById('s'+i);if(el){el.textContent=d.v;el.className='sig-v '+d.c;}});
 
   // OHLC
@@ -2266,32 +2476,44 @@ function renderAll(){ // NOSONAR
   const kab=document.getElementById('kABar'),kbb=document.getElementById('kBBar');
   if(kab){kab.style.width=s.kalshiAbove+'%';} if(kbb){kbb.style.width=s.kalshiBelow+'%';}
   setTxt('kA',s.kalshiAbove+'%'); setTxt('kM',(s.pAbove*100).toFixed(1)+'%');
-  const edge=s.pAbove-s.kalshiAbove/100;
+  // Use ask-based edge for display (same as Kelly calc)
+  const _dispYesAsk=Number.isFinite(s.kalshiAsk)?s.kalshiAsk:s.kalshiAbove/100;
+  const _dispIsBull=s.pAbove>=0.5;
+  const edge=_dispIsBull?s.pAbove-_dispYesAsk:s.pBelow-(1-(Number.isFinite(s.kalshiBid)?s.kalshiBid:s.kalshiAbove/100));
   const ke=document.getElementById('kE');
   if(ke){ke.textContent=(edge>=0?'+':'')+((edge*100).toFixed(1))+'%';ke.style.color=edge>0?'var(--green)':'var(--red)';}
   setTxt('kStr',p?'$'+p.toLocaleString(undefined,{maximumFractionDigits:0}):'—');
-  // Live 15-min round countdown
-  const kRound = kalshiRound();
-  const cdEl = document.getElementById('kCountdown');
-  const phEl = document.getElementById('kPhase');
-  if (cdEl) {
-    cdEl.textContent = kRound.mmss;
-    if (kRound.phase === 'closing') cdEl.style.color = 'var(--red)';
-    else if (kRound.phase === 'caution') cdEl.style.color = 'var(--amber)';
-    else cdEl.style.color = 'var(--green)';
+  // EV display
+  const kEvEl=document.getElementById('kEV');
+  if(kEvEl){const ev=s.kalshiEV||0;kEvEl.textContent=(ev>=0?'+':'')+((ev*100).toFixed(1))+'¢';kEvEl.style.color=ev>0.01?'var(--green)':ev<-0.01?'var(--red)':'var(--t2)';}
+  // YES bid/ask display
+  const kBidEl=document.getElementById('kYesBid'),kAskEl=document.getElementById('kYesAsk');
+  if(kBidEl) kBidEl.textContent=Number.isFinite(s.kalshiBid)?(s.kalshiBid*100).toFixed(0)+'¢':'—';
+  if(kAskEl) kAskEl.textContent=Number.isFinite(s.kalshiAsk)?(s.kalshiAsk*100).toFixed(0)+'¢':'—';
+  // Kalshi trend arrow (from history)
+  const kTrendEl=document.getElementById('kTrendArrow');
+  if(kTrendEl&&Array.isArray(s._kalshiHistory)&&s._kalshiHistory.length>=3){
+    const hist=s._kalshiHistory;
+    const diff=hist[hist.length-1].mid-hist[hist.length-3].mid;
+    kTrendEl.textContent=diff>0.005?'↑':diff<-0.005?'↓':'→';
+    kTrendEl.style.color=diff>0.005?'var(--green)':diff<-0.005?'var(--red)':'var(--t2)';
   }
-  if (phEl) {
-    const phaseLabel = kRound.phase === 'closing' ? 'CLOSING' : kRound.phase === 'caution' ? 'CAUTION' : 'OPEN';
-    phEl.textContent = phaseLabel;
-    phEl.className = 'k-phase ' + kRound.phase;
+  // Market-model agreement badge
+  const agreeBadge=document.getElementById('kAgreeBadge');
+  if(agreeBadge){
+    const mktBull=s.kalshiAbove>50,mdlBull=s.pAbove>0.5,agrees=mktBull===mdlBull;
+    agreeBadge.textContent=agrees?'AGREE':'DIVERGE';
+    agreeBadge.className='k-agree-badge '+(agrees?'k-agree':'k-diverge');
   }
+  // Countdown handled by dedicated 250ms interval — skip redundant update here
   const keb=document.getElementById('kEdgeBox');
   if(keb){
-    if (edge > 0.05) keb.textContent=`▲ EDGE +${(edge*100).toFixed(1)}% — BET ABOVE`;
-    else if (edge < -0.05) keb.textContent=`▼ EDGE ${(edge*100).toFixed(1)}% — BET BELOW`;
+    const rawEdge=s.pAbove-s.kalshiAbove/100;
+    if (rawEdge > 0.05) keb.textContent=`▲ EDGE +${(rawEdge*100).toFixed(1)}% — BET ABOVE`;
+    else if (rawEdge < -0.05) keb.textContent=`▼ EDGE ${(rawEdge*100).toFixed(1)}% — BET BELOW`;
     else keb.textContent='— NO SIGNIFICANT EDGE —';
-    if (edge > 0) keb.style.color='var(--green)';
-    else if (edge < 0) keb.style.color='var(--red)';
+    if (rawEdge > 0) keb.style.color='var(--green)';
+    else if (rawEdge < 0) keb.style.color='var(--red)';
     else keb.style.color='var(--t2)';
   }
 
@@ -2528,82 +2750,126 @@ function renderBetSignal(){ // NOSONAR
   if(!bet||!marketStore.price) return;
 
   setTxt('betTs','Updated '+new Date().toLocaleTimeString());
-  let col='var(--t2)';
-  let stateClass='neut';
-  if (bet.verdict==='ABOVE') {
-    col='var(--green)';
-    stateClass='up';
-  } else if (bet.verdict==='BELOW') {
-    col='var(--red)';
-    stateClass='dn';
-  }
+  let col='var(--t2)', stateClass='neut';
+  if(bet.verdict==='ABOVE'){col='var(--green)';stateClass='up';}
+  else if(bet.verdict==='BELOW'){col='var(--red)';stateClass='dn';}
+
+  const totalSigs=bet.totalSignals||14;
+  const _esc=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
 
   if(bet.active){
+    // ── LEFT: badge + conviction + mini signal grid ──
     const bc=bet.verdict==='ABOVE'?'bb-above':'bb-below';
+    const dur=bet.signalActiveDuration;
+    const durTxt=dur!=null?(dur<60?`ACTIVE ${dur}s`:`ACTIVE ${Math.floor(dur/60)}:${String(dur%60).padStart(2,'0')}`):'NEW SIGNAL ★';
+    const onClass=bet.verdict==='ABOVE'?'bsc-bull':'bsc-bear';
+    let cells='';
+    for(let i=0;i<totalSigs;i++) cells+=`<div class="bet-sig-cell ${i<(bet.bullSigs||0)?onClass:''}"></div>`;
     leftEl.innerHTML=`<div class="bet-badge ${bc}">${bet.verdict}</div>
-    <div class="conv-bar-wrap"><div class="conv-bar" id="betConvBar"></div></div>
-    <div class="conv-meta-row"><span class="conv-meta-label">CONVICTION</span><span class="conv-meta-value ${stateClass}">${bet.conviction}%</span></div>
-    <div class="conv-note">HIGH CONVICTION</div>`;
-    const betConvBar=leftEl.querySelector('#betConvBar');
-    if(betConvBar){betConvBar.style.width=bet.conviction+'%';betConvBar.style.background=col;}
+      <div class="conv-bar-wrap"><div class="conv-bar" id="betConvBar"></div></div>
+      <div class="conv-meta-row"><span class="conv-meta-label">CONVICTION</span><span class="conv-meta-value ${stateClass}">${bet.conviction}%</span></div>
+      <div class="bet-active-dur">${durTxt}</div>
+      <div class="bet-sig-count">${bet.bullSigs||0}/${totalSigs} SIGNALS</div>
+      <div class="bet-sig-mini-grid">${cells}</div>`;
+    const bar=leftEl.querySelector('#betConvBar');
+    if(bar){bar.style.width=bet.conviction+'%';bar.style.background=col;}
 
-    const _esc=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+    // ── CENTER: reasons ──
     const reasonsHtml=(bet.reasons||[]).map(r=>`<div class="reason r-${r.t}"><div class="rdot"></div><div class="rtxt">${_esc(r.txt)}</div></div>`).join('');
-    centerEl.innerHTML=`<div class="signal-title ${stateClass}">⚡ SIGNAL ACTIVE — ${bet.verdict}</div><div class="reason-list">${reasonsHtml}</div><div class="signal-detail ${stateClass}"><span class="signal-label">CROSS: </span><span class="signal-strong ${stateClass}">${(bet.crossType||'').replace('_',' ')}</span><span class="signal-label-spread">SPREAD: </span><span class="signal-strong txt-cyan">${Math.abs(bet.emaSpread||0).toFixed(1)} bps</span></div>`;
+    centerEl.innerHTML=`<div class="signal-title ${stateClass}">⚡ SIGNAL ACTIVE — ${bet.verdict}</div>
+      <div class="reason-list">${reasonsHtml}</div>
+      <div class="signal-detail ${stateClass}">
+        <span class="signal-label">CROSS: </span><span class="signal-strong ${stateClass}">${(bet.crossType||'').replace('_',' ')}</span>
+        <span class="signal-label-spread">SPREAD: </span><span class="signal-strong txt-cyan">${Math.abs(bet.emaSpread||0).toFixed(1)} bps</span>
+      </div>`;
+
+    // ── EV + Timing display ──
+    const evCents=((bet.ev||0)*100).toFixed(1);
+    const evClass=bet.ev>0.01?'bet-ev-pos':bet.ev<-0.01?'bet-ev-neg':'bet-ev-neut';
+    const evTxt=bet.ev>0.01?`EV: +${evCents}¢ / $1 — positive edge`:bet.ev<-0.01?`EV: ${evCents}¢ / $1 — negative edge`:`EV: ~0¢ — no edge`;
+    const phase=bet.roundPhase||'open';
+    let timingTxt,timingClass;
+    if(phase==='closing'){timingTxt='CLOSING — LOCK BET';timingClass='bet-timing-closing';}
+    else if(phase==='caution'){timingTxt='CAUTION — LATE ENTRY';timingClass='bet-timing-caution';}
+    else{timingTxt='OPTIMAL ENTRY';timingClass='bet-timing-open';}
+
+    const rightEl2=document.getElementById('betRight');
+    if(rightEl2){
+      rightEl2.innerHTML=`<div class="section-kicker">CONVICTION METRICS</div>
+        <div class="bet-ev-row ${evClass}">${evTxt}</div>
+        <div class="bet-timing-row ${timingClass}">${timingTxt}</div>
+        <div class="mr"><span class="ml">SIGNAL ALIGN</span><span class="mv num" id="bm0">—</span></div>
+        <div class="mr"><span class="ml">EMA9/21 SPREAD</span><span class="mv num" id="bm1">—</span></div>
+        <div class="mr"><span class="ml">TRAJ SLOPE</span><span class="mv num" id="bm2">—</span></div>
+        <div class="mr"><span class="ml">REGIME</span><span class="mv num" id="bm3">—</span></div>
+        <div class="mr"><span class="ml">KALSHI EDGE</span><span class="mv num" id="bm4">—</span></div>
+        <div class="mr mr-no-border"><span class="ml">REC SIZE</span><span class="mv num txt-amber" id="bm5">—</span></div>`;
+    }
   } else {
+    // ── MONITORING state ──
     const alignPct=Math.round((bet.alignment||0)*100);
     const alignCol=(bet.alignment||0)>=.5?'var(--green)':'var(--red)';
+    const needed=Math.ceil(totalSigs*0.65);
+    const needMore=Math.max(0,needed-(bet.bullSigs||0));
+    let cells2='';
+    for(let i=0;i<totalSigs;i++) cells2+=`<div class="bet-sig-cell ${i<(bet.bullSigs||0)?'bsc-neut':''}"></div>`;
     leftEl.innerHTML=`<div class="bet-badge bb-wait">MONITORING</div>
-    <div class="conv-bar-wrap conv-bar-wrap-top"><div class="conv-bar" id="betAlignBar"></div></div>
-    <div class="bet-wait-note">${bet.bullSigs||0}/10 signals · waiting</div>`;
-    const betAlignBar=leftEl.querySelector('#betAlignBar');
-    if(betAlignBar){betAlignBar.style.width=alignPct+'%';betAlignBar.style.background=alignCol;}
+      <div class="conv-bar-wrap conv-bar-wrap-top"><div class="conv-bar" id="betAlignBar"></div></div>
+      <div class="bet-wait-note">${bet.bullSigs||0}/${totalSigs} signals · waiting</div>
+      <div class="bet-nearest-row">NEED ${needed}/${totalSigs}${needMore>0?` — ${needMore} more`:' ✓'}</div>
+      <div class="bet-sig-mini-grid">${cells2}</div>`;
+    const aBar=leftEl.querySelector('#betAlignBar');
+    if(aBar){aBar.style.width=alignPct+'%';aBar.style.background=alignCol;}
 
     const closes=marketStore.candles.map(c=>c.close);
-    const e9a=computeEMA(closes,9), e21a=computeEMA(closes,21);
-    const slopeE9=trajectorySlope(e9a,6), slopeE21=trajectorySlope(e21a,6);
+    const e9a=computeEMA(closes,9),e21a=computeEMA(closes,21);
+    const slopeE9=trajectorySlope(e9a,6),slopeE21=trajectorySlope(e21a,6);
     const slopeP=marketStore.trajectorySlope;
-    const e9=e9a[e9a.length-1]||0, e21=e21a[e21a.length-1]||0;
+    const e9=e9a[e9a.length-1]||0,e21=e21a[e21a.length-1]||0;
     let spreadClass='dn';
-    if (Math.abs(marketStore.emaSpread)<1) spreadClass='txt-amber';
-    else if (e9>e21) spreadClass='up';
+    if(Math.abs(marketStore.emaSpread)<1) spreadClass='txt-amber';
+    else if(e9>e21) spreadClass='up';
+    // Missing signals (top 3 needed for bull direction)
+    const ms=marketStore;
+    const lastC=closes[closes.length-1]||0,prev4=closes.length>=4?closes[closes.length-4]:lastC;
+    const lm=lastC-prev4;
+    const sigNames=['Price>VWAP','RSI 50-75','MACD Bull','EMA9>EMA21','CVD+','EMA9 Slope▲','EMA21 Slope▲','Price Slope▲','Regime OK','OB Imbal','Stoch>50','Kalman▲','Fund Align','ATR Mom'];
+    const sigVals=[ms.price>ms.vwap,ms.rsi>50&&ms.rsi<75,ms.macd>ms.macdSig,e9>e21,ms.cvd>0,slopeE9>0,slopeE21>0,slopeP>0,(ms.regime==='TRENDING'||ms.regime==='VOL_EXPANSION')&&ms.pAbove>=0.5,ms.imbalance>0,ms.stoch>50,(ms.kalmanVelocity||0)>0,(ms.fundingRate||0)<-0.0001,lm>0&&Math.abs(lm)>(ms.atr||0)*0.3];
+    const missing=sigNames.filter((_,i)=>!sigVals[i]).slice(0,3);
+    const missingHtml=missing.length?`<div class="bet-missing-sigs">Missing: ${missing.join(' · ')}</div>`:'';
     centerEl.innerHTML=`<div class="traj-title">TRAJECTORY ANALYSIS</div>
-    <div class="traj-row"><div class="traj-ico">${slopeE9>0?'📈':'📉'}</div><div><div class="traj-lbl">EMA9 TRAJECTORY</div><div class="traj-val ${slopeE9>0?'up':'dn'}">${slopeE9>0?'▲':'▼'} ${Math.abs(slopeE9).toFixed(2)}/bar · $${e9.toFixed(0)}</div></div></div>
-    <div class="traj-row"><div class="traj-ico">${slopeE21>0?'📈':'📉'}</div><div><div class="traj-lbl">EMA21 TRAJECTORY</div><div class="traj-val ${slopeE21>0?'up':'dn'}">${slopeE21>0?'▲':'▼'} ${Math.abs(slopeE21).toFixed(2)}/bar · $${e21.toFixed(0)}</div></div></div>
-    <div class="traj-row"><div class="traj-ico">🎯</div><div><div class="traj-lbl">PRICE TRAJECTORY</div><div class="traj-val ${slopeP>0?'up':'dn'}">${slopeP>0?'▲':'▼'} ${Math.abs(slopeP).toFixed(2)}/bar</div></div></div>
-    <div class="traj-row"><div class="traj-ico">⚡</div><div><div class="traj-lbl">EMA SPREAD</div><div class="traj-val ${spreadClass}">${Math.abs(marketStore.emaSpread)<1?'CONVERGING — cross imminent':Math.abs(marketStore.emaSpread).toFixed(1)+' bps '+marketStore.emaCross.replace('_',' ')}</div></div></div>`;
+      <div class="traj-row"><div class="traj-ico">${slopeE9>0?'📈':'📉'}</div><div><div class="traj-lbl">EMA9 TRAJECTORY</div><div class="traj-val ${slopeE9>0?'up':'dn'}">${slopeE9>0?'▲':'▼'} ${Math.abs(slopeE9).toFixed(2)}/bar · $${e9.toFixed(0)}</div></div></div>
+      <div class="traj-row"><div class="traj-ico">${slopeE21>0?'📈':'📉'}</div><div><div class="traj-lbl">EMA21 TRAJECTORY</div><div class="traj-val ${slopeE21>0?'up':'dn'}">${slopeE21>0?'▲':'▼'} ${Math.abs(slopeE21).toFixed(2)}/bar · $${e21.toFixed(0)}</div></div></div>
+      <div class="traj-row"><div class="traj-ico">🎯</div><div><div class="traj-lbl">PRICE TRAJECTORY</div><div class="traj-val ${slopeP>0?'up':'dn'}">${slopeP>0?'▲':'▼'} ${Math.abs(slopeP).toFixed(2)}/bar</div></div></div>
+      <div class="traj-row"><div class="traj-ico">⚡</div><div><div class="traj-lbl">EMA SPREAD</div><div class="traj-val ${spreadClass}">${Math.abs(marketStore.emaSpread)<1?'CONVERGING — cross imminent':Math.abs(marketStore.emaSpread).toFixed(1)+' bps '+marketStore.emaCross.replace('_',' ')}</div></div></div>
+      ${missingHtml}`;
+
+    const rightEl2=document.getElementById('betRight');
+    if(rightEl2){
+      rightEl2.innerHTML=`<div class="section-kicker">CONVICTION METRICS</div>
+        <div class="bet-nearest-row">NEAREST: ${bet.bullSigs||0}/${totalSigs} — need ${needed}</div>
+        <div class="mr"><span class="ml">SIGNAL ALIGN</span><span class="mv num" id="bm0">—</span></div>
+        <div class="mr"><span class="ml">EMA9/21 SPREAD</span><span class="mv num" id="bm1">—</span></div>
+        <div class="mr"><span class="ml">TRAJ SLOPE</span><span class="mv num" id="bm2">—</span></div>
+        <div class="mr"><span class="ml">REGIME</span><span class="mv num" id="bm3">—</span></div>
+        <div class="mr"><span class="ml">KALSHI EDGE</span><span class="mv num" id="bm4">—</span></div>
+        <div class="mr mr-no-border"><span class="ml">REC SIZE</span><span class="mv num txt-amber" id="bm5">—</span></div>`;
+    }
   }
 
-  // Right metrics
-  setTxt('bm0',`${Math.round((bet.alignment||0)*100)}% (${bet.bullSigs||0}/10)`);
+  // ── Right metrics (bm0-bm5) ──
+  setTxt('bm0',`${Math.round((bet.alignment||0)*100)}% (${bet.bullSigs||0}/${totalSigs})`);
   const bm0=document.getElementById('bm0');
-  if(bm0){
-    if((bet.alignment||0)>=0.6) bm0.style.color='var(--green)';
-    else if((bet.alignment||0)<0.4) bm0.style.color='var(--red)';
-    else bm0.style.color='var(--amber)';
-  }
+  if(bm0){if((bet.alignment||0)>=0.6)bm0.style.color='var(--green)';else if((bet.alignment||0)<0.4)bm0.style.color='var(--red)';else bm0.style.color='var(--amber)';}
   const bm1=document.getElementById('bm1');
   if(bm1){bm1.textContent=(marketStore.emaSpread>=0?'+':'')+marketStore.emaSpread.toFixed(1)+' bps';bm1.style.color=marketStore.emaSpread>0?'var(--green)':'var(--red)';}
   const bm2=document.getElementById('bm2');
   if(bm2){bm2.textContent=(marketStore.trajectorySlope>0?'▲ +':'▼ ')+Math.abs(marketStore.trajectorySlope).toFixed(2)+'/bar';bm2.style.color=marketStore.trajectorySlope>0?'var(--green)':'var(--red)';}
   const bm3=document.getElementById('bm3');
-  if(bm3){
-    bm3.textContent=marketStore.regime;
-    if (marketStore.regime==='BULL_TREND') bm3.style.color='var(--green)';
-    else if (marketStore.regime==='BEAR_TREND') bm3.style.color='var(--red)';
-    else bm3.style.color='var(--amber)';
-  }
+  if(bm3){bm3.textContent=marketStore.regime;bm3.style.color=marketStore.regime==='TRENDING'?'var(--green)':marketStore.regime==='MEAN_REVERTING'?'var(--red)':'var(--amber)';}
   const bm4=document.getElementById('bm4');
-  const ke3=Math.abs(marketStore.pAbove-marketStore.kalshiAbove/100);
-  if(bm4){
-    let edgeBand='— LOW';
-    if (ke3>=0.08) edgeBand='★ STRONG';
-    else if (ke3>=0.04) edgeBand='▲ MOD';
-    bm4.textContent=(ke3*100).toFixed(1)+'% '+edgeBand;
-    if (ke3>=0.08) bm4.style.color='var(--green)';
-    else if (ke3>=0.04) bm4.style.color='var(--amber)';
-    else bm4.style.color='var(--t3)';
-  }
+  const ke3=bet.kEdge||0;
+  if(bm4){let eb='— LOW';if(ke3>=0.08)eb='★ STRONG';else if(ke3>=0.04)eb='▲ MOD';bm4.textContent=(ke3*100).toFixed(1)+'% '+eb;bm4.style.color=ke3>=0.08?'var(--green)':ke3>=0.04?'var(--amber)':'var(--t3)';}
   const bm5=document.getElementById('bm5');
   if(bm5){bm5.textContent=bet.active?`${(marketStore.kellyFull*50*100).toFixed(0)}% BAL / ${(marketStore.kellyFull*25*100).toFixed(0)}% SAFE`:'HOLD';bm5.style.color=bet.active?'var(--amber)':'var(--t3)';}
 }
@@ -2795,7 +3061,7 @@ async function init(){
   // Start polling loops
   pollOracle(); setInterval(pollOracle, 8000);
   pollDerivatives(); setInterval(pollDerivatives, 15000);
-  fetchKalshiLive(); setInterval(fetchKalshiLive, 60000);
+  fetchKalshiLive(); setInterval(fetchKalshiLive, 10000);
   setInterval(bootstrapCandles, 1800000); // refresh candle history every 30 min
   // WS engine started by module script — see bottom of <body>
   requestAnimationFrame(renderLoop);
