@@ -16,7 +16,7 @@
   --white:  #eeeef5;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;overflow:hidden}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;overflow-x:hidden;overflow-y:auto}
 ::-webkit-scrollbar{width:3px;height:3px}
 ::-webkit-scrollbar-track{background:var(--bg1)}
 ::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
@@ -58,7 +58,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Pl
 .ti{font-size:9px;color:var(--text)}.ti b{color:var(--white);font-weight:600}
 
 /* ── MAIN GRID ── */
-#app{display:grid;grid-template-columns:220px 1fr 240px;height:calc(100vh - 56px);gap:1px;background:var(--border)}
+#app{display:grid;grid-template-columns:220px 1fr 240px;min-height:calc(100vh - 128px);height:auto;gap:1px;background:var(--border)}
 
 /* ── PANELS ── */
 .col{display:flex;flex-direction:column;gap:1px;background:var(--border)}
@@ -280,10 +280,12 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
   #topbar{align-items:flex-start}
   #oracleBar{align-items:flex-start}
   #sessionBar{align-items:flex-start}
-  #app{height:auto;min-height:calc(100dvh - 56px);grid-template-columns:1fr}
+  #kTopTargetBar{position:relative;top:auto;padding:6px 8px}
+  #app{height:auto;min-height:calc(100dvh - 128px);grid-template-columns:1fr}
   #chart-hdr{flex-wrap:wrap;gap:4px;padding:6px 8px}
   #canvasWrap{height:220px}
   #rsiWrap{height:48px}
+  .k-top-target-input{min-width:0;max-width:none;width:100%}
   #sigs{grid-template-columns:repeat(5,1fr)}
   #of-row{grid-template-columns:repeat(2,1fr)}
   #bet-inner{grid-template-columns:1fr}
@@ -297,6 +299,7 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
   #oracleBar,#sessionBar{padding:4px 6px;gap:4px}
   #oracleBar{height:auto}
   #sessionBar{height:auto}
+  #kTopTargetBar{padding:5px 6px}
   #chart-hdr .ema-legend,#chart-hdr .ema-legend-tight{display:none}
   #canvasWrap{height:180px}
   #sigs{grid-template-columns:repeat(2,1fr)}
@@ -328,6 +331,26 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
 .sb-val.up{color:var(--green)!important}.sb-val.dn{color:var(--red)!important}
 .sb-sep{color:var(--border)}
 #kbHint{font-size:7px;color:var(--t3);background:var(--bg2);border:1px solid var(--border);padding:1px 5px;border-radius:2px;letter-spacing:.5px;cursor:default}
+
+/* ── TOP KALSHI TARGET BAR ── */
+#kTopTargetBar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:34px;padding:6px 12px;background:linear-gradient(90deg,rgba(0,229,255,.08),rgba(255,171,0,.05) 46%,rgba(0,0,0,0));border-bottom:1px solid rgba(0,229,255,.14);position:sticky;top:74px;z-index:95;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.k-top-target-title{font-size:8px;font-weight:700;letter-spacing:1px;color:var(--cyan);white-space:nowrap;padding:2px 6px;border-radius:2px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.2)}
+.k-top-target-hero{display:flex;align-items:center;gap:6px;flex-shrink:0;min-width:0}
+.k-top-target-pill{font-size:8px;letter-spacing:.7px;line-height:1;padding:2px 7px;border-radius:2px;border:1px solid var(--border);background:var(--bg3);color:var(--t2)}
+.k-top-target-pill.pill-manual{color:var(--cyan);border-color:rgba(0,229,255,.35)}
+.k-top-target-pill.pill-auto{color:var(--green);border-color:rgba(0,230,118,.32)}
+.k-top-target-val{font-size:16px;font-weight:700;line-height:1;color:var(--white);font-variant-numeric:tabular-nums;letter-spacing:-.02em;white-space:nowrap}
+.k-top-target-val.manual{color:var(--cyan);text-shadow:0 0 8px rgba(0,229,255,.22)}
+.k-top-target-controls{display:flex;align-items:center;gap:6px;flex:1;min-width:0;flex-wrap:wrap}
+.k-top-target-input{flex:1;min-width:180px;max-width:280px;background:var(--bg1);border:1px solid rgba(0,229,255,.28);border-radius:2px;color:var(--white);font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;padding:6px 8px;outline:none;box-shadow:0 0 0 1px rgba(0,229,255,.06) inset}
+.k-top-target-input::placeholder{color:rgba(255,255,255,.45)}
+.k-top-target-input:focus{border-color:rgba(0,229,255,.65);box-shadow:0 0 0 1px rgba(0,229,255,.2),0 0 14px rgba(0,229,255,.12)}
+.k-top-target-btn{background:var(--bg2);border:1px solid rgba(0,229,255,.3);color:var(--white);font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.7px;padding:5px 8px;border-radius:2px;cursor:pointer;white-space:nowrap}
+.k-top-target-btn:hover{color:var(--cyan);border-color:rgba(0,229,255,.5)}
+.k-top-target-btn.clear{border-color:rgba(255,171,0,.3)}
+.k-top-target-btn.clear:hover{color:var(--amber);border-color:rgba(255,171,0,.5)}
+.k-top-target-meta{font-size:8px;color:var(--t3);letter-spacing:.5px;line-height:1.4;white-space:nowrap;flex-shrink:0}
+.k-top-target-meta.manual{color:var(--cyan)}
 /* ── RSI STRIP ── */
 #rsiWrap{height:58px;position:relative;border-top:1px solid var(--border);flex-shrink:0;background:var(--bg)}
 #rsiCanvas{display:block}
@@ -521,6 +544,19 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
   <button class="ws-toggle" id="wsToggle" onclick="toggleWsFallback()" title="Force Kraken websocket feed">KRAKEN OFF</button>
   <button class="ws-toggle" id="wsRestToggle" onclick="toggleWsRest()" title="Force Coinbase REST polling mode">REST OFF</button>
   <span id="kbHint" title="A=AI  S=Sound  F=Fullscreen  K=Kraken  R=REST">A · S · F · K · R</span>
+</div>
+<div id="kTopTargetBar">
+  <div class="k-top-target-title">KALSHI ROUND TARGET</div>
+  <div class="k-top-target-hero">
+    <div class="k-top-target-val" id="kTargetHeroVal">—</div>
+    <div class="k-top-target-pill" id="kTargetHeroPill">AUTO</div>
+  </div>
+  <div class="k-top-target-controls">
+    <input class="k-top-target-input" id="kTargetInput" type="number" min="0" step="1" placeholder="Manual round target" aria-label="Manual Kalshi round target price" />
+    <button class="k-top-target-btn" id="kTargetApply" type="button">APPLY</button>
+    <button class="k-top-target-btn clear" id="kTargetClear" type="button">CLEAR</button>
+  </div>
+  <div class="k-top-target-meta" id="kTargetMeta">AUTO TARGET · follows live BTC price</div>
 </div>
 <!-- TICKER TAPE -->
 <div id="tape"><div id="tape-track">
@@ -752,19 +788,6 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
       <div class="mr"><span class="ml">EDGE</span><span class="mv num" id="kE">—</span></div>
       <div class="mr"><span class="ml">EV / $1 BET</span><span class="mv num" id="kEV">—</span></div>
       <div class="mr"><span class="ml">ROUND TARGET</span><span class="mv num" id="kStr">—</span></div>
-      <div class="k-target-hero">
-        <div class="k-target-hero-val" id="kTargetHeroVal">—</div>
-        <div class="k-target-hero-pill" id="kTargetHeroPill">AUTO</div>
-      </div>
-      <div class="k-target-box">
-        <div class="k-target-label">MANUAL INPUT</div>
-        <div class="k-target-row">
-          <input class="k-target-input" id="kTargetInput" type="number" min="0" step="1" placeholder="Manual round target" aria-label="Manual Kalshi round target price" />
-          <button class="k-target-btn" id="kTargetApply" type="button">APPLY</button>
-          <button class="k-target-btn clear" id="kTargetClear" type="button">CLEAR</button>
-        </div>
-        <div class="k-target-meta" id="kTargetMeta">AUTO TARGET · follows live BTC price</div>
-      </div>
       <div class="k-manual-box">
         <div class="k-manual-label">MANUAL ABOVE%</div>
         <div class="k-target-row">
