@@ -2356,8 +2356,15 @@ function syncKalshiTargetUI() {
   if (input) {
     const isEditing = document.activeElement === input;
     const hasManual = Number.isFinite(marketStore.kalshiManualTargetPrice) && marketStore.kalshiManualTargetPrice > 0;
+    const hasDraft = input.dataset.draftActive === '1';
+    const draftValue = input.dataset.draftValue ?? '';
     const nextValue = hasManual ? String(Math.round(marketStore.kalshiManualTargetPrice)) : '';
-    if (!isEditing && input.value !== nextValue) input.value = nextValue;
+    if (hasManual) {
+      input.dataset.draftActive = '0';
+      input.dataset.draftValue = '';
+    }
+    if (!isEditing && !hasDraft && input.value !== nextValue) input.value = nextValue;
+    if (!isEditing && hasDraft && !hasManual && input.value !== draftValue) input.value = draftValue;
   }
   if (meta) {
     const manual = Number.isFinite(marketStore.kalshiManualTargetPrice) && marketStore.kalshiManualTargetPrice > 0;
@@ -2368,18 +2375,18 @@ function syncKalshiTargetUI() {
     meta.textContent = manual
       ? `MANUAL TARGET ACTIVE · ${formatKalshiTargetPrice(activeTarget)}`
       : `AUTO TARGET · ${formatKalshiTargetPrice(activeTarget)}${suffix}`;
-    meta.className = `k-target-meta ${manual ? 'manual' : ''}`;
+    meta.className = `k-top-target-meta ${manual ? 'manual' : ''}`;
   }
   if (heroVal || heroPill) {
     const manual = Number.isFinite(marketStore.kalshiManualTargetPrice) && marketStore.kalshiManualTargetPrice > 0;
     const activeTarget = getActiveKalshiTargetPrice();
     if (heroVal) {
       heroVal.textContent = formatKalshiTargetPrice(activeTarget);
-      heroVal.className = `k-target-hero-val ${manual ? 'manual' : ''}`;
+      heroVal.className = `k-top-target-val ${manual ? 'manual' : ''}`;
     }
     if (heroPill) {
       heroPill.textContent = manual ? 'MANUAL' : 'AUTO';
-      heroPill.className = `k-target-hero-pill ${manual ? 'pill-manual' : 'pill-auto'}`;
+      heroPill.className = `k-top-target-pill ${manual ? 'pill-manual' : 'pill-auto'}`;
     }
   }
 }
@@ -2498,16 +2505,49 @@ function setupKalshiTargetControls() {
   const apply = document.getElementById('kTargetApply');
   const clear = document.getElementById('kTargetClear');
   if (!input || !apply || !clear) return;
-  const commit = () => setKalshiManualTargetPrice(input.value);
-  apply.addEventListener('click', commit);
+
+  const normalize = v => String(v ?? '').trim().replaceAll(',', '');
+  const commit = () => {
+    const raw = normalize(input.value || input.dataset.draftValue || '');
+    const applied = setKalshiManualTargetPrice(raw);
+    if (Number.isFinite(applied) && applied > 0) {
+      input.dataset.draftActive = '0';
+      input.dataset.draftValue = '';
+    } else {
+      input.dataset.draftActive = '1';
+      input.dataset.draftValue = raw;
+    }
+    return applied;
+  };
+
+  input.addEventListener('input', () => {
+    input.dataset.draftActive = '1';
+    input.dataset.draftValue = input.value;
+  });
+
+  apply.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    commit();
+  });
+
+  apply.addEventListener('click', e => {
+    e.preventDefault();
+    commit();
+  });
+
   clear.addEventListener('click', () => {
     input.value = '';
+    input.dataset.draftActive = '0';
+    input.dataset.draftValue = '';
     clearKalshiManualTargetPrice();
   });
+
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter') commit();
     if (e.key === 'Escape') {
       input.value = '';
+      input.dataset.draftActive = '0';
+      input.dataset.draftValue = '';
       clearKalshiManualTargetPrice();
     }
   });
