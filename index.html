@@ -1083,6 +1083,25 @@ function renderAll(){
   // WS latency
   if(s.wsLatency) setTxt('wsLatency',s.wsLatency+'ms');
 
+  // Funding rate display
+  const fr = window._funding;
+  const frEl = document.getElementById('fundingDisplay');
+  if (frEl && fr?.rate != null) {
+    const frPct = (fr.rate*100).toFixed(4);
+    frEl.textContent = `Funding: ${fr.rate>0?'+':''}${frPct}% ${fr.signal==='LONGS_OVEREXTENDED'?'⚠ longs crowded':fr.signal==='SHORTS_OVEREXTENDED'?'⚠ shorts crowded':'neutral'}`;
+    frEl.style.color = fr.signal==='LONGS_OVEREXTENDED'?'var(--red)':fr.signal==='SHORTS_OVEREXTENDED'?'var(--green)':'var(--t3)';
+  }
+
+  // Multi-TF regime display in topbar
+  const mtf = window._multiTF;
+  if (mtf) {
+    const mtfEl = document.getElementById('wsLabel');
+    // Only update if still connected
+    if (s.wsConnected && mtfEl) {
+      mtfEl.textContent = `WS LIVE · ${mtf.r1m||'?'} ${mtf.r5m||'?'} ${mtf.r15m||'?'}`;
+    }
+  }
+
   // Tape
   const tv=[
     p?'$'+p.toLocaleString(undefined,{maximumFractionDigits:0}):'——',
@@ -1190,8 +1209,14 @@ function renderAll(){
   const ke=document.getElementById('kE');
   if(ke){ke.textContent=(edge>=0?'+':'')+((edge*100).toFixed(1))+'%';ke.style.color=edge>0?'var(--green)':'var(--red)';}
   setTxt('kStr',p?'$'+p.toLocaleString(undefined,{maximumFractionDigits:0}):'—');
+  const kwin = window._kalshiWindow || {};
   const nw=new Date(Math.ceil(Date.now()/900000)*900000);
-  setTxt('kWin',nw.toLocaleTimeString());
+  setTxt('kWin', kwin.closeTime || nw.toLocaleTimeString());
+  // Update entry timing color on the window label
+  const kwinEl = document.getElementById('kWin');
+  if (kwinEl && kwin.secsLeft) {
+    kwinEl.style.color = kwin.isFinalMinute?'var(--red)':kwin.isOptimalEntry?'var(--green)':'var(--text)';
+  }
   const keb=document.getElementById('kEdgeBox');
   if(keb){
     keb.textContent=edge>0.05?`▲ EDGE +${(edge*100).toFixed(1)}% — BET ABOVE`:edge<-0.05?`▼ EDGE ${(edge*100).toFixed(1)}% — BET BELOW`:'— NO SIGNIFICANT EDGE —';
@@ -1338,72 +1363,123 @@ async function runAI(){
   const btn=document.getElementById('aiBtn');
   const out=document.getElementById('aiOut');
   btn.disabled=true; btn.textContent='⟳ ANALYZING…';
-  out.innerHTML='<span style="color:var(--t3);font-style:italic">Generating report</span><span class="ai-cursor"></span>';
+  out.innerHTML='<span style="color:var(--t3);font-style:italic">Generating institutional analysis</span><span class="ai-cursor"></span>';
 
-  const s=marketStore;
-  const pch=s.price&&s.open24?((s.price-s.open24)/s.open24*100).toFixed(2):0;
+  const s = window._mStore ? window._mStore.state : marketStore;
+  const pch = s.price&&s.open24 ? ((s.price-s.open24)/s.open24*100).toFixed(2) : 0;
+  const window15 = window._kalshiWindow || {};
+  const multiTF  = window._multiTF || {};
+  const funding  = window._funding || {};
+  const intel    = window._intel || {};
 
-  const prompt=`BTC LIVE DATA — ${new Date().toISOString()}
+  // ── Build the richest possible context for the AI ──
+  const prompt = `QUANT//DESK LIVE MARKET BRIEF — ${new Date().toISOString()}
 
-PRICE: $${s.price?.toLocaleString()} (${pch>=0?'+':''}${pch}% 24H)
-HIGH24: $${s.high24?.toLocaleString()} | LOW24: $${s.low24?.toLocaleString()}
-SPREAD: $${s.bestAsk&&s.bestBid?(s.bestAsk-s.bestBid).toFixed(2):'—'} | IMBALANCE: ${(s.imbalance*100).toFixed(1)}%
+═══ PRICE ═══
+BTC/USD: $${s.price?.toLocaleString()} | Change: ${pch>=0?'+':''}${pch}% (24H)
+High: $${s.high24?.toLocaleString()} | Low: $${s.low24?.toLocaleString()}
+Bid: $${s.bestBid?.toFixed(2)} | Ask: $${s.bestAsk?.toFixed(2)} | Spread: $${s.spread?.toFixed(2)}
 
-EMA STRUCTURE:
-- EMA9: $${s.ema9?.toFixed(0)} | EMA21: $${s.ema21?.toFixed(0)}
-- Cross: ${s.emaCross} | Spread: ${s.emaSpread?.toFixed(1)} bps
-- Price vs EMA9: ${s.price>s.ema9?'ABOVE':'BELOW'} | vs EMA21: ${s.price>s.ema21?'ABOVE':'BELOW'}
-- Trajectory slope (6-bar): ${s.trajectorySlope?.toFixed(2)}/bar
+═══ EMA STRUCTURE (9/21) ═══
+EMA9:  $${s.ema9?.toFixed(2)} | EMA21: $${s.ema21?.toFixed(2)}
+Cross: ${s.emaCross} | Spread: ${s.emaSpread?.toFixed(2)} bps
+EMA Velocity: ${intel.vel?.velocity?.toFixed(3)||'—'}/bar | Accelerating: ${intel.vel?.accelerating||false}
+Price vs EMA9: ${s.price>s.ema9?'ABOVE':'BELOW'} | vs EMA21: ${s.price>s.ema21?'ABOVE':'BELOW'}
 
-SIGNALS:
-- RSI: ${s.rsi?.toFixed(1)} | MACD: ${s.macd>s.macdSig?'BULL':'BEAR'} | VWAP: ${s.price>s.vwap?'ABOVE':'BELOW'}
-- Bollinger: ${s.price>s.bb?.upper?'ABOVE UPPER':s.price<s.bb?.lower?'BELOW LOWER':'INSIDE'} | ATR: $${s.atr?.toFixed(0)}
-- Stochastic: ${s.stoch?.toFixed(1)} | Momentum: ${s.momentum?.toFixed(0)}
+═══ MULTI-TIMEFRAME REGIME ═══
+1m:  ${multiTF.r1m||'—'} | 5m: ${multiTF.r5m||'—'} | 15m: ${multiTF.r15m||'—'}
+Alignment: ${multiTF.aligned?'✓ ALL TIMEFRAMES ALIGNED':'MIXED'} | Bull: ${multiTF.bullCount||0}/3 Bear: ${multiTF.bearCount||0}/3
 
-ORDERFLOW (LIVE WS):
-- CVD: ${s.cvd?.toFixed(2)} (${s.cvd>0?'BUY DOM':'SELL DOM'})
-- Trade delta: Buy ${s.tradeDeltaBuy?.toFixed(3)} / Sell ${s.tradeDeltaSell?.toFixed(3)}
-- Bid/Ask imbalance: ${(s.imbalance*100)?.toFixed(1)}%
-- Aggression: ${(s.aggression*100)?.toFixed(1)}%
-- Anomaly: ${s.anomalies[0]?.type||'NONE'} | Sweeps: ${s.sweeps?.length} | FVGs: ${s.fvgs?.length}
+═══ TECHNICAL SIGNALS ═══
+RSI(14): ${s.rsi?.toFixed(1)} | MACD: ${s.macd>s.macdSig?'BULL CROSS':'BEAR CROSS'} (${s.macd?.toFixed(2)} vs ${s.macdSig?.toFixed(2)})
+Bollinger: ${s.price>s.bb?.upper?'ABOVE UPPER BAND':s.price<s.bb?.lower?'BELOW LOWER BAND':'INSIDE BANDS'} (σ spread: $${(s.bb?.upper-s.bb?.lower)?.toFixed(0)})
+VWAP: $${s.vwap?.toFixed(2)} | Price: ${s.price>s.vwap?'ABOVE':'BELOW'} VWAP
+VWAP Upper Band: $${intel.vwapBands?.upper1?.toFixed(0)||'—'} | Lower: $${intel.vwapBands?.lower1?.toFixed(0)||'—'}
+Stochastic: ${s.stoch?.toFixed(1)} | ATR: $${s.atr?.toFixed(0)} | Momentum(10): ${s.momentum>=0?'+':''}${s.momentum?.toFixed(0)}
+Volume POC: $${intel.poc?.toFixed(0)||'—'} | Price vs POC: ${intel.poc&&s.price>intel.poc?'ABOVE':'BELOW'}
+RSI Divergence: ${intel.divergence?intel.divergence.type+' (str:'+intel.divergence.strength?.toFixed(2)+')':'NONE'}
+Candle Pattern: ${intel.pattern?intel.pattern.type+' → '+intel.pattern.bias:'NONE'}
 
-REGIME: ${s.regime} | BAYESIAN P(ABOVE): ${(s.pAbove*100)?.toFixed(1)}%
-KALSHI: Market ${s.kalshiAbove}% | Model ${(s.pAbove*100)?.toFixed(1)}% | Edge ${((s.pAbove-s.kalshiAbove/100)*100)?.toFixed(1)}%
-BET ENGINE: ${s.betData?.active?`ACTIVE — ${s.betData.verdict} (${s.betData.conviction}% conviction)`:'MONITORING'}`;
+═══ ORDERFLOW (LIVE WS) ═══
+CVD: ${s.cvd>=0?'+':''}${s.cvd?.toFixed(3)} | Rolling: Buy ${s.tradeDeltaBuy?.toFixed(3)} / Sell ${s.tradeDeltaSell?.toFixed(3)}
+Bid/Ask Imbalance: ${(s.imbalance*100)?.toFixed(1)}% | Trade Aggression: ${(s.aggression*100)?.toFixed(1)}%
+Absorption: ${s.absorption?s.absorption.type+' @ $'+s.absorption.price?.toFixed(0):'NONE'}
+Spoof Levels: ${s.spoofLevels?.length||0} detected
+Liquidity Sweeps: ${s.sweeps?.length||0} | FVGs: ${s.fvgs?.length||0}
+Liquidity Walls: ${s.liquidityWalls?.length||0} (${s.liquidityWalls?.slice(0,2).map(w=>w.side+' $'+w.price?.toFixed(0)+' '+w.size?.toFixed(2)+'BTC').join(', ')||'none'})
 
-  const system=`You are the world's most elite BTC quant analyst. 20 years institutional experience.
-DECISIVE. CONFIDENT. Data-driven. No disclaimers.
+═══ DERIVATIVES / MACRO ═══
+Funding Rate: ${funding.rate!=null?(funding.rate*100).toFixed(4)+'%':'unavailable'} | Signal: ${funding.signal||'NEUTRAL'}
+Funding Interpretation: ${funding.signal==='LONGS_OVEREXTENDED'?'Longs crowded — squeeze risk bearish':funding.signal==='SHORTS_OVEREXTENDED'?'Shorts crowded — squeeze risk bullish':'Balanced positioning'}
 
-FORMAT (plain text, no markdown):
-STRUCTURE: [EMA9/21 alignment, price vs key levels]
-TRAJECTORY: [slope, acceleration, where price is heading next 15min]
-ORDERFLOW: [CVD, trade delta, bid/ask pressure, whale activity]
-SIGNALS: [bullish/bearish count, key confluences]
-KALSHI EDGE: [edge size, bet direction if warranted]
-VERDICT: ABOVE or BELOW — with conviction statement
+═══ REGIME + PROBABILITY ═══
+Regime: ${s.regime} | Trend Strength: ${s.trendStrength?.toFixed(2)} bps
+Bayesian P(ABOVE): ${(s.pAbove*100)?.toFixed(1)}% | P(BELOW): ${(s.pBelow*100)?.toFixed(1)}%
+Weighted Score: ${intel.score>=0?'+':''}${intel.score?.toFixed(3)} | Signal Alignment: ${intel.isHighConviction?'HIGH CONVICTION':'MONITORING'}
 
-Under 220 words. Pure institutional signal.`;
+Regime Weights Applied: EMA=${((intel.weights?.ema||0)*100).toFixed(0)}% RSI=${((intel.weights?.rsi||0)*100).toFixed(0)}% CVD=${((intel.weights?.cvd||0)*100).toFixed(0)}% VWAP=${((intel.weights?.vwap||0)*100).toFixed(0)}%
+
+═══ KALSHI 15-MIN WINDOW ═══
+Window closes: ${window15.closeTime||'—'} | Time remaining: ${window15.minsLeft||0}m ${window15.secsFrac||0}s
+Entry timing: ${window15.isOptimalEntry?'OPTIMAL ENTRY WINDOW':window15.isEarlyWindow?'TOO EARLY — wait for confirmation':window15.isFinalMinute?'FINAL MINUTE — last chance':'STANDARD WINDOW'}
+Synthetic Model: ABOVE ${(s.pAbove*100)?.toFixed(1)}% vs Market ${s.kalshiAbove}% | Edge: ${((s.pAbove-s.kalshiAbove/100)*100)?.toFixed(1)}%
+Kelly Sizing: Safe ${(s.kellyFull*25*100)?.toFixed(1)}% | Balanced ${(s.kellyFull*50*100)?.toFixed(1)}%
+
+Give your institutional ABOVE/BELOW verdict.`;
+
+  const system = `You are a senior quantitative trader with 20 years on an institutional crypto desk. You have traded through multiple BTC cycles and specialize in short-duration prediction markets.
+
+Your job: Analyze the provided live market data and give a DECISIVE ABOVE or BELOW verdict for the Kalshi 15-minute BTC contract.
+
+REASONING FRAMEWORK (use this order):
+1. MACRO STRUCTURE — What is the dominant regime? Is multi-timeframe aligned?
+2. MOMENTUM — Are EMA9/21 accelerating or decelerating? Is slope confirming direction?
+3. ORDERFLOW — Does CVD + trade delta + bid/ask imbalance agree with price direction?
+4. DIVERGENCES — Any RSI divergence or absorption events that contradict momentum?
+5. DERIVATIVES — Is funding rate warning of overcrowded positioning?
+6. TIMING — Where are we in the 15-min window? Is this the right moment to bet?
+7. EDGE — Is there sufficient Kalshi mispricing to justify the trade?
+
+OUTPUT FORMAT (plain text, no markdown):
+REGIME: [1 sentence — what mode the market is in]
+STRUCTURE: [EMA9/21 relationship, key levels, where price is relative to anchors]
+TRAJECTORY: [where price is heading and why — be specific about direction and force]
+ORDERFLOW: [CVD, delta, absorption, any spoof/manipulation signals]
+DERIVATIVES: [funding rate interpretation, what it means for positioning]
+ENTRY TIMING: [is this the right moment in the 15-min window to bet?]
+VERDICT: [ABOVE or BELOW] — [confidence statement] — [specific reason this is the winning side]
+
+Rules:
+- Be decisive. If you say ABOVE, mean it with conviction.
+- If signals are genuinely mixed, say so — do NOT invent conviction.
+- Never exceed 260 words.
+- No disclaimers. No "past performance" caveats. Pure institutional signal.`;
 
   try {
-    const resp=await fetch('/api/analyze',{
+    const resp = await fetch('/api/analyze', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({prompt,system}),
+      body: JSON.stringify({ prompt, system }),
     });
-    if(!resp.ok){const e=await resp.json().catch(()=>({error:resp.statusText}));throw new Error(e.error||`HTTP ${resp.status}`);}
-    const data=await resp.json();
-    const text=data.content?.[0]?.text||'No response.';
-    const modelInfo=data.model||'';
-    const aiModelEl=document.getElementById('aiModel');
-    if(aiModelEl) aiModelEl.textContent='OpenRouter · '+(modelInfo.split('/')[1]||modelInfo).split(':')[0];
-    const fmt=text
-      .replace(/BULLISH|BUY[\s-]SIDE|ABOVE|LONG|EXPANSION/gi,m=>`<span class="bull">${m}</span>`)
-      .replace(/BEARISH|SELL[\s-]SIDE|BELOW|SHORT|CONTRACTION/gi,m=>`<span class="bear">${m}</span>`)
-      .replace(/WARNING|RISK|CAUTION|ALERT|CASCADE/gi,m=>`<span class="warn">${m}</span>`)
-      .replace(/EDGE|KALSHI|BAYESIAN|CVD|VWAP|FVG/gi,m=>`<span class="cyan">${m}</span>`);
-    out.innerHTML=fmt;
-  } catch(e){
-    out.innerHTML=`<span style="color:var(--red)">API error: ${e.message}</span>`;
+    if (!resp.ok) {
+      const e = await resp.json().catch(()=>({error:resp.statusText}));
+      throw new Error(e.error || `HTTP ${resp.status}`);
+    }
+    const data = await resp.json();
+    const text = data.content?.[0]?.text || 'No response.';
+    const modelInfo = data.model || '';
+    const aiModelEl = document.getElementById('aiModel');
+    if (aiModelEl) aiModelEl.textContent = 'OpenRouter · ' + (modelInfo.split('/')[1]||modelInfo).split(':')[0];
+
+    // Highlight key terms
+    const fmt = text
+      .replace(/(ABOVE|BULL(?:ISH)?|BUY[\s-]SIDE|LONG|ASCENDING|ACCELERAT\w+)/gi, m=>`<span class="bull">${m}</span>`)
+      .replace(/(BELOW|BEAR(?:ISH)?|SELL[\s-]SIDE|SHORT|DESCEND\w+|DECELERAT\w+)/gi, m=>`<span class="bear">${m}</span>`)
+      .replace(/(CAUTION|RISK|WARN\w+|MIXED|DIVERGEN\w+|ABSORB\w+|SPOOF\w*)/gi, m=>`<span class="warn">${m}</span>`)
+      .replace(/(CVD|VWAP|FVG|KALSHI|BAYESIAN|EDGE|FUNDING|POC|REGIME)/gi, m=>`<span class="cyan">${m}</span>`);
+    out.innerHTML = fmt;
+  } catch(e) {
+    out.innerHTML = `<span style="color:var(--red)">Error: ${e.message}</span>`;
   }
   btn.disabled=false; btn.textContent='⟳ GENERATE ANALYSIS';
 }
@@ -1521,10 +1597,68 @@ async function init(){
     }
   });
 
+  import { computeWeightedVerdict, detectCandlePattern, computePOC,
+           computeVWAPBands, emaVelocity, getMultiTFRegime } from '/lib/intelligence.js';
+  import { fetchAllTimeframes, fetchFundingRate, getKalshiWindow } from '/lib/dataFeeds.js';
+
+  // Multi-TF candles + funding — refresh every 60s
+  let candles1m=[], candles5m=[], candles1h=[];
+  async function refreshExtraData() {
+    try {
+      const tf = await fetchAllTimeframes();
+      candles1m = tf.candles1m; candles5m = tf.candles5m; candles1h = tf.candles1h;
+      window._multiTF = getMultiTFRegime(candles1m, candles5m, marketStore.state.candles);
+    } catch(e) { console.warn('TF refresh:', e.message); }
+    try {
+      const fr = await fetchFundingRate();
+      window._funding = fr || {};
+    } catch(e) { window._funding = {}; }
+  }
+  refreshExtraData();
+  setInterval(refreshExtraData, 60000);
+
+  // Intelligence engine — run on every store update
+  marketStore.subscribe(state => {
+    // Update Kalshi window timing
+    window._kalshiWindow = getKalshiWindow();
+
+    // Run weighted verdict if we have candles
+    if (state.candles?.length > 22) {
+      const mtf = window._multiTF || {};
+      const fr  = window._funding?.rate ?? null;
+      const intel = computeWeightedVerdict(state, mtf, fr);
+      if (intel) {
+        window._intel = intel;
+        // Push back to both stores
+        if (window._mStore) {
+          window._mStore.setState({
+            pAbove:     intel.pAbove,
+            pBelow:     intel.pBelow,
+            verdict:    intel.verdict,
+            confidence: intel.confidence,
+          });
+        }
+        if (window.marketStore) {
+          window.marketStore.pAbove     = intel.pAbove;
+          window.marketStore.pBelow     = intel.pBelow;
+          window.marketStore.verdict    = intel.verdict;
+          window.marketStore.confidence = intel.confidence;
+        }
+      }
+    }
+
+    // Sync candle-dependent fields
+    if (state.candles?.length > 22) {
+      const closes = state.candles.map(c=>c.close);
+      if (window.marketStore) {
+        window.marketStore.candles = state.candles;
+      }
+    }
+  });
+
   // Wait for inline script to set up, then start
   function startWhenReady() {
-    if (typeof init === 'function' && typeof marketStore !== 'undefined') {
-      // Sync inline marketStore reference
+    if (typeof init === 'function') {
       window.marketStore = window.marketStore || {};
       init();
       ws.connect();
