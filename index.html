@@ -3209,7 +3209,7 @@ setInterval(()=>{computeIndicators();},30000);
 setInterval(()=>{
   const cl=document.getElementById('clock');
   if(cl) cl.textContent=new Date().toLocaleTimeString();
-  const kw=document.getElementById('kWin');
+  const kw=document.getElementById('kWin2');
   if(kw) kw.textContent=new Date(Math.ceil(Date.now()/900000)*900000).toLocaleTimeString();
 },1000);
 
