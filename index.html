@@ -145,9 +145,7 @@ canvas{width:100%;height:100%;display:block}
 .k-above{background:var(--g2);transition:width .4s}
 .k-below{background:var(--r2);transition:width .4s}
 .k-edge{text-align:center;font-size:11px;font-weight:700;padding:4px 0}
-.k-countdown-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--border)}
-.k-countdown-lbl{font-size:8px;color:var(--t2)}
-.k-countdown-val{font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.5px}
+
 .k-phase{font-size:7px;font-weight:700;letter-spacing:.8px;padding:1px 5px;border-radius:2px}
 .k-phase.open{background:var(--g3);color:var(--green);border:1px solid rgba(0,230,118,.3)}
 .k-phase.caution{background:rgba(255,171,0,.12);color:var(--amber);border:1px solid rgba(255,171,0,.3)}
@@ -2549,7 +2547,7 @@ function renderAll(){ // NOSONAR
       if(ex==='kraken') src.KRK=x;
       if(ex==='bybit') src.BYB=x;
     });
-    ['BNC','KRK','BYB'].forEach(k=>{
+    ['Bnc','Krk','Byb'].forEach(k=>{
       const x=src[k];
       const dot=document.getElementById('obDot'+k);
       const priceEl=document.getElementById('obPrice'+k);
@@ -3044,8 +3042,7 @@ setInterval(()=>{computeIndicators();},30000);
 setInterval(()=>{
   const cl=document.getElementById('clock');
   if(cl) cl.textContent=new Date().toLocaleTimeString();
-  const kw=document.getElementById('kWin');
-  if(kw) kw.textContent=new Date(Math.ceil(Date.now()/900000)*900000).toLocaleTimeString();
+
 },1000);
 
 // ─────────────────────────────────────────────
