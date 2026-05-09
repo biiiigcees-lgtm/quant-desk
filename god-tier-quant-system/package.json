@@ -9,6 +9,7 @@
     "start": "node dist/main.js",
     "smoke": "node --enable-source-maps dist/tests/smoke.js",
     "test:orchestration-authority": "node --enable-source-maps dist/tests/orchestration-authority.test.js",
+    "test:orchestration-router-reliability": "node --enable-source-maps dist/tests/orchestration-router-reliability.test.js",
     "test:replay-memory": "node --enable-source-maps dist/tests/replay-memory.test.js",
     "test:authority-determinism": "node --enable-source-maps dist/tests/authority-determinism.test.js"
   },

@@ -67,3 +67,8 @@ export interface AgentRoute {
 export interface AgentSchedulerOptions {
   maxParallel: number;
 }
+
+export interface AgentCircuitBreakerOptions {
+  failureThreshold: number;
+  cooldownMs: number;
+}

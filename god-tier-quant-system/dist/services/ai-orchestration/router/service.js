@@ -7,6 +7,8 @@ export class AiAgentRouterService {
         this.options = options;
         this.lastRunByAgentKey = new Map();
         this.cache = new Map();
+        this.consecutiveFailures = new Map();
+        this.breakerOpenUntil = new Map();
     }
     start() {
         if (!this.options.enabled) {
@@ -58,6 +60,17 @@ export class AiAgentRouterService {
     }
     async runAgent(agent, context) {
         const spec = AGENT_SPECS[agent];
+        if (this.isCircuitOpen(agent)) {
+            this.bus.emit(EVENTS.AI_AGENT_FAILURE, {
+                requestId: context.requestId,
+                agent,
+                contractId: context.contractId,
+                triggerEvent: context.triggerEvent,
+                error: 'circuit-open',
+                timestamp: Date.now(),
+            });
+            return;
+        }
         const cacheKey = `${agent}:${context.contractId}:${context.triggerEvent}:${stableHash(context.payload)}`;
         const cached = this.cache.get(cacheKey);
         if (cached && cached.expiresAt > Date.now()) {
@@ -85,15 +98,33 @@ export class AiAgentRouterService {
             const providerResult = await this.provider.run(spec.buildSystemPrompt(), spec.buildUserPrompt(context), spec.preferredModels);
             const output = spec.parseOutput(providerResult.text);
             const latencyMs = Date.now() - startedAt;
+            this.resetFailures(agent);
             this.cache.set(cacheKey, {
                 output,
                 model: providerResult.model,
                 expiresAt: Date.now() + spec.cacheTtlMs,
             });
-            this.emitResult({
-                agent,
-                output,
-                metrics: {
+            if (!this.options.shadowMode) {
+                this.emitResult({
+                    agent,
+                    output,
+                    metrics: {
+                        latencyMs,
+                        model: providerResult.model,
+                        promptTokens: providerResult.promptTokens,
+                        completionTokens: providerResult.completionTokens,
+                        totalTokens: providerResult.totalTokens,
+                        estimatedCostUsd: providerResult.estimatedCostUsd,
+                        fallbackDepth: providerResult.fallbackDepth,
+                        cacheHit: false,
+                    },
+                }, context);
+            }
+            else {
+                this.bus.emit(EVENTS.AI_ORCHESTRATION_METRICS, {
+                    agent,
+                    contractId: context.contractId,
+                    triggerEvent: context.triggerEvent,
                     latencyMs,
                     model: providerResult.model,
                     promptTokens: providerResult.promptTokens,
@@ -102,10 +133,13 @@ export class AiAgentRouterService {
                     estimatedCostUsd: providerResult.estimatedCostUsd,
                     fallbackDepth: providerResult.fallbackDepth,
                     cacheHit: false,
-                },
-            }, context);
+                    shadowMode: true,
+                    timestamp: Date.now(),
+                });
+            }
         }
         catch (error) {
+            this.recordFailure(agent);
             this.bus.emit(EVENTS.AI_AGENT_FAILURE, {
                 requestId: context.requestId,
                 agent,
@@ -115,6 +149,24 @@ export class AiAgentRouterService {
                 timestamp: Date.now(),
             });
         }
+    }
+    isCircuitOpen(agent) {
+        const until = this.breakerOpenUntil.get(agent) ?? 0;
+        if (until <= Date.now()) {
+            return false;
+        }
+        return true;
+    }
+    recordFailure(agent) {
+        const failures = (this.consecutiveFailures.get(agent) ?? 0) + 1;
+        this.consecutiveFailures.set(agent, failures);
+        if (failures >= this.options.circuitBreaker.failureThreshold) {
+            this.breakerOpenUntil.set(agent, Date.now() + this.options.circuitBreaker.cooldownMs);
+            this.consecutiveFailures.set(agent, 0);
+        }
+    }
+    resetFailures(agent) {
+        this.consecutiveFailures.set(agent, 0);
     }
     emitResult(result, context) {
         this.bus.emit(EVENTS.AI_AGENT_RESPONSE, {

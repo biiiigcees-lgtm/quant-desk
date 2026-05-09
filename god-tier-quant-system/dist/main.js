@@ -75,7 +75,12 @@ async function main() {
     const aiRouter = new AiAgentRouterService(bus, openRouterProvider, {
         enabled: config.orchestration.enabled,
         defaultContractId: config.orchestration.defaultContractId,
+        shadowMode: config.orchestration.shadowMode,
         scheduler: { maxParallel: config.orchestration.maxParallel },
+        circuitBreaker: {
+            failureThreshold: config.orchestration.circuitBreaker.failureThreshold,
+            cooldownMs: config.orchestration.circuitBreaker.cooldownMs,
+        },
     });
     const api = new ApiServer(bus, config.apiHost, config.apiPort);
     const researchLab = new ResearchLabServer(bus, config.apiHost, config.apiPort + 1);
@@ -117,6 +122,7 @@ async function main() {
         api: `${config.apiHost}:${config.apiPort}`,
         researchLab: `${config.apiHost}:${config.apiPort + 1}`,
         aiOrchestration: config.orchestration.enabled,
+        aiOrchestrationShadowMode: config.orchestration.shadowMode,
     });
     const shutdown = async () => {
         logger.info('shutting down');
