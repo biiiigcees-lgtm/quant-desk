@@ -32,4 +32,7 @@ export const EVENTS = {
   RESEARCH_NOTE: 'research:note',
   ANOMALY: 'anomaly:event',
   TELEMETRY: 'telemetry:event',
+  BELIEF_GRAPH_UPDATE: 'belief-graph:update',
+  EXECUTION_PATH_MIRROR: 'execution-path:mirror',
+  STRATEGY_LIFECYCLE: 'strategy:lifecycle',
 } as const;

@@ -33,6 +33,8 @@ import { OptimizationEngine } from './services/optimization-engine/service.js';
 import { AiAgentRouterService } from './services/ai-orchestration/router/service.js';
 import { AiAggregationService } from './services/ai-orchestration/aggregation/service.js';
 import { OpenRouterProvider } from './services/ai-orchestration/providers/openrouter.js';
+import { BeliefGraphService } from './services/belief-graph/service.js';
+import { StrategyGenomeService } from './services/strategy-genome/service.js';
 async function main() {
     const config = loadConfig();
     const bus = new EventBus();
@@ -63,6 +65,8 @@ async function main() {
     const aiMemory = new AiMemoryService(bus);
     const autonomousResearch = new AutonomousResearchService(bus);
     const optimization = new OptimizationEngine(bus, ecology, signal);
+    const beliefGraph = new BeliefGraphService(bus);
+    const strategyGenome = new StrategyGenomeService(bus, ecology);
     const aiAggregation = new AiAggregationService(bus);
     const openRouterProvider = new OpenRouterProvider({
         apiKey: config.openRouter.apiKey,
@@ -88,10 +92,12 @@ async function main() {
     micro.start();
     features.start();
     featureIntelligence.start();
+    beliefGraph.start();
     probability.start();
     calibration.start();
     drift.start();
     ecology.start();
+    strategyGenome.start();
     risk.start();
     execution.start();
     executionAlpha.start();

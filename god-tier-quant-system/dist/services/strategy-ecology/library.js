@@ -3,6 +3,7 @@ class BaseStrategy {
         this.id = id;
         this.style = style;
         this.metrics = { ev: 0.01, sharpe: 1, drawdown: 0.01, calibrationAccuracy: 0.6, variance: 0.02 };
+        this.lifecyclePhase = 'birth';
     }
     evaluate(input) {
         const edge = input.edge;
@@ -44,6 +45,9 @@ class BaseStrategy {
         this.metrics.drawdown = Math.max(0.001, this.metrics.drawdown * 0.99 + (realizedPnl < 0 ? 0.01 : -0.005));
         this.metrics.calibrationAccuracy = Math.max(0.2, Math.min(0.95, this.metrics.calibrationAccuracy + (realizedPnl > 0 ? 0.01 : -0.01)));
         this.metrics.variance = Math.max(0.001, this.metrics.variance * 0.99 + Math.abs(realizedPnl) * 0.01);
+    }
+    setLifecycle(phase) {
+        this.lifecyclePhase = phase;
     }
 }
 export function createDefaultStrategies() {

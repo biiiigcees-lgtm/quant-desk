@@ -14,7 +14,7 @@
     "test:authority-determinism": "node --enable-source-maps dist/tests/authority-determinism.test.js"
   },
   "devDependencies": {
-    "@types/node": "^22.10.2",
+    "@types/node": "^22.19.18",
     "typescript": "^5.7.2"
   }
 }

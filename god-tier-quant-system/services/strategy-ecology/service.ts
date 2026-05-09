@@ -1,6 +1,6 @@
 import { EventBus } from '../../core/event-bus/bus.js';
 import { EVENTS } from '../../core/event-bus/events.js';
-import { ProbabilityEvent, StrategySignal } from '../../core/schemas/events.js';
+import { ProbabilityEvent, StrategyLifecycleEvent, StrategySignal } from '../../core/schemas/events.js';
 import { createDefaultStrategies } from './library.js';
 import { Strategy } from './strategy.js';
 
@@ -13,6 +13,8 @@ export class StrategyEcology {
     this.bus.on<ProbabilityEvent>(EVENTS.PROBABILITY, (event) => {
       queueMicrotask(() => {
         for (const strategy of this.strategies) {
+          // Extinct strategies no longer participate in signal generation.
+          if (strategy.lifecyclePhase === 'extinction') continue;
           const signal = strategy.evaluate(event);
           this.bus.emit<StrategySignal>(EVENTS.STRATEGY_SIGNAL, signal);
         }
@@ -22,6 +24,11 @@ export class StrategyEcology {
     this.bus.on<{ strategyId: string; pnl: number }>(EVENTS.RECONCILIATION, (event) => {
       const strategy = this.strategies.find((s) => s.id === event.strategyId);
       if (strategy) strategy.updateStats(event.pnl);
+    });
+
+    this.bus.on<StrategyLifecycleEvent>(EVENTS.STRATEGY_LIFECYCLE, (event) => {
+      const strategy = this.strategies.find((s) => s.id === event.strategyId);
+      if (strategy) strategy.setLifecycle(event.phase);
     });
   }
 
