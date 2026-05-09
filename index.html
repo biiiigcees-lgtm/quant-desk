@@ -1967,7 +1967,8 @@ function updateKalshiCountdownDisplay(kr) {
   const arc=document.getElementById('kArcRing');
   if(arc){
     const circ=213.6;
-    arc.setAttribute('stroke-dashoffset',(circ*(1-secsLeft/900)).toFixed(2));
+    const totalSecs=kr.totalMs?Math.max(900,kr.totalMs/1000):900;
+    arc.setAttribute('stroke-dashoffset',(circ*(1-secsLeft/totalSecs)).toFixed(2));
     arc.setAttribute('stroke',phase==='closing'?'var(--red)':phase==='caution'?'var(--amber)':'var(--green)');
   }
   const arcTxt=document.getElementById('kArcTime');
@@ -1983,8 +1984,10 @@ function updateKalshiCountdownDisplay(kr) {
   // Closes-at text
   const closesEl=document.getElementById('kClosesAt');
   if(closesEl){
-    const nextMs=Math.ceil(Date.now()/900000)*900000;
-    const d=new Date(nextMs);
+    const closeTs=marketStore._kalshiCloseTs&&marketStore._kalshiCloseTs>Date.now()
+      ?marketStore._kalshiCloseTs
+      :Math.ceil(Date.now()/900000)*900000;
+    const d=new Date(closeTs);
     closesEl.textContent=`CLOSES AT ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
   }
   // Entry guidance
@@ -2004,17 +2007,29 @@ setInterval(()=>updateKalshiCountdownDisplay(kalshiRound()),250);
 
 function kalshiRound() {
   const now = Date.now();
-  const roundMs = 900000; // 15 min in ms
-  const nextClose = Math.ceil(now / roundMs) * roundMs;
+  // Use actual Kalshi market close time if available and in the future
+  const actualCloseTs = marketStore._kalshiCloseTs;
+  let nextClose;
+  let totalMs;
+  if (actualCloseTs && actualCloseTs > now) {
+    nextClose = actualCloseTs;
+    // Estimate window size: cap at 24h for display purposes
+    totalMs = Math.min(actualCloseTs - (marketStore._kalshiOpenTs || now - 900000), 86400000);
+  } else {
+    // Fallback: synthetic 15-min window aligned to clock
+    const roundMs = 900000;
+    nextClose = Math.ceil(now / roundMs) * roundMs;
+    totalMs = roundMs;
+  }
   const msLeft = nextClose - now;
-  const secsLeft = Math.floor(msLeft / 1000);
+  const secsLeft = Math.max(0, Math.floor(msLeft / 1000));
   const m = Math.floor(secsLeft / 60);
   const s = secsLeft % 60;
   const mmss = `${m}:${String(s).padStart(2,'0')}`;
   let phase = 'open';
   if (secsLeft <= 90) phase = 'closing';
   else if (secsLeft <= 300) phase = 'caution';
-  return { msLeft, secsLeft, mmss, phase };
+  return { msLeft, secsLeft, mmss, phase, totalMs };
 }
 
 function showSignalAlert(verdict){
@@ -2061,6 +2076,11 @@ async function fetchKalshiLive(){
     const normAsk=Number.isFinite(ask)?(ask>1.5?ask/100:ask):null;
     if(Number.isFinite(normBid)&&normBid>0&&normBid<1) marketStore.kalshiBid=normBid;
     if(Number.isFinite(normAsk)&&normAsk>0&&normAsk<1) marketStore.kalshiAsk=normAsk;
+    // Store actual market close time for accurate countdown
+    if(d.close_time){
+      const closeTs=new Date(d.close_time).getTime();
+      if(closeTs>Date.now()) marketStore._kalshiCloseTs=closeTs;
+    }
     // Track mid history for trend arrow
     if(!Array.isArray(marketStore._kalshiHistory)) marketStore._kalshiHistory=[];
     marketStore._kalshiHistory.push({mid,ts:Date.now()});

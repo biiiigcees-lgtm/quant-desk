@@ -8,7 +8,7 @@ export default async function handler(req, res) {
 
   try {
     const r = await fetch(
-      'https://api.elections.kalshi.com/trade-api/v2/markets?series_ticker=KXBTC&status=open&limit=50',
+      'https://api.elections.kalshi.com/trade-api/v2/markets?series_ticker=KXBTC&status=open&limit=100',
       { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(5000) }
     );
     if (!r.ok) throw new Error(`Kalshi HTTP ${r.status}`);
@@ -20,7 +20,10 @@ export default async function handler(req, res) {
       return Number.isFinite(n) ? n : null;
     };
 
+    // Pick the market whose mid is closest to 0.5 (at-the-money = most informative)
     let best = null;
+    let bestDist = Infinity;
+
     for (const m of mkts) {
       const yesBidRaw = parsePrice(m.yes_bid_dollars ?? m.yes_bid);
       const yesAskRaw = parsePrice(m.yes_ask_dollars ?? m.yes_ask);
@@ -43,13 +46,19 @@ export default async function handler(req, res) {
       else if (Number.isFinite(yesBid)) mid = yesBid;
       else if (Number.isFinite(yesAsk)) mid = yesAsk;
 
-      if (mid == null || mid <= 0) continue;
+      if (mid == null || mid <= 0 || mid >= 1) continue;
 
-      best = { yes_bid: yesBid, yes_ask: yesAsk, mid, ticker: m.ticker, title: m.title };
-      break;
+      const dist = Math.abs(mid - 0.5);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = { yes_bid: yesBid, yes_ask: yesAsk, mid, ticker: m.ticker, title: m.title, close_time: m.close_time ?? null };
+      }
     }
 
     if (!best) return res.status(503).json({ error: 'No Kalshi market quotes', ts: Date.now() });
+
+    // If the best market is still very far from ATM (>90%/<10%), data is likely stale or wrong series
+    if (bestDist > 0.45) return res.status(503).json({ error: 'No ATM Kalshi market found', ts: Date.now() });
 
     return res.status(200).json({ ...best, ts: Date.now() });
   } catch (e) {
