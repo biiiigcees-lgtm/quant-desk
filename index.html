@@ -218,6 +218,35 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
 .traj-val{font-size:9px;font-weight:500}
 
 @media(max-width:900px){#app{grid-template-columns:1fr}#left-col,#right-col{display:none}}
+@media (max-width:640px){
+  html,body{overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  #topbar,#oracleBar,#sessionBar{flex-wrap:wrap;height:auto;gap:4px 8px;padding:6px 8px}
+  #topbar{align-items:flex-start}
+  #oracleBar{align-items:flex-start}
+  #sessionBar{align-items:flex-start}
+  #app{height:auto;min-height:calc(100dvh - 56px);grid-template-columns:1fr}
+  #chart-hdr{flex-wrap:wrap;gap:4px;padding:6px 8px}
+  #canvasWrap{height:220px}
+  #rsiWrap{height:48px}
+  #sigs{grid-template-columns:repeat(5,1fr)}
+  #of-row{grid-template-columns:repeat(2,1fr)}
+  #bet-inner{grid-template-columns:1fr}
+  .pb{padding:6px 8px}
+}
+@media (max-width:480px){
+  #topbar{padding:4px 6px;gap:4px}
+  .tb-logo{font-size:11px;letter-spacing:1px}
+  .tb-price{font-size:16px}
+  .tb-stat,.tb-sep,.ws-latency,.clock-text{display:none}
+  #oracleBar,#sessionBar{padding:4px 6px;gap:4px}
+  #oracleBar{height:auto}
+  #sessionBar{height:auto}
+  #chart-hdr .ema-legend,#chart-hdr .ema-legend-tight{display:none}
+  #canvasWrap{height:180px}
+  #sigs{grid-template-columns:repeat(2,1fr)}
+  #of-row{grid-template-columns:1fr}
+  #signalAlert{top:64px}
+}
 
 /* ── PRICE FLASH ── */
 @keyframes pflash-up{0%{color:var(--white)}20%{color:#00ff88;text-shadow:0 0 16px rgba(0,255,136,.9)}100%{color:var(--white)}}
