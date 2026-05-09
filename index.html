@@ -162,6 +162,36 @@ canvas{width:100%;height:100%;display:block}
 .k-entry-guidance.eg-caution{color:var(--amber);background:rgba(255,171,0,.1);border:1px solid rgba(255,171,0,.3)}
 .k-entry-guidance.eg-closing{color:var(--red);background:var(--r3);border:1px solid rgba(255,23,68,.4);animation:pulse .6s infinite}
 .k-trend-arrow{font-size:11px;margin-left:4px;font-weight:700}
+.k-target-box{margin-top:6px;padding:8px;border-top:1px solid var(--border);border-radius:3px;background:linear-gradient(180deg,rgba(0,229,255,.06),rgba(0,0,0,0) 42%)}
+.k-target-label{display:inline-flex;align-items:center;gap:6px;margin-bottom:6px;padding:2px 6px;border-radius:2px;background:rgba(0,229,255,.12);border:1px solid rgba(0,229,255,.28);color:var(--cyan);font-size:8px;font-weight:700;letter-spacing:.8px;line-height:1.2}
+.k-target-label::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px rgba(0,229,255,.55)}
+.k-target-row{display:flex;gap:6px;align-items:center;margin-top:0;padding:6px;border:1px solid rgba(0,229,255,.18);border-radius:3px;background:rgba(0,229,255,.04)}
+.k-target-input{flex:1;min-width:0;background:var(--bg1);border:1px solid rgba(0,229,255,.28);border-radius:2px;color:var(--white);font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;padding:6px 8px;outline:none;box-shadow:0 0 0 1px rgba(0,229,255,.06) inset}
+.k-target-input::placeholder{color:rgba(255,255,255,.45)}
+.k-target-input:focus{border-color:rgba(0,229,255,.65);box-shadow:0 0 0 1px rgba(0,229,255,.2),0 0 14px rgba(0,229,255,.12)}
+.k-target-btn{background:var(--bg2);border:1px solid rgba(0,229,255,.3);color:var(--white);font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.7px;padding:5px 8px;border-radius:2px;cursor:pointer;white-space:nowrap}
+.k-target-btn:hover{color:var(--cyan);border-color:rgba(0,229,255,.5)}
+.k-target-btn.clear{border-color:rgba(255,171,0,.3)}
+.k-target-btn.clear:hover{color:var(--amber);border-color:rgba(255,171,0,.5)}
+.k-target-hero{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 0 10px;border-bottom:1px solid var(--border);margin-bottom:6px}
+.k-target-hero-val{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;line-height:1;color:var(--white);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.k-target-hero-val.manual{color:var(--cyan);text-shadow:0 0 8px rgba(0,229,255,.22)}
+.k-target-hero-pill{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.7px;line-height:1;padding:2px 7px;border-radius:2px;border:1px solid var(--border);background:var(--bg3);color:var(--t2)}
+.k-target-hero-pill.pill-manual{color:var(--cyan);border-color:rgba(0,229,255,.35)}
+.k-target-hero-pill.pill-auto{color:var(--green);border-color:rgba(0,230,118,.32)}
+.k-target-meta{margin-top:4px;font-size:8px;color:var(--t3);letter-spacing:.5px;line-height:1.4}
+.k-target-meta.manual{color:var(--cyan)}
+.k-why-strip{margin-top:8px;padding:7px 8px;border:1px solid rgba(0,229,255,.18);border-radius:3px;background:linear-gradient(180deg,rgba(0,229,255,.04),rgba(0,0,0,0) 60%)}
+.k-why-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px}
+.k-why-title{font-size:8px;font-weight:700;letter-spacing:.8px;color:var(--cyan)}
+.k-why-sub{font-size:8px;color:var(--t3);letter-spacing:.4px}
+.k-why-pills{display:flex;flex-wrap:wrap;gap:5px}
+.k-why-pill{display:inline-flex;align-items:center;gap:4px;max-width:100%;padding:3px 6px;border-radius:2px;border:1px solid rgba(122,122,136,.18);background:rgba(255,255,255,.03);font-size:8px;line-height:1.35;color:var(--text)}
+.k-why-pill .why-k{color:var(--t3);text-transform:uppercase;letter-spacing:.6px;flex-shrink:0}
+.k-why-pill .why-v{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.k-why-pill.why-bull{border-color:rgba(0,230,118,.25);color:var(--green)}
+.k-why-pill.why-bear{border-color:rgba(255,23,68,.25);color:var(--red)}
+.k-why-pill.why-warn{border-color:rgba(255,171,0,.25);color:var(--amber)}
 .tl-open{color:var(--green)}
 .tl-caution{color:var(--amber)}
 .tl-closing{color:var(--red);animation:pulse .8s infinite}
@@ -219,7 +249,7 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
 
 @media(max-width:900px){#app{grid-template-columns:1fr}#left-col,#right-col{display:none}}
 @media (max-width:640px){
-  html,body{overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  html,body{overflow-x:hidden;overflow-y:auto}
   #topbar,#oracleBar,#sessionBar{flex-wrap:wrap;height:auto;gap:4px 8px;padding:6px 8px}
   #topbar{align-items:flex-start}
   #oracleBar{align-items:flex-start}
@@ -692,7 +722,31 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
       <div class="mr"><span class="ml">MODEL ABOVE</span><span class="mv num" id="kM">—</span></div>
       <div class="mr"><span class="ml">EDGE</span><span class="mv num" id="kE">—</span></div>
       <div class="mr"><span class="ml">EV / $1 BET</span><span class="mv num" id="kEV">—</span></div>
-      <div class="mr"><span class="ml">STRIKE</span><span class="mv num" id="kStr">—</span></div>
+      <div class="mr"><span class="ml">ROUND TARGET</span><span class="mv num" id="kStr">—</span></div>
+      <div class="k-target-hero">
+        <div class="k-target-hero-val" id="kTargetHeroVal">—</div>
+        <div class="k-target-hero-pill" id="kTargetHeroPill">AUTO</div>
+      </div>
+      <div class="k-target-box">
+        <div class="k-target-label">MANUAL INPUT</div>
+        <div class="k-target-row">
+          <input class="k-target-input" id="kTargetInput" type="number" min="0" step="1" placeholder="Manual round target" aria-label="Manual Kalshi round target price" />
+          <button class="k-target-btn" id="kTargetApply" type="button">APPLY</button>
+          <button class="k-target-btn clear" id="kTargetClear" type="button">CLEAR</button>
+        </div>
+        <div class="k-target-meta" id="kTargetMeta">AUTO TARGET · follows live BTC price</div>
+      </div>
+      <div class="k-why-strip">
+        <div class="k-why-head">
+          <div class="k-why-title">WHY NOW</div>
+          <div class="k-why-sub" id="kWhySub">READING LIVE FLOW</div>
+        </div>
+        <div class="k-why-pills">
+          <div class="k-why-pill" id="kWhy1"><span class="why-k">REGIME</span><span class="why-v">—</span></div>
+          <div class="k-why-pill" id="kWhy2"><span class="why-k">EDGE</span><span class="why-v">—</span></div>
+          <div class="k-why-pill" id="kWhy3"><span class="why-k">TIMING</span><span class="why-v">—</span></div>
+        </div>
+      </div>
       <div class="k-countdown-wrap">
         <svg class="k-ring" viewBox="0 0 60 60" id="kRingSvg">
           <circle class="k-ring-bg" cx="30" cy="30" r="26"/>
@@ -790,6 +844,8 @@ var marketStore = {
   kellyFull: 0, kellyEdge: 0, kellyWR: 0,
   dataQuality: 1,
   calibrationBias: 0,
+  kalshiManualTargetPrice: null,
+  kalshiTargetSource: 'auto',
 
   // Bet signal
   betData: null,
@@ -1936,6 +1992,179 @@ function kalshiRound() {
   return { msLeft, secsLeft, mmss, phase };
 }
 
+const KALSHI_TARGET_STORAGE_KEY = 'qdKalshiTargetPrice';
+
+function formatKalshiTargetPrice(value) {
+  return Number.isFinite(value) ? `$${Math.round(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—';
+}
+
+function readKalshiTargetStorage() {
+  try {
+    const raw = localStorage.getItem(KALSHI_TARGET_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = Number.parseFloat(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  } catch (e) {
+    console.debug('kalshi target hydrate skipped:', e?.message || e);
+    return null;
+  }
+}
+
+function persistKalshiTargetStorage(value) {
+  try {
+    if (Number.isFinite(value) && value > 0) localStorage.setItem(KALSHI_TARGET_STORAGE_KEY, String(value));
+    else localStorage.removeItem(KALSHI_TARGET_STORAGE_KEY);
+  } catch (e) {
+    console.debug('kalshi target persist skipped:', e?.message || e);
+  }
+}
+
+function getAutoKalshiTargetPrice() {
+  if (Number.isFinite(marketStore.price) && marketStore.price > 0) return marketStore.price;
+  if (Number.isFinite(marketStore.kalmanPrice) && marketStore.kalmanPrice > 0) return marketStore.kalmanPrice;
+  return null;
+}
+
+function getActiveKalshiTargetPrice() {
+  if (Number.isFinite(marketStore.kalshiManualTargetPrice) && marketStore.kalshiManualTargetPrice > 0) {
+    return marketStore.kalshiManualTargetPrice;
+  }
+  return getAutoKalshiTargetPrice();
+}
+
+function syncKalshiTargetUI() {
+  const input = document.getElementById('kTargetInput');
+  const meta = document.getElementById('kTargetMeta');
+  const heroVal = document.getElementById('kTargetHeroVal');
+  const heroPill = document.getElementById('kTargetHeroPill');
+  if (input) {
+    const hasManual = Number.isFinite(marketStore.kalshiManualTargetPrice) && marketStore.kalshiManualTargetPrice > 0;
+    const nextValue = hasManual ? String(Math.round(marketStore.kalshiManualTargetPrice)) : '';
+    if (input.value !== nextValue) input.value = nextValue;
+  }
+  if (meta) {
+    const manual = Number.isFinite(marketStore.kalshiManualTargetPrice) && marketStore.kalshiManualTargetPrice > 0;
+    const activeTarget = getActiveKalshiTargetPrice();
+    meta.textContent = manual
+      ? `MANUAL TARGET ACTIVE · ${formatKalshiTargetPrice(activeTarget)}`
+      : `AUTO TARGET · ${formatKalshiTargetPrice(activeTarget)}`;
+    meta.className = `k-target-meta ${manual ? 'manual' : ''}`;
+  }
+  if (heroVal || heroPill) {
+    const manual = Number.isFinite(marketStore.kalshiManualTargetPrice) && marketStore.kalshiManualTargetPrice > 0;
+    const activeTarget = getActiveKalshiTargetPrice();
+    if (heroVal) {
+      heroVal.textContent = formatKalshiTargetPrice(activeTarget);
+      heroVal.className = `k-target-hero-val ${manual ? 'manual' : ''}`;
+    }
+    if (heroPill) {
+      heroPill.textContent = manual ? 'MANUAL' : 'AUTO';
+      heroPill.className = `k-target-hero-pill ${manual ? 'pill-manual' : 'pill-auto'}`;
+    }
+  }
+}
+
+function syncKalshiWhyNowUI(s = marketStore) {
+  const whySub = document.getElementById('kWhySub');
+  const why1 = document.getElementById('kWhy1');
+  const why2 = document.getElementById('kWhy2');
+  const why3 = document.getElementById('kWhy3');
+  if (!whySub || !why1 || !why2 || !why3) return;
+
+  const regime = (s.regime || 'TRANSITIONAL').replaceAll('_', ' ');
+  const regimeConf = Number.isFinite(s.regimeConf) ? `${Math.round(s.regimeConf)}%` : '—';
+  const directionalEdge = Number.isFinite(s.pAbove) && Number.isFinite(s.kalshiAbove)
+    ? (s.pAbove - s.kalshiAbove / 100)
+    : 0;
+  const edgePct = `${directionalEdge >= 0 ? '+' : ''}${(directionalEdge * 100).toFixed(1)}%`;
+  const betData = s.betData || {};
+  const timing = betData.timingLabel || '—';
+  const conviction = Number.isFinite(betData.conviction) ? `${betData.conviction}%` : '—';
+  const active = betData.active === true;
+  let regimeTone = '';
+  if (regime.includes('TREND') || regime.includes('VOL')) {
+    regimeTone = 'why-bull';
+  } else if (regime.includes('MEAN') || regime.includes('RANGE')) {
+    regimeTone = 'why-warn';
+  }
+  let edgeTone = 'why-warn';
+  if (directionalEdge > 0) {
+    edgeTone = 'why-bull';
+  } else if (directionalEdge < 0) {
+    edgeTone = 'why-bear';
+  }
+  let timingTone = '';
+  if (timing.includes('CLOSING')) {
+    timingTone = 'why-warn';
+  } else if (active) {
+    timingTone = 'why-bull';
+  }
+  const timingLive = betData.activeDuration ? ' · ' + betData.activeDuration + 's live' : '';
+    let kalshiEvText = '—';
+    if (Number.isFinite(s.kalshiEV)) {
+      kalshiEvText = (s.kalshiEV >= 0 ? '+' : '') + (s.kalshiEV * 100).toFixed(1) + '¢ EV';
+    }
+
+  whySub.textContent = active ? `CONVICTION ${conviction}` : 'STANDBY';
+
+  const setPill = (el, label, value, tone) => {
+    el.className = `k-why-pill ${tone || ''}`.trim();
+    el.innerHTML = `<span class="why-k">${label}</span><span class="why-v">${value}</span>`;
+  };
+
+  setPill(why1, 'REGIME', `${regime} · ${regimeConf}`, regimeTone);
+  setPill(why2, 'EDGE', `${edgePct} · ${kalshiEvText}`, edgeTone);
+  setPill(why3, 'TIMING', timing + timingLive, timingTone);
+}
+
+function setKalshiManualTargetPrice(value) {
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    marketStore.kalshiManualTargetPrice = null;
+    marketStore.kalshiTargetSource = 'auto';
+    persistKalshiTargetStorage(null);
+    syncKalshiTargetUI();
+    return null;
+  }
+
+  marketStore.kalshiManualTargetPrice = parsed;
+  marketStore.kalshiTargetSource = 'manual';
+  persistKalshiTargetStorage(parsed);
+  syncKalshiTargetUI();
+  return parsed;
+}
+
+function clearKalshiManualTargetPrice() {
+  return setKalshiManualTargetPrice(null);
+}
+
+function hydrateKalshiTargetPrice() {
+  const stored = readKalshiTargetStorage();
+  marketStore.kalshiManualTargetPrice = stored;
+  marketStore.kalshiTargetSource = stored ? 'manual' : 'auto';
+  syncKalshiTargetUI();
+}
+
+function setupKalshiTargetControls() {
+  const input = document.getElementById('kTargetInput');
+  const apply = document.getElementById('kTargetApply');
+  const clear = document.getElementById('kTargetClear');
+  if (!input || !apply || !clear) return;
+  const commit = () => setKalshiManualTargetPrice(input.value);
+  apply.addEventListener('click', commit);
+  clear.addEventListener('click', () => {
+    input.value = '';
+    clearKalshiManualTargetPrice();
+  });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') commit();
+    if (e.key === 'Escape') {
+      input.value = '';
+      clearKalshiManualTargetPrice();
+    }
+  });
+}
+
 function updateKalshiCountdownDisplay(kr) {
   let phaseColor='var(--green)';
   let phaseLabel='OPEN';
@@ -2421,7 +2650,9 @@ function renderAll(){ // NOSONAR
   const edge=s.pAbove-s.kalshiAbove/100;
   const ke=document.getElementById('kE');
   if(ke){ke.textContent=(edge>=0?'+':'')+((edge*100).toFixed(1))+'%';ke.style.color=edge>0?'var(--green)':'var(--red)';}
-  setTxt('kStr',p?'$'+p.toLocaleString(undefined,{maximumFractionDigits:0}):'—');
+  setTxt('kStr',formatKalshiTargetPrice(getActiveKalshiTargetPrice()));
+  syncKalshiTargetUI();
+  syncKalshiWhyNowUI(s);
   const evEl=document.getElementById('kEV');
   if(evEl){
     const ev_=marketStore.kalshiEV??0;
@@ -2449,7 +2680,7 @@ function renderAll(){ // NOSONAR
   const sbKRoundEl=document.getElementById('sbKRound');
   if(sbKRoundEl){const kRoundSb=kalshiRound();sbKRoundEl.textContent=kRoundSb.mmss;sbKRoundEl.classList.remove('up','dn');if(kRoundSb.phase==='open')sbKRoundEl.classList.add('up');else if(kRoundSb.phase==='closing')sbKRoundEl.classList.add('dn');}
   const sbKTargetEl=document.getElementById('sbKTarget');
-  if(sbKTargetEl){sbKTargetEl.textContent=p?'$'+p.toLocaleString(undefined,{maximumFractionDigits:0}):'$——';}
+  if(sbKTargetEl){sbKTargetEl.textContent=formatKalshiTargetPrice(getActiveKalshiTargetPrice());}
   const keb=document.getElementById('kEdgeBox');
   if(keb){
     if (edge > 0.05) keb.textContent=`▲ EDGE +${(edge*100).toFixed(1)}% — BET ABOVE`;
@@ -2839,6 +3070,7 @@ async function runAI(){ // NOSONAR
   const hasOracleDeviation=Number.isFinite(s.oracleDeviation);
   const hasOpenInterest=Number.isFinite(s.openInterest);
 
+  const targetPrice = getActiveKalshiTargetPrice();
   const prompt=`BTC LIVE DATA — ${new Date().toISOString()}
 
 PRICE: $${s.price?.toLocaleString()} (${pch>=0?'+':''}${pch}% 24H)
@@ -2886,6 +3118,7 @@ DERIVATIVES:
 - Mark: $${s.markPrice?.toFixed(0)||'—'} | Index: $${s.indexPrice?.toFixed(0)||'—'}
 
 KALSHI: Market ${s.kalshiAbove}% | Model ${(s.pAbove*100)?.toFixed(1)}% | Edge ${((s.pAbove-s.kalshiAbove/100)*100)?.toFixed(1)}%
+KALSHI TARGET: ${formatKalshiTargetPrice(targetPrice)} (${Number.isFinite(s.kalshiManualTargetPrice) && s.kalshiManualTargetPrice > 0 ? 'MANUAL' : 'AUTO'})
 BET ENGINE: ${s.betData?.active?`ACTIVE — ${s.betData.verdict} (${s.betData.conviction}% conviction)`:'MONITORING'}
 SIGNAL ACCURACY: ${s.signalAccuracy||'—'}% | BRIER: ${s.brierScore||'—'}`;
 
@@ -2987,6 +3220,8 @@ async function init(){
   resizeChart();
   setWsStatus('connecting');
   hydrateSignalLog();
+  hydrateKalshiTargetPrice();
+  setupKalshiTargetControls();
   await bootstrapCandles();   // REST candle bootstrap from REST API
   resizeChart();              // re-measure after layout settles
   setupCrosshair();
