@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quant-god-engine
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: quant-god-engine
+  template:
+    metadata:
+      labels:
+        app: quant-god-engine
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: engine
+          image: quant-god-engine:0.1.0
+          ports:
+            - containerPort: 9191
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+              ephemeral-storage: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+              ephemeral-storage: "2Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: quant-god-engine
+spec:
+  selector:
+    app: quant-god-engine
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 9191
+  type: ClusterIP
