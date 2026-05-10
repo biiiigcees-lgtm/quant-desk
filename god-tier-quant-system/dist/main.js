@@ -38,6 +38,11 @@ import { StrategyGenomeService } from './services/strategy-genome/service.js';
 import { RealityLayerService } from './services/reality-layer/service.js';
 import { CausalWorldModelService } from './services/causal-world-model/service.js';
 import { MarketParticipantModelService } from './services/market-participant-model/service.js';
+import { SystemConsciousnessService } from './services/system-consciousness/service.js';
+import { EpistemicHealthService } from './services/epistemic-health/service.js';
+import { AdversarialAuditorService } from './services/adversarial-auditor/service.js';
+import { MarketMemoryService } from './services/market-memory/service.js';
+import { MultiTimescaleCognitionService } from './services/multiscale-cognition/service.js';
 async function main() {
     const config = loadConfig();
     const bus = new EventBus();
@@ -73,6 +78,11 @@ async function main() {
     const realityLayer = new RealityLayerService(bus);
     const causalWorldModel = new CausalWorldModelService(bus);
     const marketParticipantModel = new MarketParticipantModelService(bus);
+    const systemConsciousness = new SystemConsciousnessService(bus);
+    const epistemicHealth = new EpistemicHealthService(bus);
+    const adversarialAuditor = new AdversarialAuditorService(bus);
+    const marketMemory = new MarketMemoryService(bus);
+    const multiTimescale = new MultiTimescaleCognitionService(bus);
     const aiAggregation = new AiAggregationService(bus);
     const openRouterProvider = new OpenRouterProvider({
         apiKey: config.openRouter.apiKey,
@@ -102,6 +112,11 @@ async function main() {
     beliefGraph.start();
     realityLayer.start();
     causalWorldModel.start();
+    marketMemory.start();
+    multiTimescale.start();
+    systemConsciousness.start();
+    epistemicHealth.start();
+    adversarialAuditor.start();
     probability.start();
     calibration.start();
     drift.start();
