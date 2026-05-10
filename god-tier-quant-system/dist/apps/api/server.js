@@ -10,6 +10,7 @@ export class ApiServer {
         this.orchestrationMetrics = [];
         this.orchestrationFailures = [];
         this.routingDecisions = [];
+        this.causalInsights = [];
     }
     start() {
         this.bus.on(EVENTS.PROBABILITY, (event) => {
@@ -41,6 +42,18 @@ export class ApiServer {
         });
         this.bus.on(EVENTS.AI_AGGREGATED_INTELLIGENCE, (event) => {
             this.latest.aiAggregatedIntelligence = event;
+        });
+        this.bus.on(EVENTS.REALITY_SNAPSHOT, (event) => {
+            this.latest.realitySnapshot = event;
+        });
+        this.bus.on(EVENTS.CAUSAL_INSIGHT, (event) => {
+            this.causalInsights.unshift(event);
+            if (this.causalInsights.length > 20)
+                this.causalInsights.pop();
+            this.latest.causalInsights = this.causalInsights.slice(0, 5);
+        });
+        this.bus.on(EVENTS.PARTICIPANT_FLOW, (event) => {
+            this.latest.participantFlow = event;
         });
         this.bus.on(EVENTS.AI_ORCHESTRATION_METRICS, (event) => {
             this.orchestrationMetrics.unshift(event);

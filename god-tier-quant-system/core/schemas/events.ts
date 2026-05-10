@@ -410,6 +410,44 @@ export interface ExecutionPathMirrorEvent {
   timestamp: number;
 }
 
+export type SystemState = 'nominal' | 'cautious' | 'degraded' | 'halted';
+export type ParticipantType = 'liquidity-provider' | 'momentum' | 'panic-flow' | 'arbitrage' | 'trapped-trader';
+
+export interface RealitySnapshot {
+  contractId: string;
+  systemState: SystemState;
+  actionableState: boolean;
+  uncertaintyState: 'low' | 'medium' | 'high' | 'extreme';
+  executionPermission: boolean;
+  canonicalSnapshotId: string;
+  truthScore: number;
+  calibrationFactor: number;
+  driftFactor: number;
+  anomalyFactor: number;
+  beliefFactor: number;
+  timestamp: number;
+}
+
+export interface CausalInsight {
+  contractId: string;
+  cause: string;
+  effect: string;
+  causalStrength: number;
+  reverseStrength: number;
+  confidence: number;
+  spurious: boolean;
+  timestamp: number;
+}
+
+export interface ParticipantFlowEvent {
+  contractId: string;
+  dominant: ParticipantType;
+  distribution: Record<ParticipantType, number>;
+  aggressionIndex: number;
+  trappedTraderSignal: boolean;
+  timestamp: number;
+}
+
 export interface AggregatedIntelligenceEvent {
   contractId: string;
   market_state: MarketStateIntelligence;
