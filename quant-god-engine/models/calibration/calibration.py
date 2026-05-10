@@ -1,9 +1,9 @@
-from dataclasses import dataclass, field
+E = 2.718281828459045
 
 
-@dataclass
 class CalibrationTracker:
-    pairs: list[tuple[float, float]] = field(default_factory=list)
+    def __init__(self):
+        self.pairs: list[tuple[float, float]] = []
 
     def observe(self, predicted: float, realized: float) -> None:
         self.pairs.append((predicted, realized))
@@ -21,7 +21,5 @@ class CalibrationTracker:
         return sum((p - r) ** 2 for p, r in self.pairs) / len(self.pairs)
 
     def platt_scale(self, raw: float, a: float = 1.0, b: float = 0.0) -> float:
-        import math
-
         z = a * raw + b
-        return 1.0 / (1.0 + math.exp(-z))
+        return 1.0 / (1.0 + (E ** (-z)))

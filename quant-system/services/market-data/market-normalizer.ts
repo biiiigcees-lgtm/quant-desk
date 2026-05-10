@@ -1,5 +1,4 @@
-import { MarketUpdate } from '../../core/index.js';
-import { Logger } from '../../core/index.js';
+import { Logger, MarketUpdate } from '../../core/index.js';
 
 /**
  * Normalize raw Kalshi events into MarketUpdate

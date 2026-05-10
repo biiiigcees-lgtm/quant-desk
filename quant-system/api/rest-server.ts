@@ -1,4 +1,4 @@
-import http, { IncomingMessage, ServerResponse } from 'http';
+import http, { IncomingMessage, ServerResponse } from 'node:http';
 import { AggregatedSignal, Order, PortfolioState, Position } from '../core/index.js';
 import { EventStreamServer } from './websocket-server.js';
 

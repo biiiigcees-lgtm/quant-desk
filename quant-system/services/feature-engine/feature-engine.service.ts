@@ -2,26 +2,27 @@ import {
   EventBus,
   EVENTS,
   Logger,
-  FeatureVector,
   MarketUpdate,
 } from '../../core/index.js';
 import { computeFeatureVector } from './feature-vector.js';
 import { ProbabilityVelocityCalculator } from './probability-velocity.js';
 
+const DEFAULT_EMA_PERIODS = { short: 3, long: 21 };
+
 export class FeatureEngineService {
-  private eventBus: EventBus;
-  private logger: Logger;
-  private priceHistories: Map<string, number[]> = new Map();
-  private velocityCalculators: Map<string, ProbabilityVelocityCalculator> = new Map();
-  private expiryTimes: Map<string, number> = new Map();
-  private maxHistoryLength: number;
-  private emaPeriods: { short: number; long: number };
+  private readonly eventBus: EventBus;
+  private readonly logger: Logger;
+  private readonly priceHistories: Map<string, number[]> = new Map();
+  private readonly velocityCalculators: Map<string, ProbabilityVelocityCalculator> = new Map();
+  private readonly expiryTimes: Map<string, number> = new Map();
+  private readonly maxHistoryLength: number;
+  private readonly emaPeriods: { short: number; long: number };
 
   constructor(
     eventBus: EventBus,
     logger: Logger,
     maxHistoryLength: number = 100,
-    emaPeriods: { short: number; long: number } = { short: 3, long: 21 },
+    emaPeriods: { short: number; long: number } = DEFAULT_EMA_PERIODS,
   ) {
     this.eventBus = eventBus;
     this.logger = logger;

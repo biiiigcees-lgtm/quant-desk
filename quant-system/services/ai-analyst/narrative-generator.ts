@@ -2,12 +2,13 @@ import { AnalystReport } from '../../core/index.js';
 import { MarketObservation } from './market-observer.js';
 
 export function generateNarrative(observation: MarketObservation): AnalystReport {
-  const confidenceBand =
-    Math.abs(observation.signalScore) > 70
-      ? 'high'
-      : Math.abs(observation.signalScore) > 40
-      ? 'medium'
-      : 'low';
+  const absSignal = Math.abs(observation.signalScore);
+  let confidenceBand: AnalystReport['confidenceBand'] = 'low';
+  if (absSignal > 70) {
+    confidenceBand = 'high';
+  } else if (absSignal > 40) {
+    confidenceBand = 'medium';
+  }
 
   const summary =
     `Signal ${observation.signalDirection} at score ${observation.signalScore.toFixed(1)} ` +

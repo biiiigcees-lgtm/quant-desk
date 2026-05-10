@@ -1,6 +1,7 @@
 // @ts-nocheck
-import { describe, it, beforeEach } from 'node:test';
-import assert from 'node:assert/strict';
+// @ts-nocheck
+const { describe, it, beforeEach } = await import('node:test');
+const { default: assert } = await import('node:assert/strict');
 import { MarketStore } from '../lib/marketStore.js';
 
 describe('MarketStore — reactive state', () => {

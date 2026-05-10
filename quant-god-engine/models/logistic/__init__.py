@@ -1,1 +1,1 @@
-from .logistic_model import LogisticFeatures, infer_probability
+"""Logistic model package."""

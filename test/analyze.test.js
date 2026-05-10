@@ -1,5 +1,5 @@
-import { beforeEach, describe, it } from 'node:test';
-import assert from 'node:assert/strict';
+const { beforeEach, describe, it } = await import('node:test');
+const { default: assert } = await import('node:assert/strict');
 
 import analyzeHandler from '../api/analyze.js';
 import { generateSnapshotId, systemTruth } from '../api/system-truth.js';

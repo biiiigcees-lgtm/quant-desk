@@ -37,7 +37,9 @@ async function replay(): Promise<void> {
   }
 }
 
-replay().catch((error) => {
+try {
+  await replay();
+} catch (error) {
   console.error('Replay failed:', error);
   process.exit(1);
-});
+}

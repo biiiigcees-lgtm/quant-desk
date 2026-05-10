@@ -1,13 +1,4 @@
-import { EventEmitter } from 'events';
-import {
-  MarketUpdate,
-  FeatureVector,
-  StrategySignal,
-  AggregatedSignal,
-  RiskDecision,
-  Order,
-  PortfolioState,
-} from './types.js';
+import { EventEmitter } from 'node:events';
 
 export const EVENTS = {
   // Market events
@@ -55,7 +46,7 @@ export const EVENTS = {
 export type EventBusListener<T = any> = (data: T) => void | Promise<void>;
 
 export class EventBus {
-  private emitter: EventEmitter;
+  private readonly emitter: EventEmitter;
 
   constructor() {
     this.emitter = new EventEmitter();

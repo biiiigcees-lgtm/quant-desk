@@ -17,7 +17,7 @@ export class MetricsRegistry {
     if (!values || values.length === 0) {
       return null;
     }
-    return values[values.length - 1];
+    return values.at(-1) ?? null;
   }
 
   mean(name: string): number | null {

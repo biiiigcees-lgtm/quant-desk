@@ -41,7 +41,10 @@ export class EventBus {
   }
 
   history<T = unknown>(events?: string | string[]): Array<RecordedEvent<T>> {
-    const filter = events ? new Set(Array.isArray(events) ? events : [events]) : null;
+    let filter: Set<string> | null = null;
+    if (events) {
+      filter = new Set(Array.isArray(events) ? events : [events]);
+    }
     return this.eventHistory
       .filter((record) => (filter ? filter.has(record.event) : true))
       .map((record) => ({ ...record })) as Array<RecordedEvent<T>>;

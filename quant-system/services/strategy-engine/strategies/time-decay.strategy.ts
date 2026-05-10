@@ -33,7 +33,10 @@ export class TimeDecayStrategy extends Strategy {
       }
     }
 
-    const expectedValue = direction === 'FLAT' ? 0 : (confidence - 0.5) * (direction === 'YES' ? 0.8 : -0.8);
+    let expectedValue = 0;
+    if (direction !== 'FLAT') {
+      expectedValue = (confidence - 0.5) * (direction === 'YES' ? 0.8 : -0.8);
+    }
 
     return {
       strategyName: this.name,

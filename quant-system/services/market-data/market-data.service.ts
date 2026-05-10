@@ -3,10 +3,10 @@ import { KalshiClient } from './kalshi-client.js';
 import { normalizeKalshiEvent, extractOrderBookImbalance } from './market-normalizer.js';
 
 export class MarketDataService {
-  private eventBus: EventBus;
-  private kalshiClient: KalshiClient;
-  private logger: Logger;
-  private contractIds: string[];
+  private readonly eventBus: EventBus;
+  private readonly kalshiClient: KalshiClient;
+  private readonly logger: Logger;
+  private readonly contractIds: string[];
 
   constructor(eventBus: EventBus, kalshiClient: KalshiClient, logger: Logger, contractIds: string[]) {
     this.eventBus = eventBus;
@@ -51,7 +51,7 @@ export class MarketDataService {
     if (data.type === 'market_update') {
       const update = normalizeKalshiEvent(data, this.logger);
       if (update) {
-        const obImbalance = extractOrderBookImbalance(update.bids, update.asks);
+        extractOrderBookImbalance(update.bids, update.asks);
         const enrichedUpdate: MarketUpdate = {
           ...update,
           bids: update.bids || [],

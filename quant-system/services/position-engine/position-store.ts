@@ -1,7 +1,7 @@
 import { Order, PortfolioState, Position } from '../../core/index.js';
 
 export class PositionStore {
-  private portfolio: PortfolioState;
+  private readonly portfolio: PortfolioState;
 
   constructor(initialBank: number) {
     this.portfolio = {

@@ -2,13 +2,8 @@ import { strict as assert } from 'node:assert';
 import { EventBus } from '../core/event-bus/bus.js';
 import { EVENTS } from '../core/event-bus/events.js';
 import {
-  AnomalyEvent,
   BeliefGraphStateEvent,
-  CalibrationEvent,
   DecisionSnapshotEvent,
-  DriftEvent,
-  FeatureIntelligenceEvent,
-  ProbabilityEvent,
 } from '../core/schemas/events.js';
 import { BeliefGraphService } from '../services/belief-graph/service.js';
 import { ConstitutionalDecisionService } from '../services/constitutional-decision/service.js';
@@ -18,7 +13,7 @@ function testBeliefGraphUpdatesFromSnapshot(): void {
   const bus = new EventBus();
   new BeliefGraphService(bus).start();
 
-  let beliefEvent: BeliefGraphStateEvent | null = null;
+  let beliefEvent: any = null;
   bus.on<BeliefGraphStateEvent>(EVENTS.BELIEF_GRAPH_STATE, (event) => {
     beliefEvent = event;
   });
@@ -28,7 +23,10 @@ function testBeliefGraphUpdatesFromSnapshot(): void {
   bus.emit(EVENTS.DECISION_SNAPSHOT, snapshot);
 
   assert.ok(beliefEvent !== null, 'expected belief graph state event');
-  const summary = (beliefEvent as BeliefGraphStateEvent).summary;
+  if (!beliefEvent) {
+    throw new Error('belief event missing');
+  }
+  const summary = beliefEvent.summary;
 
   assert.ok(summary.beliefAdjustedProbability > 0, 'belief adjusted probability must be positive');
   assert.ok(summary.beliefAdjustedProbability < 1, 'belief adjusted probability must be < 1');
@@ -41,7 +39,7 @@ function testBeliefGraphDetectsContradictions(): void {
   const bus = new EventBus();
   new BeliefGraphService(bus).start();
 
-  let beliefEvent: BeliefGraphStateEvent | null = null;
+  let beliefEvent: any = null;
   bus.on<BeliefGraphStateEvent>(EVENTS.BELIEF_GRAPH_STATE, (event) => {
     beliefEvent = event;
   });
@@ -63,7 +61,10 @@ function testBeliefGraphDetectsContradictions(): void {
   bus.emit(EVENTS.DECISION_SNAPSHOT, snapshot);
 
   assert.ok(beliefEvent !== null, 'expected belief graph state event');
-  const summary = (beliefEvent as BeliefGraphStateEvent).summary;
+  if (!beliefEvent) {
+    throw new Error('belief event missing');
+  }
+  const summary = beliefEvent.summary;
   assert.ok(summary.contradictionCount >= 0, 'contradiction count should be >= 0');
 }
 
@@ -72,7 +73,7 @@ function testBeliefGraphCalibrationNode(): void {
   const bus = new EventBus();
   new BeliefGraphService(bus).start();
 
-  let beliefEvent: BeliefGraphStateEvent | null = null;
+  let beliefEvent: any = null;
   bus.on<BeliefGraphStateEvent>(EVENTS.BELIEF_GRAPH_STATE, (event) => {
     beliefEvent = event;
   });
@@ -93,7 +94,10 @@ function testBeliefGraphCalibrationNode(): void {
   bus.emit(EVENTS.DECISION_SNAPSHOT, snapshot);
 
   assert.ok(beliefEvent !== null, 'expected belief graph state event');
-  const summary = (beliefEvent as BeliefGraphStateEvent).summary;
+  if (!beliefEvent) {
+    throw new Error('belief event missing');
+  }
+  const summary = beliefEvent.summary;
   // With good calibration, uncertainty should be lower
   assert.ok(
     summary.beliefUncertaintyInterval[1] - summary.beliefUncertaintyInterval[0] < 0.5,
@@ -108,7 +112,7 @@ function testBeliefGraphFeedsConstitutionalDecision(): void {
   const constitution = new ConstitutionalDecisionService(bus);
   constitution.start();
 
-  let beliefEvent: BeliefGraphStateEvent | null = null;
+  let beliefEvent: any = null;
   let constitutionalEvent: any = null;
 
   bus.on<BeliefGraphStateEvent>(EVENTS.BELIEF_GRAPH_STATE, (event) => {
@@ -130,7 +134,7 @@ function testBeliefGraphFeedsConstitutionalDecision(): void {
   assert.ok(constitutionalEvent !== null, 'expected constitutional decision output');
 
   // Constitutional decision should have recorded belief graph integration
-  const traces = (constitutionalEvent as any).governance_log;
+  const traces = constitutionalEvent.governance_log;
   assert.ok(
     traces.some((t: any) => t.rule === 'belief-graph-integration'),
     'constitutional decision should log belief-graph-integration rule',
@@ -142,7 +146,7 @@ function testBeliefGraphRegimeTransitionHazard(): void {
   const bus = new EventBus();
   new BeliefGraphService(bus).start();
 
-  let beliefEvent: BeliefGraphStateEvent | null = null;
+  let beliefEvent: any = null;
   bus.on<BeliefGraphStateEvent>(EVENTS.BELIEF_GRAPH_STATE, (event) => {
     beliefEvent = event;
   });
@@ -167,7 +171,10 @@ function testBeliefGraphRegimeTransitionHazard(): void {
   bus.emit(EVENTS.DECISION_SNAPSHOT, snapshotWithDrift);
 
   assert.ok(beliefEvent !== null, 'expected belief graph state event');
-  const summary = (beliefEvent as BeliefGraphStateEvent).summary;
+  if (!beliefEvent) {
+    throw new Error('belief event missing');
+  }
+  const summary = beliefEvent.summary;
   assert.ok(
     summary.regimeTransitionHazard > 0.2,
     `regime transition hazard should be > 0.2 but got ${summary.regimeTransitionHazard}`,
@@ -179,7 +186,7 @@ function testBeliefGraphGraphHealth(): void {
   const bus = new EventBus();
   new BeliefGraphService(bus).start();
 
-  let beliefEvent: BeliefGraphStateEvent | null = null;
+  let beliefEvent: any = null;
   bus.on<BeliefGraphStateEvent>(EVENTS.BELIEF_GRAPH_STATE, (event) => {
     beliefEvent = event;
   });
@@ -189,7 +196,10 @@ function testBeliefGraphGraphHealth(): void {
   bus.emit(EVENTS.DECISION_SNAPSHOT, snapshot);
 
   assert.ok(beliefEvent !== null, 'expected belief graph state event');
-  const summary = (beliefEvent as BeliefGraphStateEvent).summary;
+  if (!beliefEvent) {
+    throw new Error('belief event missing');
+  }
+  const summary = beliefEvent.summary;
 
   assert.ok(summary.graphDensity >= 0 && summary.graphDensity <= 1, 'graph density should be 0-1');
   assert.ok(summary.graphEntropy >= 0, 'graph entropy should be >= 0');
@@ -386,5 +396,5 @@ async function runAllTests(): Promise<void> {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  runAllTests().catch(console.error);
+  await runAllTests();
 }

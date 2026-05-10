@@ -8,8 +8,8 @@ export interface LogEntry {
 }
 
 export class Logger {
-  private minLevel: LogLevel;
-  private levelOrder: Record<LogLevel, number> = {
+  private readonly minLevel: LogLevel;
+  private readonly levelOrder: Record<LogLevel, number> = {
     debug: 0,
     info: 1,
     warn: 2,

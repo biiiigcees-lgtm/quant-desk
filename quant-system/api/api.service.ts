@@ -1,6 +1,4 @@
-import { AggregatedSignal, EventBus, EVENTS, Logger, PortfolioState } from '../core/index.js';
-import { Order } from '../core/index.js';
-import { Position } from '../core/index.js';
+import { AggregatedSignal, EventBus, EVENTS, Logger, Order, PortfolioState, Position } from '../core/index.js';
 import { EventStreamServer } from './websocket-server.js';
 import { RestServer } from './rest-server.js';
 

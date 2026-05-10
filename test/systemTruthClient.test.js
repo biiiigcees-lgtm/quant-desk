@@ -1,5 +1,5 @@
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
+const { describe, it } = await import('node:test');
+const { default: assert } = await import('node:assert/strict');
 
 import {
   deriveRiskScalar,

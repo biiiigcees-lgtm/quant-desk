@@ -13,7 +13,7 @@ export function calculateRequestedSize(
 }
 
 export function calculateLimitPrice(signal: AggregatedSignal): number {
-  const base = signal.finalSignal === 'YES' ? 0.5 : 0.5;
+  const base = 0.5;
   const skew = Math.min(0.2, Math.abs(signal.score) / 500);
   return signal.finalSignal === 'YES' ? base + skew : base - skew;
 }

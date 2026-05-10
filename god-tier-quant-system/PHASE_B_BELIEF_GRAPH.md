@@ -1,5 +1,7 @@
 # Phase B Implementation: Belief-Graph Engine
 
+<!-- markdownlint-disable MD022 MD032 MD025 -->
+
 ## Overview
 Phase B implements a probabilistic hypothesis DAG that models market beliefs, tracks causal relationships, and feeds regime-conditioned adjustments into constitutional governance decisions.
 

@@ -150,25 +150,7 @@ export class AiAgentRouterService {
         expiresAt: Date.now() + spec.cacheTtlMs,
       });
 
-      if (!this.options.shadowMode) {
-        this.emitResult(
-          {
-            agent,
-            output,
-            metrics: {
-              latencyMs,
-              model: providerResult.model,
-              promptTokens: providerResult.promptTokens,
-              completionTokens: providerResult.completionTokens,
-              totalTokens: providerResult.totalTokens,
-              estimatedCostUsd: providerResult.estimatedCostUsd,
-              fallbackDepth: providerResult.fallbackDepth,
-              cacheHit: false,
-            },
-          },
-          context,
-        );
-      } else {
+      if (this.options.shadowMode) {
         this.bus.emit(EVENTS.AI_ORCHESTRATION_METRICS, {
           agent,
           contractId: context.contractId,
@@ -186,6 +168,24 @@ export class AiAgentRouterService {
           shadowMode: true,
           timestamp: Date.now(),
         });
+      } else {
+        this.emitResult(
+          {
+            agent,
+            output,
+            metrics: {
+              latencyMs,
+              model: providerResult.model,
+              promptTokens: providerResult.promptTokens,
+              completionTokens: providerResult.completionTokens,
+              totalTokens: providerResult.totalTokens,
+              estimatedCostUsd: providerResult.estimatedCostUsd,
+              fallbackDepth: providerResult.fallbackDepth,
+              cacheHit: false,
+            },
+          },
+          context,
+        );
       }
     } catch (error) {
       this.recordFailure(agent);
@@ -279,11 +279,11 @@ function routeAgentsForTrigger(triggerEvent: string): AgentKind[] {
 }
 
 function stableHash(payload: unknown): string {
-  const text = JSON.stringify(payload, Object.keys((payload ?? {}) as Record<string, unknown>).sort());
+  const sortedKeys = Object.keys((payload ?? {}) as Record<string, unknown>).sort((a, b) => a.localeCompare(b));
+  const text = JSON.stringify(payload, sortedKeys);
   let hash = 0;
   for (let i = 0; i < text.length; i += 1) {
-    hash = (hash << 5) - hash + text.charCodeAt(i);
-    hash |= 0;
+    hash = Math.trunc((hash << 5) - hash + (text.codePointAt(i) ?? 0));
   }
   return hash.toString(16);
 }

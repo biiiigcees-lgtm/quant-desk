@@ -2,7 +2,7 @@
  * Exponential Moving Average
  */
 export function ema(prices: number[], period: number): number {
-  if (prices.length < period) return prices.length > 0 ? prices[prices.length - 1] : 0;
+  if (prices.length < period) return prices.length > 0 ? (prices.at(-1) ?? 0) : 0;
 
   let emaValue = prices.slice(0, period).reduce((a, b) => a + b, 0) / period;
   const multiplier = 2 / (period + 1);
@@ -108,7 +108,7 @@ export function bollingerBands(
   lower: number;
 } {
   if (prices.length < period) {
-    const current = prices[prices.length - 1] || 0;
+    const current = prices.at(-1) ?? 0;
     return { middle: current, upper: current, lower: current };
   }
 

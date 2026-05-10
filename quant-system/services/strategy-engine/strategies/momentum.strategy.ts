@@ -29,7 +29,10 @@ export class MomentumStrategy extends Strategy {
       reasoning = 'Bearish EMA stack with negative momentum';
     }
 
-    const expectedValue = direction === 'FLAT' ? 0 : (confidence - 0.5) * (direction === 'YES' ? 1 : -1);
+    let expectedValue = 0;
+    if (direction !== 'FLAT') {
+      expectedValue = (confidence - 0.5) * (direction === 'YES' ? 1 : -1);
+    }
 
     return {
       strategyName: this.name,

@@ -107,22 +107,14 @@ export class ConstitutionalDecisionService {
     const adjustment = clamp(ai.probability_adjustment.recommendedAdjustment, -0.2, 0.2);
     let finalProbability = clamp(snapshotProbability + adjustment, 0.01, 0.99);
 
-    // Apply belief-graph adjustments if available
     const beliefGraph = state.beliefGraph;
-    if (beliefGraph) {
-      this.applyBeliefGraphRule(beliefGraph, governanceLog, conflicts, decisionState);
-      // Blend belief-adjusted probability into final probability (10% weight on belief graph)
-      finalProbability =
-        0.9 * finalProbability + 0.1 * beliefGraph.summary.beliefAdjustedProbability;
-      finalProbability = clamp(finalProbability, 0.01, 0.99);
-      governanceLog.push(
-        this.rule('belief-graph-integration', 'adjust',
-          `belief_prob=${beliefGraph.summary.beliefAdjustedProbability.toFixed(3)}, uncertainty=[${beliefGraph.summary.beliefUncertaintyInterval[0].toFixed(3)}, ${beliefGraph.summary.beliefUncertaintyInterval[1].toFixed(3)})`
-        ),
-      );
-    } else {
-      governanceLog.push(this.rule('belief-graph-integration', 'pass', 'no belief graph available'));
-    }
+    finalProbability = this.applyBeliefGraphIntegration(
+      beliefGraph,
+      finalProbability,
+      governanceLog,
+      conflicts,
+      decisionState,
+    );
 
     let confidenceScore = clamp(
       (ai.market_state.confidence * 0.45 + ai.risk_level.confidence * 0.35 + ai.execution_recommendation.confidence * 0.2),
@@ -130,11 +122,7 @@ export class ConstitutionalDecisionService {
       1,
     );
 
-    // Adjust confidence for belief graph uncertainty
-    if (beliefGraph) {
-      const avgUncertainty = (beliefGraph.summary.beliefUncertaintyInterval[1] - beliefGraph.summary.beliefUncertaintyInterval[0]) / 2;
-      confidenceScore = clamp(confidenceScore * (1 - avgUncertainty * 0.3), 0, 1);
-    }
+    confidenceScore = this.applyBeliefGraphConfidenceAdjustment(beliefGraph, confidenceScore);
 
     if (ai.probability_adjustment.overconfidenceDetected) {
       confidenceScore = clamp(confidenceScore * 0.72, 0, 1);
@@ -366,6 +354,44 @@ export class ConstitutionalDecisionService {
         ),
       );
     }
+  }
+
+  private applyBeliefGraphIntegration(
+    beliefGraph: BeliefGraphStateEvent | null,
+    finalProbability: number,
+    governanceLog: GovernanceRuleTrace[],
+    conflicts: AgentConflict[],
+    decisionState: MutableDecisionState,
+  ): number {
+    if (!beliefGraph) {
+      governanceLog.push(this.rule('belief-graph-integration', 'pass', 'no belief graph available'));
+      return finalProbability;
+    }
+
+    this.applyBeliefGraphRule(beliefGraph, governanceLog, conflicts, decisionState);
+    let adjustedProb = 0.9 * finalProbability + 0.1 * beliefGraph.summary.beliefAdjustedProbability;
+    adjustedProb = clamp(adjustedProb, 0.01, 0.99);
+    governanceLog.push(
+      this.rule(
+        'belief-graph-integration',
+        'adjust',
+        `belief_prob=${beliefGraph.summary.beliefAdjustedProbability.toFixed(3)}, uncertainty=[${beliefGraph.summary.beliefUncertaintyInterval[0].toFixed(3)}, ${beliefGraph.summary.beliefUncertaintyInterval[1].toFixed(3)})`,
+      ),
+    );
+    return adjustedProb;
+  }
+
+  private applyBeliefGraphConfidenceAdjustment(
+    beliefGraph: BeliefGraphStateEvent | null,
+    confidenceScore: number,
+  ): number {
+    if (!beliefGraph) {
+      return confidenceScore;
+    }
+
+    const avgUncertainty =
+      (beliefGraph.summary.beliefUncertaintyInterval[1] - beliefGraph.summary.beliefUncertaintyInterval[0]) / 2;
+    return clamp(confidenceScore * (1 - avgUncertainty * 0.3), 0, 1);
   }
 
   private getState(contractId: string): ContractState {

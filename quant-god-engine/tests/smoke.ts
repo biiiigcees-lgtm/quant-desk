@@ -36,4 +36,4 @@ async function runSmoke(): Promise<void> {
   }, 8000);
 }
 
-void runSmoke();
+await runSmoke();

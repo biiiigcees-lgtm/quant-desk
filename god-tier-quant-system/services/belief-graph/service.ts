@@ -228,7 +228,12 @@ export class BeliefGraphService {
 
   private updateDriftNode(gs: GraphState, event: DriftEvent): void {
     const now = Date.now();
-    const driftSeverity = event.severity === 'high' ? 0.8 : event.severity === 'medium' ? 0.5 : 0.2;
+    let driftSeverity = 0.2;
+    if (event.severity === 'high') {
+      driftSeverity = 0.8;
+    } else if (event.severity === 'medium') {
+      driftSeverity = 0.5;
+    }
     const driftEvidence = 1 - driftSeverity; // high drift = low evidence that model is stable
 
     const node: BeliefGraphNode = {
@@ -342,7 +347,8 @@ export class BeliefGraphService {
     // Anomaly vs trading contradiction
     const anomalyNodes = Array.from(gs.nodes.keys()).filter((k) => k.startsWith('anomaly-'));
     for (const anomId of anomalyNodes) {
-      const anom = gs.nodes.get(anomId)!;
+      const anom = gs.nodes.get(anomId);
+      if (!anom) continue;
       if (anom.evidence > 0.6) {
         contradictions.push({
           hypothesis1: anomId,
@@ -369,20 +375,16 @@ export class BeliefGraphService {
 
     const baseProb = snapshot.state.probability.estimatedProbability;
     let beliefAdjustedProb = baseProb;
-    let totalWeight = 0;
 
     if (bullish) {
       beliefAdjustedProb += bullish.evidence * 0.2 * (bullish.evidence - 0.5);
-      totalWeight += bullish.evidence * 0.3;
     }
     if (edgePresent) {
       const edgeDir = snapshot.state.probability.edge > 0 ? 1 : -1;
       beliefAdjustedProb += edgeDir * edgePresent.evidence * 0.15;
-      totalWeight += edgePresent.evidence * 0.2;
     }
     if (calibrated && calibrated.evidence > 0.5) {
       beliefAdjustedProb += (calibrated.evidence - 0.5) * 0.1;
-      totalWeight += calibrated.evidence * 0.2;
     }
     if (stable && stable.evidence < 0.4) {
       // Low stability reduces conviction
@@ -481,6 +483,10 @@ export class BeliefGraphService {
         cycleCount: 0,
       });
     }
-    return this.state.get(contractId)!;
+    const graphState = this.state.get(contractId);
+    if (!graphState) {
+      throw new Error(`Graph state unavailable for contract ${contractId}`);
+    }
+    return graphState;
   }
 }

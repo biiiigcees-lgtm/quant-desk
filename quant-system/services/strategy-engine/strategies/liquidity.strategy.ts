@@ -31,7 +31,10 @@ export class LiquidityStrategy extends Strategy {
       reasoning += ' (confidence reduced in high volatility)';
     }
 
-    const expectedValue = direction === 'FLAT' ? 0 : (confidence - 0.5) * (direction === 'YES' ? 1.1 : -1.1);
+    let expectedValue = 0;
+    if (direction !== 'FLAT') {
+      expectedValue = (confidence - 0.5) * (direction === 'YES' ? 1.1 : -1.1);
+    }
 
     return {
       strategyName: this.name,

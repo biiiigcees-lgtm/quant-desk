@@ -13,7 +13,7 @@ function testInvalidWhenSourcesMissing(): void {
   });
   sync.start();
 
-  let invalid: DecisionSnapshotInvalidEvent | null = null;
+  let invalid: any = null;
   bus.on<DecisionSnapshotInvalidEvent>(EVENTS.DECISION_SNAPSHOT_INVALID, (event) => {
     invalid = event;
   });
@@ -31,7 +31,10 @@ function testInvalidWhenSourcesMissing(): void {
   });
 
   assert.ok(invalid !== null, 'expected invalid cycle while required sources are missing');
-  const invalidEvent = invalid as DecisionSnapshotInvalidEvent;
+  if (!invalid) {
+    throw new Error('invalid event missing');
+  }
+  const invalidEvent = invalid;
   assert.equal(invalidEvent.reason, 'missing-source');
   assert.ok((invalidEvent.missingSources?.length ?? 0) > 0, 'expected missing source names');
 }
@@ -45,7 +48,7 @@ function testSnapshotReadyWhenSourcesSynchronized(): void {
   });
   sync.start();
 
-  let ready: DecisionSnapshotEvent | null = null;
+  let ready: any = null;
   bus.on<DecisionSnapshotEvent>(EVENTS.DECISION_SNAPSHOT, (event) => {
     ready = event;
   });
@@ -113,7 +116,10 @@ function testSnapshotReadyWhenSourcesSynchronized(): void {
   });
 
   assert.ok(ready !== null, 'expected synchronized snapshot event');
-  const readySnapshot = ready as DecisionSnapshotEvent;
+  if (!ready) {
+    throw new Error('ready snapshot missing');
+  }
+  const readySnapshot = ready;
   assert.ok(readySnapshot.snapshot_id.startsWith('KXBTC-SNAP:'), 'expected deterministic snapshot id format');
   assert.equal(readySnapshot.triggerEvent, EVENTS.DRIFT_EVENT, 'expected snapshot trigger to match latest source update');
   assert.equal(readySnapshot.market_state_hash.length, 64, 'expected sha256 market hash length');

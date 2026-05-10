@@ -5,11 +5,11 @@ const INITIAL_BACKOFF_MS = 500;
 
 export class KalshiClient {
   private ws: WebSocket | null = null;
-  private url: string;
-  private messageHandlers: Array<(data: any) => void> = [];
+  private readonly url: string;
+  private readonly messageHandlers: Array<(data: any) => void> = [];
   private retryCount = 0;
   private connectTimeout: NodeJS.Timeout | null = null;
-  private logger: Logger;
+  private readonly logger: Logger;
 
   constructor(wsUrl: string, logger: Logger) {
     this.url = wsUrl;

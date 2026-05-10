@@ -6,7 +6,7 @@ export class ProbabilityVelocityCalculator {
   private lastProb: number | null = null;
   private lastTimestamp: number = 0;
   private history: Array<{ prob: number; timestamp: number }> = [];
-  private maxHistory: number = 20;
+  private readonly maxHistory: number = 20;
 
   update(prob: number, timestamp: number): number {
     // Velocity: change in probability per second

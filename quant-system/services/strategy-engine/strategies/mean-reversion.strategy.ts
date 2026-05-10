@@ -10,7 +10,7 @@ export class MeanReversionStrategy extends Strategy {
     const { ema21, rsi, probVelocity, volatilityRegime, timestamp } = featureVector;
 
     const deviation = featureVector.ema3 - ema21;
-    const strongDeviation = Math.abs(deviation) > 1.0;
+    const strongDeviation = Math.abs(deviation) > 1;
 
     let direction: 'YES' | 'NO' | 'FLAT' = 'FLAT';
     let confidence = 0.2;
@@ -26,7 +26,10 @@ export class MeanReversionStrategy extends Strategy {
       reasoning = 'Overbought with stall; reversion short setup';
     }
 
-    const expectedValue = direction === 'FLAT' ? 0 : (confidence - 0.5) * (direction === 'YES' ? 0.9 : -0.9);
+    let expectedValue = 0;
+    if (direction !== 'FLAT') {
+      expectedValue = (confidence - 0.5) * (direction === 'YES' ? 0.9 : -0.9);
+    }
 
     return {
       strategyName: this.name,

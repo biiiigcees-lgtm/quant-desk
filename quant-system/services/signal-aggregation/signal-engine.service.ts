@@ -51,7 +51,10 @@ export class SignalEngineService {
       this.pending.set(contractId, new Map());
     }
 
-    const contractSignals = this.pending.get(contractId)!;
+    const contractSignals = this.pending.get(contractId);
+    if (!contractSignals) {
+      return;
+    }
     contractSignals.set(strategyName, signal);
 
     if (contractSignals.size < this.expectedStrategyCount) {

@@ -32,10 +32,19 @@ export class AdaptiveRiskEngine {
     this.bus.on<CalibrationEvent>(EVENTS.CALIBRATION_UPDATE, (event) => {
       const degraded = event.brier >= 0.22 || event.ece >= 0.16;
       const caution = event.brier >= 0.14 || event.ece >= 0.1;
+      let mode: ExecutionControlEvent['mode'] = 'normal';
+      let reason = 'calibration-ok';
+      if (degraded) {
+        mode = 'hard-stop';
+        reason = 'calibration-critical';
+      } else if (caution) {
+        mode = 'safe-mode';
+        reason = 'calibration-caution';
+      }
       this.control = {
         contractId: event.contractId,
-        mode: degraded ? 'hard-stop' : caution ? 'safe-mode' : 'normal',
-        reason: degraded ? 'calibration-critical' : caution ? 'calibration-caution' : 'calibration-ok',
+        mode,
+        reason,
         brier: event.brier,
         ece: event.ece,
         timestamp: event.timestamp,
@@ -126,12 +135,12 @@ export class AdaptiveRiskEngine {
       const liquidityFactor = signal.regime === 'low-liquidity' ? 0.4 : 1;
       const regimeConfidence = signal.regime === 'panic' ? 0.3 : 0.9;
       const calibrationThrottle = this.control.mode === 'safe-mode' ? 0.45 : 1;
-      const aiThrottle =
-        this.aiRiskRecommendation === 'de-risk'
-          ? 0.6
-          : this.aiRiskRecommendation === 'scale-up' && this.aiRiskLevel < 40
-            ? 1.05
-            : 1;
+      let aiThrottle = 1;
+      if (this.aiRiskRecommendation === 'de-risk') {
+        aiThrottle = 0.6;
+      } else if (this.aiRiskRecommendation === 'scale-up' && this.aiRiskLevel < 40) {
+        aiThrottle = 1.05;
+      }
       const size =
         this.portfolio.capital * edge * liquidityFactor * regimeConfidence * this.riskLimit * calibrationThrottle * aiThrottle;
 
