@@ -55,6 +55,21 @@ export class ApiServer {
         this.bus.on(EVENTS.PARTICIPANT_FLOW, (event) => {
             this.latest.participantFlow = event;
         });
+        this.bus.on(EVENTS.SYSTEM_CONSCIOUSNESS, (event) => {
+            this.latest.systemConsciousness = event;
+        });
+        this.bus.on(EVENTS.EPISTEMIC_HEALTH, (event) => {
+            this.latest.epistemicHealth = event;
+        });
+        this.bus.on(EVENTS.ADVERSARIAL_AUDIT, (event) => {
+            this.latest.adversarialAudit = event;
+        });
+        this.bus.on(EVENTS.MARKET_MEMORY, (event) => {
+            this.latest.marketMemory = event;
+        });
+        this.bus.on(EVENTS.MULTI_TIMESCALE_VIEW, (event) => {
+            this.latest.multiTimescaleView = event;
+        });
         this.bus.on(EVENTS.AI_ORCHESTRATION_METRICS, (event) => {
             this.orchestrationMetrics.unshift(event);
             if (this.orchestrationMetrics.length > 100) {

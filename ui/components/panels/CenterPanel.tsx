@@ -14,6 +14,8 @@ export function CenterPanel({ state }: Props) {
   const anomaly = state?.anomaly;
   const execControl = state?.executionControl;
   const causalInsights = state?.causalInsights ?? [];
+  const epistemicHealth = state?.epistemicHealth;
+  const adversarialAudit = state?.adversarialAudit;
 
   const estProb = prob?.estimatedProbability ?? 0;
   const ciLow = prob?.confidenceInterval?.[0] ?? estProb;
@@ -86,6 +88,42 @@ export function CenterPanel({ state }: Props) {
           <UncertaintyCell label="belief" value={reality?.beliefFactor ?? 0} />
         </div>
       </div>
+
+      {/* Epistemic health */}
+      {epistemicHealth && (
+        <div className="px-4 py-2 panel-border shrink-0 flex items-center gap-3">
+          <span className="panel-header">epistemic health</span>
+          <div className="flex-1 h-1 bg-elevated rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${Math.round(epistemicHealth.epistemicHealthScore * 100)}%`,
+                backgroundColor: epistemicHealth.epistemicHealthScore > 0.7 ? '#00E5A8' : epistemicHealth.epistemicHealthScore > 0.4 ? '#FFB020' : '#FF4D4D',
+              }}
+            />
+          </div>
+          <span
+            className="font-mono text-xs font-bold px-1.5 py-0.5 rounded"
+            style={{
+              color: epistemicHealth.healthGrade === 'A' ? '#00E5A8' : epistemicHealth.healthGrade === 'B' ? '#3B82F6' : epistemicHealth.healthGrade === 'C' ? '#FFB020' : '#FF4D4D',
+              border: `1px solid currentColor`,
+            }}
+          >
+            {epistemicHealth.healthGrade}
+          </span>
+        </div>
+      )}
+
+      {/* Adversarial audit warning */}
+      {adversarialAudit && adversarialAudit.adversarialScore > 0.5 && (
+        <div className="mx-4 my-1 px-3 py-2 rounded border border-red bg-elevated shrink-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-mono text-2xs font-bold text-red uppercase">adversarial risk</span>
+            <span className="font-mono text-2xs text-muted">{(adversarialAudit.adversarialScore * 100).toFixed(0)}%</span>
+          </div>
+          <p className="font-mono text-2xs text-secondary line-clamp-2">{adversarialAudit.counterNarrative}</p>
+        </div>
+      )}
 
       {/* Execution permission */}
       <div className="px-4 py-4 panel-border shrink-0 flex items-center justify-between">
