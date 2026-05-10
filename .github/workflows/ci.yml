@@ -24,10 +24,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: god-tier-quant-system/package-lock.json
       - run: npm ci
-      - run: npm run type-check
+      - run: npm run check
       - run: npm run build
       - run: npm run smoke
       - run: npm run test:slice-6
+      - run: npm run test:cognitive
 
   frontend:
     name: Frontend
