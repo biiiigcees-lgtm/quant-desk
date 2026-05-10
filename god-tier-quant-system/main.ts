@@ -35,6 +35,9 @@ import { AiAggregationService } from './services/ai-orchestration/aggregation/se
 import { OpenRouterProvider } from './services/ai-orchestration/providers/openrouter.js';
 import { BeliefGraphService } from './services/belief-graph/service.js';
 import { StrategyGenomeService } from './services/strategy-genome/service.js';
+import { RealityLayerService } from './services/reality-layer/service.js';
+import { CausalWorldModelService } from './services/causal-world-model/service.js';
+import { MarketParticipantModelService } from './services/market-participant-model/service.js';
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -69,6 +72,9 @@ async function main(): Promise<void> {
   const optimization = new OptimizationEngine(bus, ecology, signal);
   const beliefGraph = new BeliefGraphService(bus);
   const strategyGenome = new StrategyGenomeService(bus, ecology);
+  const realityLayer = new RealityLayerService(bus);
+  const causalWorldModel = new CausalWorldModelService(bus);
+  const marketParticipantModel = new MarketParticipantModelService(bus);
   const aiAggregation = new AiAggregationService(bus);
   const openRouterProvider = new OpenRouterProvider({
     apiKey: config.openRouter.apiKey,
@@ -93,9 +99,12 @@ async function main(): Promise<void> {
 
   globalContext.start();
   micro.start();
+  marketParticipantModel.start();
   features.start();
   featureIntelligence.start();
   beliefGraph.start();
+  realityLayer.start();
+  causalWorldModel.start();
   probability.start();
   calibration.start();
   drift.start();

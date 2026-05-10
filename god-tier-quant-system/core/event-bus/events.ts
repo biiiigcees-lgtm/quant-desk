@@ -35,4 +35,7 @@ export const EVENTS = {
   BELIEF_GRAPH_UPDATE: 'belief-graph:update',
   EXECUTION_PATH_MIRROR: 'execution-path:mirror',
   STRATEGY_LIFECYCLE: 'strategy:lifecycle',
+  REALITY_SNAPSHOT: 'reality:snapshot',
+  CAUSAL_INSIGHT: 'causal:insight',
+  PARTICIPANT_FLOW: 'participant:flow',
 } as const;
