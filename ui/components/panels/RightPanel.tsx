@@ -27,7 +27,7 @@ const AGENTS: AgentInfo[] = [
 
 function extractAgentMetrics(state: SystemStateSnapshot | null, agentId: string) {
   const metrics = state?.aiAggregatedIntelligence;
-  const agentMetrics = (state as unknown as Record<string, unknown>)?.aiOrchestrationMetrics as Array<{ agent: string; latencyMs: number; cacheHit: boolean; fallbackDepth: number; timestamp: number }> | undefined;
+  const agentMetrics = state?.aiOrchestrationMetrics;
   const latest = agentMetrics?.find((m) => m.agent === agentId);
 
   let confidence = 0.5;
@@ -64,7 +64,7 @@ function extractAgentMetrics(state: SystemStateSnapshot | null, agentId: string)
 }
 
 export function RightPanel({ state }: Props) {
-  const failures = (state as unknown as Record<string, unknown>)?.aiOrchestrationFailures as Array<{ agent: string; error: string }> | undefined;
+  const failures = state?.aiOrchestrationFailures;
 
   return (
     <aside className="flex flex-col w-[28%] min-w-0 bg-surface panel-border overflow-hidden">
@@ -99,11 +99,17 @@ export function RightPanel({ state }: Props) {
       </div>
 
       {/* Orchestrator summary */}
-      <div className="px-3 py-2 shrink-0">
+      <div className="px-3 py-2 panel-border shrink-0">
         <span className="panel-header block mb-1">orchestrator</span>
         <p className="font-mono text-2xs text-secondary leading-relaxed line-clamp-3">
           {state?.aiAggregatedIntelligence?.market_state?.narrative ?? 'Meta-orchestrator idle. Awaiting market signal.'}
         </p>
+      </div>
+
+      {/* Multi-timescale coherence */}
+      <div className="px-3 py-2 shrink-0">
+        <span className="panel-header block mb-1.5">temporal alignment</span>
+        <MultiTimescaleBar state={state} />
       </div>
     </aside>
   );
@@ -153,11 +159,50 @@ function AgentNode({
   );
 }
 
+function MultiTimescaleBar({ state }: { state: SystemStateSnapshot | null }) {
+  const mtv = state?.multiTimescaleView;
+  const scales: Array<{ label: string; dir: 1 | 0 | -1; strength: number }> = [
+    { label: 'tick',   dir: mtv?.tick?.direction   ?? 0, strength: mtv?.tick?.strength   ?? 0 },
+    { label: 'local',  dir: mtv?.local?.direction  ?? 0, strength: mtv?.local?.strength  ?? 0 },
+    { label: 'regime', dir: mtv?.regime?.direction ?? 0, strength: mtv?.regime?.strength ?? 0 },
+    { label: 'macro',  dir: mtv?.macro?.direction  ?? 0, strength: mtv?.macro?.strength  ?? 0 },
+  ];
+  const coherence = mtv?.coherenceScore ?? 0;
+  const alignment = mtv?.temporalAlignment ?? 'divergent';
+  const alignColor = alignment === 'aligned' ? '#00E5A8' : alignment === 'mixed' ? '#FFB020' : '#FF4D4D';
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="grid grid-cols-4 gap-1">
+        {scales.map(({ label, dir, strength }) => {
+          const color = dir === 1 ? '#00E5A8' : dir === -1 ? '#FF4D4D' : '#4A5568';
+          return (
+            <div key={label} className="flex flex-col items-center gap-0.5">
+              <span className="font-mono text-2xs text-muted">{label}</span>
+              <div className="h-3 w-full bg-elevated rounded-sm overflow-hidden flex items-center justify-center">
+                <div className="h-full rounded-sm transition-all duration-500" style={{ width: `${Math.round(strength * 100)}%`, backgroundColor: color }} />
+              </div>
+              <span className="font-mono text-2xs" style={{ color }}>{dir === 1 ? '▲' : dir === -1 ? '▼' : '—'}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex items-center gap-1.5">
+        <div className="flex-1 h-1 bg-elevated rounded-full overflow-hidden">
+          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.round(coherence * 100)}%`, backgroundColor: alignColor }} />
+        </div>
+        <span className="font-mono text-2xs" style={{ color: alignColor }}>{alignment}</span>
+      </div>
+    </div>
+  );
+}
+
 function DisagreementMatrix({ state }: { state: SystemStateSnapshot | null }) {
   // Compute disagreement from strategy weights vs uniform expectation.
   const weights = state?.aiAggregatedIntelligence?.strategy_weights ?? {};
   const agentSample = ['MKT', 'CAL', 'RSK', 'MIC', 'STR', 'EXE'];
-  const values = agentSample.map((_, i) => Object.values(weights)[i] ?? Math.random() * 0.5);
+  const FALLBACK_WEIGHTS = [0.18, 0.22, 0.15, 0.20, 0.12, 0.13];
+  const values = agentSample.map((_, i) => Object.values(weights)[i] ?? FALLBACK_WEIGHTS[i] ?? 0.1);
 
   return (
     <div className="grid grid-cols-6 gap-px">

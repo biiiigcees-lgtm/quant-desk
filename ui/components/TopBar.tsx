@@ -15,6 +15,7 @@ export function TopBar({ state, isConnected }: Props) {
   const systemState = reality?.systemState ?? 'nominal';
   const truthScore = reality?.truthScore ?? 0;
   const snapshotId = reality?.canonicalSnapshotId ?? '—';
+  const epistemicGrade = state?.epistemicHealth?.healthGrade;
 
   const estProb = prob?.estimatedProbability ?? 0;
   const marketProb = prob?.marketImpliedProbability ?? 0;
@@ -33,6 +34,20 @@ export function TopBar({ state, isConnected }: Props) {
         />
         {systemState}
       </div>
+
+      {/* Epistemic health grade badge */}
+      {epistemicGrade && (
+        <div
+          className="px-1.5 py-0.5 rounded font-mono text-2xs font-bold"
+          style={{
+            color: epistemicGrade === 'A' ? '#00E5A8' : epistemicGrade === 'B' ? '#3B82F6' : epistemicGrade === 'C' ? '#FFB020' : '#FF4D4D',
+            border: '1px solid currentColor',
+          }}
+          title={`Epistemic health: ${epistemicGrade}`}
+        >
+          EH:{epistemicGrade}
+        </div>
+      )}
 
       {/* Truth score bar */}
       <div className="flex items-center gap-1.5 shrink-0">

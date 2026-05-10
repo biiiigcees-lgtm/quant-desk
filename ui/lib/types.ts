@@ -133,6 +133,70 @@ export interface SimulationUniverseState {
   timestamp: number;
 }
 
+export interface OrchestratorMetric {
+  agent: string;
+  latencyMs: number;
+  totalTokens?: number;
+  estimatedCostUsd?: number;
+  fallbackDepth: number;
+  cacheHit: boolean;
+  timestamp: number;
+}
+
+export interface SystemConsciousnessState {
+  contractId: string;
+  beliefState: { probability: number; confidence: number; beliefAdjustment: number };
+  uncertaintyTopology: { calibration: number; drift: number; anomaly: number; belief: number; composite: number };
+  contradictionDensity: number;
+  contradictions: Array<{ source: string; target: string; description: string }>;
+  cognitiveStressState: 'stable' | 'stressed' | 'critical';
+  timestamp: number;
+}
+
+export interface EpistemicHealthState {
+  contractId: string;
+  epistemicHealthScore: number;
+  calibrationHealth: number;
+  driftHealth: number;
+  anomalyHealth: number;
+  stabilityHealth: number;
+  healthGrade: 'A' | 'B' | 'C' | 'D' | 'F';
+  timestamp: number;
+}
+
+export interface AdversarialAuditState {
+  contractId: string;
+  targetExecutionId?: string;
+  weakAssumptions: string[];
+  contradictingEvidence: string[];
+  overconfidenceFlags: string[];
+  hiddenRegimeRisk: boolean;
+  adversarialScore: number;
+  counterNarrative: string;
+  timestamp: number;
+}
+
+export interface MarketMemoryState {
+  contractId: string;
+  recurrenceScore: number;
+  stressPatternMatch: boolean;
+  historicalOutcomeSignal: number;
+  regimeSignature: string;
+  memoryDepth: number;
+  timestamp: number;
+}
+
+export interface MultiTimescaleViewState {
+  contractId: string;
+  tick:   { direction: 1 | 0 | -1; strength: number };
+  local:  { direction: 1 | 0 | -1; strength: number };
+  regime: { direction: 1 | 0 | -1; strength: number };
+  macro:  { direction: 1 | 0 | -1; strength: number };
+  coherenceScore: number;
+  temporalAlignment: 'aligned' | 'mixed' | 'divergent';
+  timestamp: number;
+}
+
 export interface SystemStateSnapshot {
   probability?: ProbabilityState;
   signal?: SignalState;
@@ -147,4 +211,11 @@ export interface SystemStateSnapshot {
   realitySnapshot?: RealitySnapshot;
   causalInsights?: CausalInsight[];
   participantFlow?: ParticipantFlow;
+  aiOrchestrationMetrics?: OrchestratorMetric[];
+  aiOrchestrationFailures?: Array<{ agent: string; error: string }>;
+  systemConsciousness?: SystemConsciousnessState;
+  epistemicHealth?: EpistemicHealthState;
+  adversarialAudit?: AdversarialAuditState;
+  marketMemory?: MarketMemoryState;
+  multiTimescaleView?: MultiTimescaleViewState;
 }
