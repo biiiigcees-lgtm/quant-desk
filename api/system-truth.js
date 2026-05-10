@@ -15,9 +15,18 @@ const MAX_POST_PER_WINDOW = Number.parseInt(process.env.SYSTEM_TRUTH_RATE_LIMIT_
 const MAX_SKEW_MS = 300_000;
 const REPLAY_TTL_MS = 300_000;
 const SIGNED_PATH = '/api/system-truth';
+const ALLOW_TRUSTED_UNSIGNED = (process.env.SYSTEM_TRUTH_ALLOW_TRUSTED_UNSIGNED ?? '1') === '1';
 
 const rateState = new Map();
 const replayState = new Map();
+const AUTH_ERROR_CODES = new Set([
+  'missing-auth-headers',
+  'invalid-signature-format',
+  'invalid-timestamp',
+  'timestamp-out-of-window',
+  'replay-detected',
+  'signature-mismatch',
+]);
 
 function parseAllowedOrigins() {
   return (process.env.SYSTEM_TRUTH_ALLOWED_ORIGINS ?? '*')
@@ -58,7 +67,7 @@ function requireEnum(value, allowed, label) {
 
 function requireBoolean(value, label) {
   if (typeof value !== 'boolean') {
-    throw new Error(`${label} must be a boolean`);
+    throw new TypeError(`${label} must be a boolean`);
   }
   return value;
 }
@@ -73,7 +82,7 @@ function requireSnapshotId(value) {
 function normalizeConfidence(value, label = 'confidence') {
   const confidence = Number(value);
   if (!Number.isFinite(confidence)) {
-    throw new Error(`${label} must be a finite number`);
+    throw new TypeError(`${label} must be a finite number`);
   }
   return Number(clamp(confidence, 0, 100).toFixed(2));
 }
@@ -222,9 +231,14 @@ function isOriginAllowed(origin) {
 
 function setCors(req, res) {
   const origin = getHeader(req, 'origin');
-  const allowOrigin = origin && isOriginAllowed(origin)
-    ? origin
-    : (ALLOWED_ORIGINS.includes('*') ? '*' : ALLOWED_ORIGINS[0] ?? 'null');
+  let allowOrigin = 'null';
+  if (origin && isOriginAllowed(origin)) {
+    allowOrigin = origin;
+  } else if (ALLOWED_ORIGINS.includes('*')) {
+    allowOrigin = '*';
+  } else if (ALLOWED_ORIGINS[0]) {
+    allowOrigin = ALLOWED_ORIGINS[0];
+  }
 
   res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Origin', allowOrigin);
@@ -287,7 +301,7 @@ function verifySignature(req, body) {
 
   const timestampMs = Number(timestampRaw);
   if (!Number.isFinite(timestampMs)) {
-    throw new Error('invalid-timestamp');
+    throw new TypeError('invalid-timestamp');
   }
   if (Math.abs(Date.now() - timestampMs) > MAX_SKEW_MS) {
     throw new Error('timestamp-out-of-window');
@@ -303,6 +317,43 @@ function verifySignature(req, body) {
   const expected = Buffer.from(expectedHex, 'hex');
   if (got.length !== expected.length || !timingSafeEqual(got, expected)) {
     throw new Error('signature-mismatch');
+  }
+}
+
+function hasAuthHeaders(req) {
+  return Boolean(getHeader(req, 'x-signature') && getHeader(req, 'x-timestamp'));
+}
+
+function canTrustUnsigned(req) {
+  if (!ALLOW_TRUSTED_UNSIGNED) return false;
+  const origin = getHeader(req, 'origin');
+  if (!origin) return false;
+  return isOriginAllowed(origin);
+}
+
+function statusCodeForError(message) {
+  if (message.startsWith('server-misconfigured')) {
+    return 500;
+  }
+  if (AUTH_ERROR_CODES.has(message)) {
+    return 401;
+  }
+  return 400;
+}
+
+function handlePostRequest(req, res) {
+  try {
+    if (hasAuthHeaders(req)) {
+      verifySignature(req, req.body ?? {});
+    } else if (!canTrustUnsigned(req)) {
+      throw new Error('missing-auth-headers');
+    }
+
+    const next = updateSystemTruth(req.body ?? {});
+    return res.status(200).json(next);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'invalid-request';
+    return res.status(statusCodeForError(message)).json({ error: message });
   }
 }
 
@@ -362,25 +413,5 @@ export default async function handler(req, res) {
     return res.status(200).json(getSystemTruth());
   }
 
-  try {
-    verifySignature(req, req.body ?? {});
-    const next = updateSystemTruth(req.body ?? {});
-    return res.status(200).json(next);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'invalid-request';
-    const authErrors = new Set([
-      'missing-auth-headers',
-      'invalid-signature-format',
-      'invalid-timestamp',
-      'timestamp-out-of-window',
-      'replay-detected',
-      'signature-mismatch',
-    ]);
-    const statusCode = message.startsWith('server-misconfigured')
-      ? 500
-      : authErrors.has(message)
-        ? 401
-        : 400;
-    return res.status(statusCode).json({ error: message });
-  }
+  return handlePostRequest(req, res);
 }

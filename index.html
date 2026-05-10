@@ -1196,7 +1196,8 @@ async function publishSystemTruth(force = false) {
     _lastTruthPublishSignature = signature;
     return marketStore.systemTruth;
   } catch (error) {
-    console.debug('system truth publish skipped:', error?.message || error);
+    marketStore.setState({ staleWarning: 'System truth sync failed; retrying automatically.' });
+    console.warn('system truth publish failed:', error?.message || error);
     return marketStore.systemTruth;
   } finally {
     _truthPublishInFlight = false;

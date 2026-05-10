@@ -8,15 +8,18 @@ function testBlocksWithoutSnapshot(): void {
   const bus = new EventBus();
   new ConstitutionalDecisionService(bus).start();
 
-  let decision: ConstitutionalDecisionEvent | null = null;
+  const decisions: ConstitutionalDecisionEvent[] = [];
   bus.on<ConstitutionalDecisionEvent>(EVENTS.CONSTITUTIONAL_DECISION, (event) => {
-    decision = event;
+    decisions.push(event);
   });
 
   bus.emit(EVENTS.AI_AGGREGATED_INTELLIGENCE, makeAggregated('KXBTC-CD-1'));
 
-  assert.ok(decision !== null, 'expected constitutional decision output');
-  const out = decision as ConstitutionalDecisionEvent;
+  const out = decisions[0];
+  if (!out) {
+    throw new Error('expected constitutional decision output');
+  }
+
   assert.equal(out.trade_allowed, false, 'missing snapshot must block trading');
   assert.equal(out.execution_mode, 'blocked', 'missing snapshot must force blocked execution mode');
   assert.ok(
@@ -29,9 +32,9 @@ function testHardStopVetoWins(): void {
   const bus = new EventBus();
   new ConstitutionalDecisionService(bus).start();
 
-  let decision: ConstitutionalDecisionEvent | null = null;
+  const decisions: ConstitutionalDecisionEvent[] = [];
   bus.on<ConstitutionalDecisionEvent>(EVENTS.CONSTITUTIONAL_DECISION, (event) => {
-    decision = event;
+    decisions.push(event);
   });
 
   const now = Date.now();
@@ -44,8 +47,11 @@ function testHardStopVetoWins(): void {
   });
   bus.emit(EVENTS.AI_AGGREGATED_INTELLIGENCE, makeAggregated('KXBTC-CD-2'));
 
-  assert.ok(decision !== null, 'expected constitutional decision output');
-  const out = decision as ConstitutionalDecisionEvent;
+  const out = decisions[0];
+  if (!out) {
+    throw new Error('expected constitutional decision output');
+  }
+
   assert.equal(out.trade_allowed, false, 'hard-stop must veto execution');
   assert.equal(out.execution_mode, 'blocked', 'hard-stop must force blocked mode');
   assert.ok(

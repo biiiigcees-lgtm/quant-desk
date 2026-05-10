@@ -14,6 +14,8 @@ export class EventBus {
   private readonly eventHistory: RecordedEvent[] = [];
   private sequence = 0;
   private readonly maxHistory: number;
+  private historyCursor = 0;
+  private historyCount = 0;
 
   constructor(maxListeners: number = 200, maxHistory: number = 5000) {
     this.emitter.setMaxListeners(maxListeners);
@@ -21,15 +23,22 @@ export class EventBus {
   }
 
   emit<T>(event: string, payload: T): boolean {
-    this.eventHistory.push({
+    const record: RecordedEvent = {
       sequence: ++this.sequence,
       event,
       payload,
       timestamp: Date.now(),
-    });
-    if (this.eventHistory.length > this.maxHistory) {
-      this.eventHistory.shift();
+    };
+
+    if (this.eventHistory.length < this.maxHistory) {
+      this.eventHistory.push(record);
+      this.historyCount += 1;
+    } else {
+      this.eventHistory[this.historyCursor] = record;
+      this.historyCursor = (this.historyCursor + 1) % this.maxHistory;
+      this.historyCount = this.maxHistory;
     }
+
     return this.emitter.emit(event, payload);
   }
 
@@ -50,7 +59,15 @@ export class EventBus {
     if (events) {
       filter = new Set(Array.isArray(events) ? events : [events]);
     }
-    return this.eventHistory
+
+    const chronological = this.historyCount < this.maxHistory
+      ? this.eventHistory.slice(0, this.historyCount)
+      : [
+          ...this.eventHistory.slice(this.historyCursor),
+          ...this.eventHistory.slice(0, this.historyCursor),
+        ];
+
+    return chronological
       .filter((record) => (filter ? filter.has(record.event) : true))
       .map((record) => ({ ...record })) as Array<RecordedEvent<T>>;
   }
@@ -58,5 +75,7 @@ export class EventBus {
   clearHistory(): void {
     this.eventHistory.length = 0;
     this.sequence = 0;
+    this.historyCursor = 0;
+    this.historyCount = 0;
   }
 }

@@ -17,6 +17,7 @@ export class FeatureEngineService {
   private readonly expiryTimes: Map<string, number> = new Map();
   private readonly maxHistoryLength: number;
   private readonly emaPeriods: { short: number; long: number };
+  private readonly marketUpdateListener: (update: MarketUpdate) => void;
 
   constructor(
     eventBus: EventBus,
@@ -28,12 +29,13 @@ export class FeatureEngineService {
     this.logger = logger;
     this.maxHistoryLength = maxHistoryLength;
     this.emaPeriods = emaPeriods;
+    this.marketUpdateListener = (update: MarketUpdate) => {
+      this.handleMarketUpdate(update);
+    };
   }
 
   start(): void {
-    this.eventBus.on(EVENTS.MARKET_UPDATE, (update: MarketUpdate) => {
-      this.handleMarketUpdate(update);
-    });
+    this.eventBus.on(EVENTS.MARKET_UPDATE, this.marketUpdateListener);
 
     this.logger.info('Feature engine service started');
   }
@@ -85,6 +87,6 @@ export class FeatureEngineService {
   }
 
   stop(): void {
-    this.eventBus.off(EVENTS.MARKET_UPDATE, () => {});
+    this.eventBus.off(EVENTS.MARKET_UPDATE, this.marketUpdateListener);
   }
 }
