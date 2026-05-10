@@ -331,7 +331,7 @@ export class BeliefGraphService {
       if (!n1 || !n2) continue;
 
       // Conflict strength: if both have high evidence, they contradict
-      const conflictStrength = (n1.evidence * n2.evidence) ^ 0.5; // geometric mean
+      const conflictStrength = Math.sqrt(n1.evidence * n2.evidence); // geometric mean
       if (conflictStrength > 0.3) {
         contradictions.push({
           hypothesis1: node1Id,

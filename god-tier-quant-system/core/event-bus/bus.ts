@@ -13,9 +13,11 @@ export class EventBus {
   private readonly emitter = new EventEmitter();
   private readonly eventHistory: RecordedEvent[] = [];
   private sequence = 0;
+  private readonly maxHistory: number;
 
-  constructor(maxListeners: number = 200) {
+  constructor(maxListeners: number = 200, maxHistory: number = 5000) {
     this.emitter.setMaxListeners(maxListeners);
+    this.maxHistory = Math.max(100, maxHistory);
   }
 
   emit<T>(event: string, payload: T): boolean {
@@ -25,6 +27,9 @@ export class EventBus {
       payload,
       timestamp: Date.now(),
     });
+    if (this.eventHistory.length > this.maxHistory) {
+      this.eventHistory.shift();
+    }
     return this.emitter.emit(event, payload);
   }
 

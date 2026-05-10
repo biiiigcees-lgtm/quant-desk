@@ -4,10 +4,12 @@ import { AgentKind } from '../types.js';
 
 interface ContractAgentState {
   byAgent: Partial<Record<AgentKind, { output: unknown; confidence: number; timestamp: number }>>;
+  updatedAt: number;
 }
 
 export class AiAggregationService {
   private readonly state = new Map<string, ContractAgentState>();
+  private readonly stateTtlMs = 5 * 60 * 1000;
 
   constructor(private readonly bus: EventBus) {}
 
@@ -20,18 +22,30 @@ export class AiAggregationService {
         output: unknown;
         timestamp: number;
       }) => {
-        const current = this.state.get(event.contractId) ?? { byAgent: {} };
+        this.pruneState(event.timestamp);
+
+        const current = this.state.get(event.contractId) ?? { byAgent: {}, updatedAt: event.timestamp };
         current.byAgent[event.agent] = {
           output: event.output,
           confidence: extractConfidence(event.output),
           timestamp: event.timestamp,
         };
+        current.updatedAt = event.timestamp;
         this.state.set(event.contractId, current);
 
         const aggregate = this.buildAggregate(event.contractId, current.byAgent);
         this.bus.emit(EVENTS.AI_AGGREGATED_INTELLIGENCE, aggregate);
       },
     );
+  }
+
+  private pruneState(nowMs: number = Date.now()): void {
+    const cutoff = nowMs - this.stateTtlMs;
+    for (const [contractId, state] of this.state.entries()) {
+      if (state.updatedAt < cutoff) {
+        this.state.delete(contractId);
+      }
+    }
   }
 
   private buildAggregate(

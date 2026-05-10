@@ -9,6 +9,9 @@ export class KalshiClient {
   private readonly messageHandlers: Array<(data: any) => void> = [];
   private retryCount = 0;
   private connectTimeout: NodeJS.Timeout | null = null;
+  private reconnectTimer: NodeJS.Timeout | null = null;
+  private intentionallyClosed = false;
+  private connecting = false;
   private readonly logger: Logger;
 
   constructor(wsUrl: string, logger: Logger) {
@@ -21,13 +24,30 @@ export class KalshiClient {
    */
   async connect(): Promise<void> {
     return new Promise((resolve, reject) => {
+      if (this.connecting) {
+        resolve();
+        return;
+      }
+
+      if (this.reconnectTimer) {
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+      }
+
+      this.connecting = true;
+      this.intentionallyClosed = false;
+
       try {
         this.ws = new WebSocket(this.url);
 
         this.ws.addEventListener('open', () => {
           this.logger.info('Kalshi WS connected');
           this.retryCount = 0;
-          clearTimeout(this.connectTimeout!);
+          this.connecting = false;
+          if (this.connectTimeout) {
+            clearTimeout(this.connectTimeout);
+            this.connectTimeout = null;
+          }
           resolve();
         });
 
@@ -42,34 +62,41 @@ export class KalshiClient {
 
         this.ws.addEventListener('close', () => {
           this.logger.info('Kalshi WS closed');
+          this.connecting = false;
           this.reconnect();
         });
 
         this.ws.addEventListener('error', (event) => {
           this.logger.error('Kalshi WS error', { error: event });
+          this.connecting = false;
           this.reconnect();
         });
 
         this.connectTimeout = setTimeout(() => {
+          this.connecting = false;
           reject(new RiskError('Kalshi WS connection timeout'));
         }, 10000);
       } catch (e) {
+        this.connecting = false;
         reject(new RiskError('Failed to create Kalshi WS', { error: String(e) }));
       }
     });
   }
 
   private reconnect(): void {
+    if (this.intentionallyClosed) {
+      return;
+    }
     if (this.retryCount >= MAX_RETRIES) {
       this.logger.error('Max Kalshi reconnect retries exceeded');
       return;
     }
 
-    const backoff = INITIAL_BACKOFF_MS * Math.pow(2, this.retryCount);
+    const backoff = Math.min(30_000, INITIAL_BACKOFF_MS * Math.pow(2, this.retryCount));
     this.retryCount++;
 
     this.logger.info('Reconnecting Kalshi WS', { backoff, attempt: this.retryCount });
-    setTimeout(() => {
+    this.reconnectTimer = setTimeout(() => {
       this.connect().catch((e) =>
         this.logger.error('Reconnection attempt failed', { error: String(e) }),
       );
@@ -89,12 +116,18 @@ export class KalshiClient {
   }
 
   disconnect(): void {
+    this.intentionallyClosed = true;
     if (this.ws) {
       this.ws.close();
       this.ws = null;
     }
     if (this.connectTimeout) {
       clearTimeout(this.connectTimeout);
+      this.connectTimeout = null;
+    }
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
     }
   }
 

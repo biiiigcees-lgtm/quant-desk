@@ -9,8 +9,9 @@ import {
 } from '../../core/schemas/events.js';
 
 export class ExecutionIntelligenceEngine {
-  private readonly idempotency = new Set<string>();
+  private readonly idempotency = new Map<string, number>();
   private readonly states = new Map<string, ExecutionStateEvent>();
+  private readonly idempotencyTtlMs = 60 * 60 * 1000;
   private aiExecutionAdvisory: {
     orderStyle: 'market' | 'passive' | 'sliced';
     slices: number;
@@ -60,7 +61,17 @@ export class ExecutionIntelligenceEngine {
     });
   }
 
+  private pruneIdempotency(nowMs: number = Date.now()): void {
+    const cutoff = nowMs - this.idempotencyTtlMs;
+    for (const [key, ts] of this.idempotency.entries()) {
+      if (ts < cutoff) {
+        this.idempotency.delete(key);
+      }
+    }
+  }
+
   private handleConstitutionalDecision(decision: ConstitutionalDecisionEvent): void {
+    this.pruneIdempotency();
     const executionId = `exec-${decision.contractId}-${decision.cycle_id}`;
     if (!decision.trade_allowed || decision.execution_mode === 'blocked') {
       this.publishState({
@@ -78,7 +89,7 @@ export class ExecutionIntelligenceEngine {
     if (this.idempotency.has(dedupeKey)) {
       return;
     }
-    this.idempotency.add(dedupeKey);
+    this.idempotency.set(dedupeKey, Date.now());
 
     const direction = decision.final_probability >= 0.5 ? 'YES' : 'NO';
     const safetyMode = decision.risk_level >= 75 ? 'safe-mode' : 'normal';
@@ -115,6 +126,7 @@ export class ExecutionIntelligenceEngine {
   }
 
   private handleRiskDecision(decision: RiskDecision): void {
+    this.pruneIdempotency();
     const executionId = this.buildExecutionId(decision);
     if (!decision.approved || decision.size <= 0) {
       this.publishState({
@@ -132,7 +144,7 @@ export class ExecutionIntelligenceEngine {
     if (this.idempotency.has(dedupeKey)) {
       return;
     }
-    this.idempotency.add(dedupeKey);
+    this.idempotency.set(dedupeKey, Date.now());
 
     const plan = this.buildPlanFromRiskDecision(decision, executionId);
     this.emitPlanLifecycle(plan, plan.routeReason);

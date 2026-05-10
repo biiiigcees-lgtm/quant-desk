@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { EventBus } from '../../../core/event-bus/bus.js';
 import { EVENTS } from '../../../core/event-bus/events.js';
 import { DecisionSnapshotEvent } from '../../../core/schemas/events.js';
@@ -279,11 +280,21 @@ function routeAgentsForTrigger(triggerEvent: string): AgentKind[] {
 }
 
 function stableHash(payload: unknown): string {
-  const sortedKeys = Object.keys((payload ?? {}) as Record<string, unknown>).sort((a, b) => a.localeCompare(b));
-  const text = JSON.stringify(payload, sortedKeys);
-  let hash = 0;
-  for (let i = 0; i < text.length; i += 1) {
-    hash = Math.trunc((hash << 5) - hash + (text.codePointAt(i) ?? 0));
-  }
-  return hash.toString(16);
+  const normalize = (value: unknown): unknown => {
+    if (value === null || typeof value !== 'object') {
+      return value;
+    }
+    if (Array.isArray(value)) {
+      return value.map((item) => normalize(item));
+    }
+
+    const normalized: Record<string, unknown> = {};
+    for (const key of Object.keys(value).sort((a, b) => a.localeCompare(b))) {
+      normalized[key] = normalize((value as Record<string, unknown>)[key]);
+    }
+    return normalized;
+  };
+
+  const text = JSON.stringify(normalize(payload));
+  return createHash('sha256').update(text).digest('hex');
 }

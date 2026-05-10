@@ -125,7 +125,6 @@ async function main(): Promise<void> {
   aiAggregation.start();
   snapshotSync.start();
   aiRouter.start();
-  constitutionalDecision.start();
 
   bus.on(EVENTS.TELEMETRY, (event: { name: string; value: number; tags?: Record<string, string>; timestamp: number }) => {
     metrics.record(event);

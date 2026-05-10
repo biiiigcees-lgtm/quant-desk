@@ -1,5 +1,6 @@
 const { beforeEach, describe, it } = await import('node:test');
 const { default: assert } = await import('node:assert/strict');
+const { createHmac } = await import('node:crypto');
 
 import systemTruthHandler, {
   appendResult,
@@ -11,8 +12,13 @@ import systemTruthHandler, {
   updateSystemTruth,
 } from '../api/system-truth.js';
 
-function mockReq({ method = 'GET', body } = {}) {
-  return { method, body };
+function mockReq({ method = 'GET', body, headers = {} } = {}) {
+  return {
+    method,
+    body,
+    headers,
+    socket: { remoteAddress: '127.0.0.1' },
+  };
 }
 
 function mockRes() {
@@ -48,8 +54,35 @@ function resetSharedState() {
   results.length = 0;
 }
 
+function stableStringify(value) {
+  const normalize = (input) => {
+    if (input === null || typeof input !== 'object') return input;
+    if (Array.isArray(input)) return input.map((item) => normalize(item));
+    const out = {};
+    for (const key of Object.keys(input).sort((a, b) => a.localeCompare(b))) {
+      out[key] = normalize(input[key]);
+    }
+    return out;
+  };
+  return JSON.stringify(normalize(value));
+}
+
+function buildSignedHeaders(body, timestamp = Date.now()) {
+  const canonicalBody = stableStringify(body ?? {});
+  const message = `${timestamp}.POST./api/system-truth.${canonicalBody}`;
+  const signature = createHmac('sha256', process.env.SYSTEM_TRUTH_HMAC_SECRET)
+    .update(message)
+    .digest('hex');
+
+  return {
+    'x-timestamp': String(timestamp),
+    'x-signature': signature,
+  };
+}
+
 describe('system truth state', () => {
   beforeEach(() => {
+    process.env.SYSTEM_TRUTH_HMAC_SECRET = 'test-secret';
     resetSharedState();
   });
 
@@ -75,14 +108,16 @@ describe('system truth state', () => {
   });
 
   it('rejects invalid snapshot ids on POST', async () => {
+    const body = {
+      currentBelief: { direction: 'UP', confidence: 50 },
+      executionAllowed: true,
+      riskLevel: 'LOW',
+      snapshotId: 'bad-id',
+    };
     const req = mockReq({
       method: 'POST',
-      body: {
-        currentBelief: { direction: 'UP', confidence: 50 },
-        executionAllowed: true,
-        riskLevel: 'LOW',
-        snapshotId: 'bad-id',
-      },
+      body,
+      headers: buildSignedHeaders(body),
     });
     const res = mockRes();
 
@@ -90,6 +125,24 @@ describe('system truth state', () => {
 
     assert.equal(res.statusCode, 400);
     assert.match(res.payload.error, /snapshotId/i);
+  });
+
+  it('rejects unsigned POST requests', async () => {
+    const req = mockReq({
+      method: 'POST',
+      body: {
+        currentBelief: { direction: 'UP', confidence: 50 },
+        executionAllowed: true,
+        riskLevel: 'LOW',
+        snapshotId: generateSnapshotId(),
+      },
+    });
+    const res = mockRes();
+
+    await systemTruthHandler(req, res);
+
+    assert.equal(res.statusCode, 401);
+    assert.equal(res.payload.error, 'missing-auth-headers');
   });
 });
 
