@@ -3,6 +3,7 @@ import { EVENTS } from '../../core/event-bus/events.js';
 import {
   AggregatedIntelligenceEvent,
   AgentConflict,
+  BeliefGraphStateEvent,
   ConstitutionalDecisionEvent,
   DecisionSnapshotEvent,
   DecisionSnapshotInvalidEvent,
@@ -17,6 +18,7 @@ interface ContractState {
   invalid: DecisionSnapshotInvalidEvent | null;
   executionControl: ExecutionControlEvent | null;
   simulation: SimulationUniverseEvent | null;
+  beliefGraph: BeliefGraphStateEvent | null;
   sequence: number;
 }
 
@@ -51,6 +53,11 @@ export class ConstitutionalDecisionService {
       for (const state of this.byContract.values()) {
         state.simulation = event;
       }
+    });
+
+    this.bus.on<BeliefGraphStateEvent>(EVENTS.BELIEF_GRAPH_STATE, (event) => {
+      const state = this.getState(event.contractId);
+      state.beliefGraph = event;
     });
 
     this.bus.on<AggregatedIntelligenceEvent>(EVENTS.AI_AGGREGATED_INTELLIGENCE, (event) => {
@@ -100,11 +107,35 @@ export class ConstitutionalDecisionService {
     const adjustment = clamp(ai.probability_adjustment.recommendedAdjustment, -0.2, 0.2);
     let finalProbability = clamp(snapshotProbability + adjustment, 0.01, 0.99);
 
+    // Apply belief-graph adjustments if available
+    const beliefGraph = state.beliefGraph;
+    if (beliefGraph) {
+      this.applyBeliefGraphRule(beliefGraph, governanceLog, conflicts, decisionState);
+      // Blend belief-adjusted probability into final probability (10% weight on belief graph)
+      finalProbability =
+        0.9 * finalProbability + 0.1 * beliefGraph.summary.beliefAdjustedProbability;
+      finalProbability = clamp(finalProbability, 0.01, 0.99);
+      governanceLog.push(
+        this.rule('belief-graph-integration', 'adjust',
+          `belief_prob=${beliefGraph.summary.beliefAdjustedProbability.toFixed(3)}, uncertainty=[${beliefGraph.summary.beliefUncertaintyInterval[0].toFixed(3)}, ${beliefGraph.summary.beliefUncertaintyInterval[1].toFixed(3)})`
+        ),
+      );
+    } else {
+      governanceLog.push(this.rule('belief-graph-integration', 'pass', 'no belief graph available'));
+    }
+
     let confidenceScore = clamp(
       (ai.market_state.confidence * 0.45 + ai.risk_level.confidence * 0.35 + ai.execution_recommendation.confidence * 0.2),
       0,
       1,
     );
+
+    // Adjust confidence for belief graph uncertainty
+    if (beliefGraph) {
+      const avgUncertainty = (beliefGraph.summary.beliefUncertaintyInterval[1] - beliefGraph.summary.beliefUncertaintyInterval[0]) / 2;
+      confidenceScore = clamp(confidenceScore * (1 - avgUncertainty * 0.3), 0, 1);
+    }
+
     if (ai.probability_adjustment.overconfidenceDetected) {
       confidenceScore = clamp(confidenceScore * 0.72, 0, 1);
       governanceLog.push(this.rule('overconfidence-clamp', 'adjust', 'confidence reduced due to overconfidence signal'));
@@ -264,6 +295,79 @@ export class ConstitutionalDecisionService {
     governanceLog.push(this.rule('anomaly-veto', 'pass', 'no high anomaly veto'));
   }
 
+  private applyBeliefGraphRule(
+    beliefGraph: BeliefGraphStateEvent,
+    governanceLog: GovernanceRuleTrace[],
+    conflicts: AgentConflict[],
+    decisionState: MutableDecisionState,
+  ): void {
+    const summary = beliefGraph.summary;
+
+    // Check for high contradictions
+    if (summary.maxContradictionStrength > 0.7) {
+      governanceLog.push(
+        this.rule('belief-contradiction-alert', 'adjust',
+          `${summary.contradictionCount} contradictions detected, max_strength=${summary.maxContradictionStrength.toFixed(2)}`
+        ),
+      );
+      // Reduce confidence but don't block
+      decisionState.executionMode = 'passive';
+      conflicts.push({
+        category: 'risk-vs-execution',
+        severity: 'medium',
+        detail: `belief graph contradictions force passive mode`,
+      });
+    }
+
+    // Check for extreme uncertainty
+    const [lower, upper] = summary.beliefUncertaintyInterval;
+    const uncertainty = (upper - lower) / 2;
+    if (uncertainty > 0.35) {
+      governanceLog.push(
+        this.rule('belief-uncertainty-threshold', 'adjust',
+          `high epistemic uncertainty (${uncertainty.toFixed(3)}), reducing confidence`
+        ),
+      );
+      if (uncertainty > 0.45) {
+        // Very high uncertainty: block if market execution
+        if (decisionState.executionMode === 'market') {
+          decisionState.executionMode = 'passive';
+          governanceLog.push(this.rule('belief-uncertainty-threshold', 'adjust', 'extreme uncertainty forces passive'));
+        }
+      }
+    }
+
+    // Check regime transition hazard
+    if (summary.regimeTransitionHazard > 0.65) {
+      governanceLog.push(
+        this.rule('regime-transition-hazard', 'adjust',
+          `regime_switch_probability=${summary.regimeTransitionHazard.toFixed(2)}, next_regimes=${summary.nextPredictedRegimes.join(',')}`
+        ),
+      );
+      if (decisionState.executionMode === 'market') {
+        decisionState.executionMode = 'passive';
+        governanceLog.push(this.rule('regime-transition-hazard', 'adjust', 'high transition hazard forces passive'));
+      }
+    }
+
+    // Check graph health
+    if (summary.graphEntropy > 1.5) {
+      governanceLog.push(
+        this.rule('belief-graph-entropy', 'adjust',
+          `high entropy=${summary.graphEntropy.toFixed(2)}, weak signal consensus`
+        ),
+      );
+    }
+
+    if (summary.weakestBeliefs > summary.strongestBeliefs * 2) {
+      governanceLog.push(
+        this.rule('belief-graph-health', 'adjust',
+          `weak beliefs (${summary.weakestBeliefs}) > strong beliefs (${summary.strongestBeliefs}), reduce conviction`
+        ),
+      );
+    }
+  }
+
   private getState(contractId: string): ContractState {
     const current = this.byContract.get(contractId);
     if (current) {
@@ -274,6 +378,7 @@ export class ConstitutionalDecisionService {
       invalid: null,
       executionControl: null,
       simulation: null,
+      beliefGraph: null,
       sequence: 0,
     };
     this.byContract.set(contractId, state);

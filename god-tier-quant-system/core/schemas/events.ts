@@ -491,3 +491,88 @@ export interface ConstitutionalDecisionEvent {
   };
   timestamp: number;
 }
+
+// Belief-Graph Engine Event Schemas (Phase B)
+
+export interface BeliefGraphNode {
+  nodeId: string;
+  hypothesis: string; // e.g. "momentum-bullish", "volatility-spike-imminent", "liquidity-concentration-yes"
+  nodeType: 'market' | 'calibration' | 'drift' | 'anomaly' | 'execution' | 'regime-transition';
+  evidence: number; // 0-1, how supported by current events
+  uncertainty: number; // 0-1, epistemic uncertainty (wider interval = higher)
+  lastUpdatedMs: number;
+  decayFactor: number; // regime/time decay multiplier, 0-1
+  regime: Regime; // context under which this node was strong
+}
+
+export interface BeliefGraphEdge {
+  source: string; // nodeId
+  target: string; // nodeId
+  causalStrength: number; // 0-1, confidence in causal link
+  direction: 'positive' | 'negative'; // source increases/decreases target
+  description: string;
+  lastUpdatedMs: number;
+}
+
+export interface BeliefGraphUpdate {
+  source: SnapshotSourceKind; // which event stream triggered update
+  nodesToUpdate: Array<{ nodeId: string; newEvidence: number; additionContext?: string }>;
+  edgesToUpdate: Array<{ source: string; target: string; newCausalStrength: number }>;
+  timestamp: number;
+}
+
+export interface ContradictionDiagnostic {
+  hypothesis1: string; // nodeId
+  hypothesis2: string; // nodeId
+  conflictStrength: number; // 0-1, how mutually exclusive
+  conflictReason: string;
+  suggestedResolution?: string;
+  timestamp: number;
+}
+
+export interface BeliefGraphSummary {
+  contractId: string;
+  snapshot_id: string;
+  market_state_hash: string;
+  cycle_id: string;
+
+  // Consensus probability from graph
+  beliefAdjustedProbability: number; // weighted by nodes
+  beliefUncertaintyInterval: [number, number]; // [lower, upper] confidence bands
+
+  // Contradiction state
+  contradictions: ContradictionDiagnostic[];
+  contradictionCount: number;
+  maxContradictionStrength: number;
+
+  // Top hypotheses by evidence + causal influence
+  topHypotheses: Array<{
+    nodeId: string;
+    hypothesis: string;
+    evidence: number;
+    uncertainty: number;
+    causalInfluence: number; // sum of downstream effects
+  }>;
+
+  // Regime state machine diagnosis
+  regimeTransitionHazard: number; // probability of regime switch within contract horizon
+  regimeTransitionConfidence: number;
+  nextPredictedRegimes: Regime[];
+
+  // Graph health stats
+  graphDensity: number; // proportion of possible edges present
+  graphEntropy: number; // measure of conflicting signals
+  strongestBeliefs: number; // count of nodes with evidence > 0.7
+  weakestBeliefs: number; // count of nodes with evidence < 0.3 and high uncertainty
+
+  timestamp: number;
+}
+
+export interface BeliefGraphStateEvent {
+  contractId: string;
+  snapshot_id: string;
+  market_state_hash: string;
+  cycle_id: string;
+  summary: BeliefGraphSummary;
+  timestamp: number;
+}

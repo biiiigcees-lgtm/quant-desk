@@ -42,6 +42,9 @@ export class ApiServer {
         this.bus.on(EVENTS.AI_AGGREGATED_INTELLIGENCE, (event) => {
             this.latest.aiAggregatedIntelligence = event;
         });
+        this.bus.on(EVENTS.BELIEF_GRAPH_STATE, (event) => {
+            this.latest.beliefGraphState = event;
+        });
         this.bus.on(EVENTS.CONSTITUTIONAL_DECISION, (event) => {
             this.latest.constitutionalDecision = event;
         });

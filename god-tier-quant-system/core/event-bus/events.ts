@@ -32,6 +32,7 @@ export const EVENTS = {
   AI_AGGREGATED_INTELLIGENCE: 'ai-aggregation:update',
   CONSTITUTIONAL_DECISION: 'decision:constitutional',
   AI_ORCHESTRATION_METRICS: 'ai-orchestration:metrics',
+  BELIEF_GRAPH_STATE: 'belief-graph:state',
   RESEARCH_NOTE: 'research:note',
   ANOMALY: 'anomaly:event',
   TELEMETRY: 'telemetry:event',

@@ -41,7 +41,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Pl
 .ws-source{font-size:8px;color:var(--t3);letter-spacing:.6px;text-transform:uppercase}
 .ws-source.coinbase{color:var(--cyan)}
 .ws-source.rest{color:var(--amber)}
-.ws-source.rest{color:var(--t2)}
 .ws-toggle{background:var(--bg2);border:1px solid var(--border);color:var(--t3);font-size:7px;letter-spacing:.6px;padding:2px 6px;border-radius:2px;cursor:pointer}
 .ws-toggle:hover{color:var(--amber);border-color:rgba(255,171,0,.3)}
 .ws-toggle.active{color:var(--amber);border-color:rgba(255,171,0,.5)}
@@ -936,9 +935,9 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
 if (typeof history !== 'undefined' && 'scrollRestoration' in history) {
   history.scrollRestoration = 'manual';
 }
-if (typeof window !== 'undefined') {
-  window.addEventListener('load', () => {
-    window.scrollTo(0, 0);
+if (globalThis.window !== undefined) {
+  globalThis.window.addEventListener('load', () => {
+    globalThis.window.scrollTo(0, 0);
   }, { once: true });
 }
 
@@ -1058,8 +1057,12 @@ function getSystemTruthClient() {
       if (riskScalar >= 0.75) riskLevel = 'CRITICAL';
       else if (riskScalar >= 0.55) riskLevel = 'HIGH';
       else if (riskScalar >= 0.35) riskLevel = 'MEDIUM';
-      const verdict = (Number.isFinite(pDecisionAbove) ? pDecisionAbove : 0.5) >= 0.5 ? 'ABOVE' : 'BELOW';
-      const direction = !secureDecision ? 'NEUTRAL' : verdict === 'ABOVE' ? 'UP' : 'DOWN';
+      const boundedDecisionAbove = Number.isFinite(pDecisionAbove) ? pDecisionAbove : 0.5;
+      const verdict = boundedDecisionAbove >= 0.5 ? 'ABOVE' : 'BELOW';
+      let direction = 'NEUTRAL';
+      if (secureDecision) {
+        direction = verdict === 'ABOVE' ? 'UP' : 'DOWN';
+      }
       return {
         currentBelief: { direction, confidence: clamp(confidence, 0, 100) },
         executionAllowed: secureDecision && direction !== 'NEUTRAL' && riskLevel !== 'HIGH' && riskLevel !== 'CRITICAL',
@@ -1374,8 +1377,8 @@ function setWsControlMode(mode) {
   if (ws) {
     if (typeof ws.setManualMode === 'function') {
       ws.setManualMode(nextMode);
-    } else {
-      if (typeof ws.setForceRest === 'function') ws.setForceRest(nextMode === 'rest');
+    } else if (typeof ws.setForceRest === 'function') {
+      ws.setForceRest(nextMode === 'rest');
     }
   }
 
@@ -1937,9 +1940,12 @@ function computeIndicators() {
     const last = log[log.length - 1];
     if (!last || Date.now() - last.ts > 60000) {
       const beliefDirection = marketStore.systemTruth?.currentBelief?.direction;
-      const direction = beliefDirection === 'UP' || beliefDirection === 'DOWN'
-        ? beliefDirection
-        : (marketStore.verdict === 'ABOVE' ? 'UP' : 'DOWN');
+      let direction = 'UP';
+      if (beliefDirection === 'UP' || beliefDirection === 'DOWN') {
+        direction = beliefDirection;
+      } else if (marketStore.verdict === 'BELOW') {
+        direction = 'DOWN';
+      }
       log.push({
         ts: Date.now(),
         verdict: marketStore.verdict,
@@ -3130,7 +3136,12 @@ function resolveSignalLog(){
   log.forEach(entry=>{
     if(entry.resolved||!price) return;
     if(now-entry.ts>=900000){
-      const actual = price > entry.price ? 'UP' : price < entry.price ? 'DOWN' : (entry.direction || 'UP');
+      let actual = entry.direction || 'UP';
+      if (price > entry.price) {
+        actual = 'UP';
+      } else if (price < entry.price) {
+        actual = 'DOWN';
+      }
       entry.resolved=true;
       entry.actual=actual;
       entry.correct=entry.direction===actual;

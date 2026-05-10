@@ -32,6 +32,7 @@ import { AutonomousResearchService } from './services/autonomous-research/servic
 import { OptimizationEngine } from './services/optimization-engine/service.js';
 import { SnapshotSyncService } from './services/snapshot-sync/service.js';
 import { ConstitutionalDecisionService } from './services/constitutional-decision/service.js';
+import { BeliefGraphService } from './services/belief-graph/service.js';
 import { AiAgentRouterService } from './services/ai-orchestration/router/service.js';
 import { AiAggregationService } from './services/ai-orchestration/aggregation/service.js';
 import { OpenRouterProvider } from './services/ai-orchestration/providers/openrouter.js';
@@ -70,6 +71,7 @@ async function main() {
         maxSourceAgeMs: config.snapshot.maxSourceAgeMs,
         maxClockDriftMs: config.snapshot.maxClockDriftMs,
     });
+    const beliefGraph = new BeliefGraphService(bus);
     const constitutionalDecision = new ConstitutionalDecisionService(bus);
     const aiAggregation = new AiAggregationService(bus);
     const openRouterProvider = new OpenRouterProvider({
@@ -114,6 +116,8 @@ async function main() {
     anomaly.start();
     ai.start();
     aiMemory.start();
+    beliefGraph.start();
+    constitutionalDecision.start();
     autonomousResearch.start();
     aiAggregation.start();
     snapshotSync.start();

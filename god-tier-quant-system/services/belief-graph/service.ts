@@ -2,141 +2,485 @@ import { EventBus } from '../../core/event-bus/bus.js';
 import { EVENTS } from '../../core/event-bus/events.js';
 import {
   AnomalyEvent,
-  BeliefGraphEvent,
-  BeliefNode,
+  BeliefGraphEdge,
+  BeliefGraphNode,
+  BeliefGraphStateEvent,
+  BeliefGraphSummary,
   CalibrationEvent,
+  ContradictionDiagnostic,
+  DecisionSnapshotEvent,
   DriftEvent,
-  MicrostructureEvent,
+  FeatureIntelligenceEvent,
+  Regime,
 } from '../../core/schemas/events.js';
 
-// Causal influence weights for each node type in the constitutional belief graph.
-// Higher weight = stronger pull on the final probability adjustment.
-const NODE_WEIGHTS = {
-  microstructure: 0.30,
-  calibration: 0.25,
-  drift: 0.25,
-  anomaly: 0.20,
-} as const;
+/**
+ * BeliefGraphService maintains a probabilistic directed acyclic graph of market hypotheses,
+ * updating nodes based on incoming market events, and computing consensus probability
+ * adjusted for contradictions and regime-conditioned confidence.
+ *
+ * Architecture:
+ * - Nodes: hypothesis statements with evidence/uncertainty/regime context
+ * - Edges: causal relationships between hypotheses
+ * - Sources: probability, microstructure, features, calibration, drift, anomaly feed updates
+ * - Contradiction resolver: detects conflicting hypotheses and adjusts confidence
+ * - Regime decay: older hypotheses lose strength as regime changes
+ *
+ * Outputs:
+ * - BELIEF_GRAPH_STATE: comprehensive belief summary for constitutional decision
+ */
 
-interface ContractBeliefState {
-  microstructure?: BeliefNode;
-  calibration?: BeliefNode;
-  drift?: BeliefNode;
-  anomaly?: BeliefNode;
-  lastUpdated: number;
+interface GraphState {
+  nodes: Map<string, BeliefGraphNode>;
+  edges: Map<string, BeliefGraphEdge>; // key: "source->target"
+  recentUpdates: BeliefGraphUpdate[];
+  contradictions: ContradictionDiagnostic[];
+  lastSnapshot: DecisionSnapshotEvent | null;
+  cycleCount: number;
+}
+
+interface BeliefGraphUpdate {
+  timestamp: number;
+  source: string; // which evidence stream
+  nodesUpdated: number;
+  edgesUpdated: number;
+}
+
+interface DecayConfig {
+  regimeHalflifeCycles: number;
+  timeDecayMs: number;
+}
+
+function clamp(v: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, v));
+}
+
+// Helper: compute causal influence of a node (sum of target edge weights)
+function computeCausalInfluence(nodeId: string, edges: Map<string, BeliefGraphEdge>): number {
+  let influence = 0;
+  for (const edge of edges.values()) {
+    if (edge.source === nodeId) {
+      influence += edge.causalStrength * (edge.direction === 'positive' ? 1 : -1);
+    }
+  }
+  return clamp(influence, -1, 1);
 }
 
 export class BeliefGraphService {
-  private readonly state: Map<string, ContractBeliefState> = new Map();
+  private readonly state = new Map<string, GraphState>();
+  private readonly decayConfig: DecayConfig = {
+    regimeHalflifeCycles: 20, // nodes lose 50% evidence per 20 cycles of regime change
+    timeDecayMs: 60000, // 1-minute time decay for anomalies
+  };
 
   constructor(private readonly bus: EventBus) {}
 
   start(): void {
-    this.bus.on<MicrostructureEvent>(EVENTS.MICROSTRUCTURE, (event) => {
-      const belief = this.clamp(
-        (event.obi + 1) / 2 * 0.5 + event.sweepProbability * 0.5,
-      );
-      this.upsertNode(event.contractId, 'microstructure', {
-        id: `micro:${event.contractId}`,
-        type: 'microstructure',
-        belief,
-        confidence: 1 - event.spreadExpansionScore,
-        weight: NODE_WEIGHTS.microstructure,
-        updatedAt: event.timestamp,
-      });
+    // Subscribe to all evidence streams
+    this.bus.on<DecisionSnapshotEvent>(EVENTS.DECISION_SNAPSHOT, (event) => {
+      this.onSnapshot(event);
     });
 
+    // Calibration events feed into confidence nodes
     this.bus.on<CalibrationEvent>(EVENTS.CALIBRATION_UPDATE, (event) => {
-      // Lower calibration error → higher belief in the model's predictions.
-      const belief = this.clamp(1 - event.ece * 3);
-      const confidence = this.clamp(1 - event.brier * 2);
-      this.upsertNode(event.contractId, 'calibration', {
-        id: `cal:${event.contractId}`,
-        type: 'calibration',
-        belief,
-        confidence,
-        weight: NODE_WEIGHTS.calibration,
-        updatedAt: event.timestamp,
-      });
+      const gs = this.getGraphState(event.contractId);
+      this.updateCalibrationNode(gs, event);
     });
 
+    // Drift events feed into regime transition nodes
     this.bus.on<DriftEvent>(EVENTS.DRIFT_EVENT, (event) => {
-      const driftMagnitude = Math.min(1, (event.psi + event.kl) / 2);
-      // High drift reduces belief in the current probability estimate.
-      const belief = this.clamp(1 - driftMagnitude);
-      const confidence = event.severity === 'high' ? 0.9 : event.severity === 'medium' ? 0.6 : 0.3;
-      this.upsertNode(event.contractId, 'drift', {
-        id: `drift:${event.contractId}`,
-        type: 'drift',
-        belief,
-        confidence,
-        weight: NODE_WEIGHTS.drift,
-        updatedAt: event.timestamp,
-      });
+      const gs = this.getGraphState(event.contractId);
+      this.updateDriftNode(gs, event);
     });
 
+    // Anomaly events feed into anomaly detection nodes
     this.bus.on<AnomalyEvent>(EVENTS.ANOMALY, (event) => {
-      const severityImpact = { low: 0.1, medium: 0.3, high: 0.6, critical: 0.9 }[event.severity];
-      const belief = this.clamp(1 - severityImpact - event.confidenceDegradation * 0.3);
-      this.upsertNode(event.contractId, 'anomaly', {
-        id: `anom:${event.contractId}`,
-        type: 'anomaly',
-        belief,
-        confidence: severityImpact,
-        weight: NODE_WEIGHTS.anomaly,
-        updatedAt: event.timestamp,
-      });
+      const gs = this.getGraphState(event.contractId);
+      this.updateAnomalyNode(gs, event);
+    });
+
+    // Feature intelligence events update microstructure nodes
+    this.bus.on<FeatureIntelligenceEvent>(EVENTS.FEATURE_INTELLIGENCE, (event) => {
+      const gs = this.getGraphState(event.contractId);
+      this.updateFeatureNode(gs, event);
     });
   }
 
-  private upsertNode(contractId: string, key: keyof Omit<ContractBeliefState, 'lastUpdated'>, node: BeliefNode): void {
-    const s = this.state.get(contractId) ?? { lastUpdated: 0 };
-    s[key] = node;
-    s.lastUpdated = node.updatedAt;
-    this.state.set(contractId, s);
-    this.emit(contractId, node.updatedAt);
-  }
+  private onSnapshot(snapshot: DecisionSnapshotEvent): void {
+    const gs = this.getGraphState(snapshot.contractId);
+    gs.lastSnapshot = snapshot;
+    gs.cycleCount += 1;
 
-  private emit(contractId: string, timestamp: number): void {
-    const s = this.state.get(contractId);
-    if (!s) return;
+    // Apply time decay to all nodes
+    this.applyRegimeDecay(gs, snapshot.state.probability.regime);
 
-    const nodes: BeliefNode[] = [s.microstructure, s.calibration, s.drift, s.anomaly].filter(
-      (n): n is BeliefNode => n !== undefined,
-    );
+    // Update probability and market regime nodes from snapshot
+    this.updateProbabilityNodes(gs, snapshot);
 
-    if (nodes.length === 0) return;
-
-    let weightedBeliefSum = 0;
-    let weightedConfidenceSum = 0;
-    let totalWeight = 0;
-
-    for (const node of nodes) {
-      weightedBeliefSum += node.belief * node.weight * node.confidence;
-      weightedConfidenceSum += node.confidence * node.weight;
-      totalWeight += node.weight;
+    // Seed regime transition analysis
+    if (snapshot.state.drift) {
+      this.updateRegimeTransitionNode(gs, snapshot.state.drift, snapshot.state.probability.regime);
     }
 
-    const avgBelief = totalWeight > 0 ? weightedBeliefSum / Math.max(weightedConfidenceSum, 0.001) : 0.5;
-    const graphConfidence = totalWeight > 0 ? weightedConfidenceSum / totalWeight : 0;
+    // Resolve contradictions
+    const contradictions = this.resolveContradictions(gs);
+    gs.contradictions = contradictions;
 
-    // Constitutional adjustment: deviation from neutral (0.5) scaled by confidence.
-    // Positive = evidence leans toward YES probability being higher than raw model thinks.
-    // Negative = evidence leans toward NO / model is overconfident.
-    const constitutionalAdjustment = (avgBelief - 0.5) * graphConfidence * 0.18;
+    // Compute summary
+    const summary = this.computeSummary(gs, snapshot);
 
-    const payload: BeliefGraphEvent = {
-      contractId,
-      nodes,
-      constitutionalAdjustment,
-      graphConfidence,
-      timestamp,
+    // Emit belief graph state
+    const beefEvent: BeliefGraphStateEvent = {
+      contractId: snapshot.contractId,
+      snapshot_id: snapshot.snapshot_id,
+      market_state_hash: snapshot.market_state_hash,
+      cycle_id: `${snapshot.contractId}:belief:${gs.cycleCount}:${Date.now()}`,
+      summary,
+      timestamp: Date.now(),
     };
 
-    this.bus.emit(EVENTS.BELIEF_GRAPH_UPDATE, payload);
+    this.bus.emit(EVENTS.BELIEF_GRAPH_STATE, beefEvent);
   }
 
-  private clamp(v: number, lo = 0.01, hi = 0.99): number {
-    return Math.max(lo, Math.min(hi, v));
+  private applyRegimeDecay(gs: GraphState, currentRegime: Regime): void {
+    const now = Date.now();
+    for (const node of gs.nodes.values()) {
+      // If node was strong under a different regime, decay its evidence
+      if (node.regime !== currentRegime) {
+        const regimeShiftCycles = Math.max(1, gs.cycleCount - Math.floor(node.lastUpdatedMs / 1000 / 60));
+        const decayFactor = Math.pow(0.5, regimeShiftCycles / this.decayConfig.regimeHalflifeCycles);
+        node.evidence *= decayFactor;
+        node.decayFactor = decayFactor;
+        node.uncertainty = Math.min(1, node.uncertainty + 0.1 * (1 - decayFactor)); // uncertainty increases with decay
+      }
+
+      // Time decay for old updates
+      const ageMs = now - node.lastUpdatedMs;
+      if (ageMs > this.decayConfig.timeDecayMs) {
+        const timeFactor = Math.pow(0.5, ageMs / this.decayConfig.timeDecayMs);
+        node.evidence *= timeFactor;
+      }
+
+      node.evidence = clamp(node.evidence, 0, 1);
+      node.uncertainty = clamp(node.uncertainty, 0, 1);
+    }
+  }
+
+  private updateProbabilityNodes(gs: GraphState, snapshot: DecisionSnapshotEvent): void {
+    const prob = snapshot.state.probability;
+    const now = Date.now();
+
+    // Node: bullish-sentiment
+    const bullEdge = prob.estimatedProbability - 0.5;
+    const bullEvidence = bullEdge > 0 ? bullEdge * 2 : 0.5 + bullEdge; // asymmetric; yes>0.5 is strong bullish
+    const bullNode: BeliefGraphNode = {
+      nodeId: 'bullish-sentiment',
+      hypothesis: `estimated_probability (${prob.estimatedProbability.toFixed(2)}) > market_implied (${prob.marketImpliedProbability.toFixed(2)})`,
+      nodeType: 'market',
+      evidence: clamp(bullEvidence, 0, 1),
+      uncertainty: prob.uncertaintyScore,
+      lastUpdatedMs: now,
+      decayFactor: 1,
+      regime: prob.regime,
+    };
+    gs.nodes.set('bullish-sentiment', bullNode);
+
+    // Node: edge-present (edge > 0.02)
+    const edgeNode: BeliefGraphNode = {
+      nodeId: 'edge-present',
+      hypothesis: `market_offers_positive_edge (${prob.edge.toFixed(4)})`,
+      nodeType: 'market',
+      evidence: Math.abs(prob.edge) > 0.02 ? clamp(Math.abs(prob.edge) * 10, 0, 1) : 0.2,
+      uncertainty: 0.15,
+      lastUpdatedMs: now,
+      decayFactor: 1,
+      regime: prob.regime,
+    };
+    gs.nodes.set('edge-present', edgeNode);
+
+    // Add causal edge: bullish-sentiment -> edge-present (bullish increases probability of edge)
+    gs.edges.set('bullish-sentiment->edge-present', {
+      source: 'bullish-sentiment',
+      target: 'edge-present',
+      causalStrength: 0.7,
+      direction: 'positive',
+      description: 'bullish pressure increases edge likelihood',
+      lastUpdatedMs: now,
+    });
+  }
+
+  private updateCalibrationNode(gs: GraphState, event: CalibrationEvent): void {
+    const now = Date.now();
+    const calibrationScore = clamp(1 - event.ece, 0, 1); // higher ECE = lower calibration evidence
+
+    const node: BeliefGraphNode = {
+      nodeId: 'calibration-reliable',
+      hypothesis: `model_calibration_score=${calibrationScore.toFixed(2)} (ece=${event.ece.toFixed(3)})`,
+      nodeType: 'calibration',
+      evidence: calibrationScore,
+      uncertainty: event.brier, // Brier score as measure of calibration uncertainty
+      lastUpdatedMs: now,
+      decayFactor: 1,
+      regime: 'trending', // calibration is regime-agnostic
+    };
+    gs.nodes.set('calibration-reliable', node);
+  }
+
+  private updateDriftNode(gs: GraphState, event: DriftEvent): void {
+    const now = Date.now();
+    const driftSeverity = event.severity === 'high' ? 0.8 : event.severity === 'medium' ? 0.5 : 0.2;
+    const driftEvidence = 1 - driftSeverity; // high drift = low evidence that model is stable
+
+    const node: BeliefGraphNode = {
+      nodeId: 'model-stability',
+      hypothesis: `feature_distribution_stable (psi=${event.psi.toFixed(3)}, severity=${event.severity})`,
+      nodeType: 'drift',
+      evidence: driftEvidence,
+      uncertainty: Math.min(1, event.psi), // psi is proxy for uncertainty
+      lastUpdatedMs: now,
+      decayFactor: 1,
+      regime: 'trending',
+    };
+    gs.nodes.set('model-stability', node);
+  }
+
+  private updateAnomalyNode(gs: GraphState, event: AnomalyEvent): void {
+    const now = Date.now();
+    const severityToEvidence: Record<string, number> = {
+      critical: 0.95,
+      high: 0.75,
+      medium: 0.5,
+      low: 0.2,
+    };
+
+    const node: BeliefGraphNode = {
+      nodeId: `anomaly-${event.type}`,
+      hypothesis: `${event.type} detected (severity=${event.severity})`,
+      nodeType: 'anomaly',
+      evidence: severityToEvidence[event.severity] ?? 0.3,
+      uncertainty: 1 - event.confidenceDegradation, // inverse: high degradation = high uncertainty
+      lastUpdatedMs: now,
+      decayFactor: 1,
+      regime: 'choppy', // anomalies are choppy regime signals
+    };
+    gs.nodes.set(`anomaly-${event.type}`, node);
+
+    // Add causal edge: anomaly -> reduced-confidence
+    gs.edges.set(`anomaly-${event.type}->market-confidence-reduced`, {
+      source: `anomaly-${event.type}`,
+      target: 'market-confidence-reduced',
+      causalStrength: severityToEvidence[event.severity] ?? 0.3,
+      direction: 'positive',
+      description: `${event.type} reduces confidence`,
+      lastUpdatedMs: now,
+    });
+  }
+
+  private updateFeatureNode(gs: GraphState, event: FeatureIntelligenceEvent): void {
+    const now = Date.now();
+
+    const node: BeliefGraphNode = {
+      nodeId: 'features-high-quality',
+      hypothesis: `feature_quality_score=${event.qualityScore.toFixed(2)} (missing_rate=${event.missingRate.toFixed(3)})`,
+      nodeType: 'market',
+      evidence: event.qualityScore,
+      uncertainty: event.missingRate + event.driftHint, // higher missing rate + drift = more uncertainty
+      lastUpdatedMs: now,
+      decayFactor: 1,
+      regime: 'trending',
+    };
+    gs.nodes.set('features-high-quality', node);
+  }
+
+  private updateRegimeTransitionNode(gs: GraphState, driftEvent: DriftEvent, regime: Regime): void {
+    const now = Date.now();
+    const transitionHazard = clamp(driftEvent.psi * 0.5, 0, 1); // PSI as proxy for regime shift probability
+
+    const node: BeliefGraphNode = {
+      nodeId: 'regime-transition-imminent',
+      hypothesis: `regime may shift from ${regime} (transitional_hazard=${transitionHazard.toFixed(2)})`,
+      nodeType: 'regime-transition',
+      evidence: transitionHazard,
+      uncertainty: 0.3, // regime transitions are inherently uncertain
+      lastUpdatedMs: now,
+      decayFactor: 1,
+      regime,
+    };
+    gs.nodes.set('regime-transition-imminent', node);
+  }
+
+  private resolveContradictions(gs: GraphState): ContradictionDiagnostic[] {
+    const contradictions: ContradictionDiagnostic[] = [];
+
+    // Define mutually exclusive node pairs
+    const conflictPairs = [
+      ['bullish-sentiment', 'bearish-sentiment'],
+      ['model-stability', 'model-volatility'],
+      ['features-high-quality', 'features-degraded'],
+    ];
+
+    for (const [node1Id, node2Id] of conflictPairs) {
+      const n1 = gs.nodes.get(node1Id);
+      const n2 = gs.nodes.get(node2Id);
+
+      if (!n1 || !n2) continue;
+
+      // Conflict strength: if both have high evidence, they contradict
+      const conflictStrength = (n1.evidence * n2.evidence) ^ 0.5; // geometric mean
+      if (conflictStrength > 0.3) {
+        contradictions.push({
+          hypothesis1: node1Id,
+          hypothesis2: node2Id,
+          conflictStrength,
+          conflictReason: `both ${node1Id} (evidence=${n1.evidence.toFixed(2)}) and ${node2Id} (evidence=${n2.evidence.toFixed(2)}) are strong`,
+          suggestedResolution: `reduce confidence in weaker hypothesis: ${n1.evidence > n2.evidence ? node2Id : node1Id}`,
+          timestamp: Date.now(),
+        });
+      }
+    }
+
+    // Anomaly vs trading contradiction
+    const anomalyNodes = Array.from(gs.nodes.keys()).filter((k) => k.startsWith('anomaly-'));
+    for (const anomId of anomalyNodes) {
+      const anom = gs.nodes.get(anomId)!;
+      if (anom.evidence > 0.6) {
+        contradictions.push({
+          hypothesis1: anomId,
+          hypothesis2: 'edge-present',
+          conflictStrength: anom.evidence * 0.5,
+          conflictReason: `anomaly ${anomId} reduces confidence in edge`,
+          suggestedResolution: 'reduce trade size or increase passive execution style',
+          timestamp: Date.now(),
+        });
+      }
+    }
+
+    return contradictions;
+  }
+
+  private computeSummary(gs: GraphState, snapshot: DecisionSnapshotEvent): BeliefGraphSummary {
+    const now = Date.now();
+
+    // Belief-adjusted probability: weighted consensus of bullish/bearish nodes
+    const bullish = gs.nodes.get('bullish-sentiment');
+    const edgePresent = gs.nodes.get('edge-present');
+    const calibrated = gs.nodes.get('calibration-reliable');
+    const stable = gs.nodes.get('model-stability');
+
+    const baseProb = snapshot.state.probability.estimatedProbability;
+    let beliefAdjustedProb = baseProb;
+    let totalWeight = 0;
+
+    if (bullish) {
+      beliefAdjustedProb += bullish.evidence * 0.2 * (bullish.evidence - 0.5);
+      totalWeight += bullish.evidence * 0.3;
+    }
+    if (edgePresent) {
+      const edgeDir = snapshot.state.probability.edge > 0 ? 1 : -1;
+      beliefAdjustedProb += edgeDir * edgePresent.evidence * 0.15;
+      totalWeight += edgePresent.evidence * 0.2;
+    }
+    if (calibrated && calibrated.evidence > 0.5) {
+      beliefAdjustedProb += (calibrated.evidence - 0.5) * 0.1;
+      totalWeight += calibrated.evidence * 0.2;
+    }
+    if (stable && stable.evidence < 0.4) {
+      // Low stability reduces conviction
+      beliefAdjustedProb = (beliefAdjustedProb + 0.5) / 2;
+    }
+
+    beliefAdjustedProb = clamp(beliefAdjustedProb, 0.01, 0.99);
+
+    // Uncertainty interval
+    const avgUncertainty = Array.from(gs.nodes.values()).reduce((sum, n) => sum + n.uncertainty, 0) / Math.max(1, gs.nodes.size);
+    const margin = clamp(avgUncertainty * 0.25, 0.01, 0.3);
+    const beliefUncertaintyInterval: [number, number] = [
+      clamp(beliefAdjustedProb - margin, 0, 1),
+      clamp(beliefAdjustedProb + margin, 0, 1),
+    ];
+
+    // Top hypotheses
+    const topHypotheses = Array.from(gs.nodes.values())
+      .sort((a, b) => {
+        const influenceA = computeCausalInfluence(a.nodeId, gs.edges);
+        const influenceB = computeCausalInfluence(b.nodeId, gs.edges);
+        return (b.evidence + influenceB) - (a.evidence + influenceA);
+      })
+      .slice(0, 5)
+      .map((n) => ({
+        nodeId: n.nodeId,
+        hypothesis: n.hypothesis,
+        evidence: n.evidence,
+        uncertainty: n.uncertainty,
+        causalInfluence: computeCausalInfluence(n.nodeId, gs.edges),
+      }));
+
+    // Regime transition hazard (from regime-transition node if exists)
+    const regimeNode = gs.nodes.get('regime-transition-imminent');
+    const regimeTransitionHazard = regimeNode?.evidence ?? 0;
+    const regimeTransitionConfidence = regimeNode ? 1 - regimeNode.uncertainty : 0.5;
+
+    // Next predicted regimes (placeholder: cycle through regime space if hazard > 0.5)
+    const nextPredictedRegimes: Regime[] = [];
+    if (regimeTransitionHazard > 0.5) {
+      const currentRegime = snapshot.state.probability.regime;
+      const regimeProgression: Record<Regime, Regime[]> = {
+        trending: ['momentum-ignition', 'expansion'],
+        choppy: ['reversal-prone', 'compression'],
+        panic: ['reversal-prone', 'choppy'],
+        'low-liquidity': ['compression', 'choppy'],
+        'reversal-prone': ['trending', 'choppy'],
+        'momentum-ignition': ['expansion', 'trending'],
+        compression: ['expansion', 'choppy'],
+        expansion: ['trending', 'choppy'],
+      };
+      nextPredictedRegimes.push(...(regimeProgression[currentRegime] ?? ['choppy']));
+    }
+
+    // Graph health
+    const graphDensity = gs.edges.size / Math.max(1, gs.nodes.size * (gs.nodes.size - 1));
+    const entropies = Array.from(gs.nodes.values()).map((n) => {
+      const p = clamp(n.evidence, 0.0001, 0.9999); // clamp to avoid log(0)
+      return -(p * Math.log2(p) + (1 - p) * Math.log2(1 - p));
+    });
+    const graphEntropy = entropies.length > 0 ? entropies.reduce((a, b) => a + b, 0) / entropies.length : 0;
+
+    const strongestBeliefs = Array.from(gs.nodes.values()).filter((n) => n.evidence > 0.7).length;
+    const weakestBeliefs = Array.from(gs.nodes.values()).filter((n) => n.evidence < 0.3 && n.uncertainty > 0.5).length;
+
+    return {
+      contractId: snapshot.contractId,
+      snapshot_id: snapshot.snapshot_id,
+      market_state_hash: snapshot.market_state_hash,
+      cycle_id: `${snapshot.contractId}:bf:${gs.cycleCount}:${now}`,
+      beliefAdjustedProbability: beliefAdjustedProb,
+      beliefUncertaintyInterval,
+      contradictions: gs.contradictions,
+      contradictionCount: gs.contradictions.length,
+      maxContradictionStrength: gs.contradictions.length > 0 ? Math.max(...gs.contradictions.map((c) => c.conflictStrength)) : 0,
+      topHypotheses,
+      regimeTransitionHazard,
+      regimeTransitionConfidence,
+      nextPredictedRegimes,
+      graphDensity,
+      graphEntropy,
+      strongestBeliefs,
+      weakestBeliefs,
+      timestamp: now,
+    };
+  }
+
+  private getGraphState(contractId: string): GraphState {
+    if (!this.state.has(contractId)) {
+      this.state.set(contractId, {
+        nodes: new Map(),
+        edges: new Map(),
+        recentUpdates: [],
+        contradictions: [],
+        lastSnapshot: null,
+        cycleCount: 0,
+      });
+    }
+    return this.state.get(contractId)!;
   }
 }
