@@ -1,10 +1,12 @@
 import http from 'node:http';
 import { EventBus } from '../../core/event-bus/bus.js';
 import { EVENTS } from '../../core/event-bus/events.js';
+import { SnapshotReducer } from '../../core/snapshot/reducer.js';
 
 export class ApiServer {
   private server: http.Server | null = null;
   private readonly latest: Record<string, unknown> = {};
+  private readonly snapshotReducer: SnapshotReducer;
   private readonly orchestrationMetrics: Array<{
     agent: string;
     latencyMs: number;
@@ -17,59 +19,78 @@ export class ApiServer {
   private readonly orchestrationFailures: Array<{ agent: string; error: string; timestamp: number }> = [];
   private readonly routingDecisions: Array<{ triggerEvent: string; agents: string[]; timestamp: number }> = [];
 
-  constructor(private readonly bus: EventBus, private readonly host: string, private readonly port: number) {}
+  constructor(private readonly bus: EventBus, private readonly host: string, private readonly port: number) {
+    this.snapshotReducer = new SnapshotReducer();
+  }
 
   start(): Promise<void> {
     this.bus.on(EVENTS.PROBABILITY, (event) => {
       this.latest.probability = event;
+      this.snapshotReducer.apply('probability', event);
     });
     this.bus.on(EVENTS.AGGREGATED_SIGNAL, (event) => {
       this.latest.signal = event;
+      this.snapshotReducer.apply('signal', event);
     });
     this.bus.on(EVENTS.EXECUTION_CONTROL, (event) => {
       this.latest.executionControl = event;
+      this.snapshotReducer.apply('executionControl', event);
     });
     this.bus.on(EVENTS.EXECUTION_STATE, (event) => {
       this.latest.executionState = event;
+      this.snapshotReducer.apply('executionState', event);
     });
     this.bus.on(EVENTS.CALIBRATION_UPDATE, (event) => {
       this.latest.calibration = event;
+      this.snapshotReducer.apply('calibration', event);
     });
     this.bus.on(EVENTS.DRIFT_EVENT, (event) => {
       this.latest.drift = event;
+      this.snapshotReducer.apply('drift', event);
     });
     this.bus.on(EVENTS.VALIDATION_RESULT, (event) => {
       this.latest.validation = event;
+      // validation is not an ImmutableSnapshot field — no reducer call
     });
     this.bus.on(EVENTS.PORTFOLIO_UPDATE, (event) => {
       this.latest.portfolio = event;
+      this.snapshotReducer.apply('portfolio', event);
     });
     this.bus.on(EVENTS.ANOMALY, (event) => {
       this.latest.anomaly = event;
+      this.snapshotReducer.apply('anomaly', event);
     });
     this.bus.on(EVENTS.AI_AGGREGATED_INTELLIGENCE, (event) => {
       this.latest.aiAggregatedIntelligence = event;
+      this.snapshotReducer.apply('aiAggregatedIntelligence', event);
     });
     this.bus.on(EVENTS.BELIEF_GRAPH_STATE, (event) => {
       this.latest.beliefGraphState = event;
+      // beliefGraphState is not an ImmutableSnapshot field — no reducer call
     });
     this.bus.on(EVENTS.SYSTEM_CONSCIOUSNESS, (event) => {
       this.latest.systemConsciousness = event;
+      this.snapshotReducer.apply('systemConsciousness', event);
     });
     this.bus.on(EVENTS.EPISTEMIC_HEALTH, (event) => {
       this.latest.epistemicHealth = event;
+      this.snapshotReducer.apply('epistemicHealth', event);
     });
     this.bus.on(EVENTS.DIGITAL_IMMUNE_ALERT, (event) => {
       this.latest.digitalImmuneAlert = event;
+      // digitalImmuneAlert is not an ImmutableSnapshot field — no reducer call
     });
     this.bus.on(EVENTS.STRATEGY_GENOME_UPDATE, (event) => {
       this.latest.strategyGenome = event;
+      // strategyGenome is not an ImmutableSnapshot field — no reducer call
     });
     this.bus.on(EVENTS.REPLAY_INTEGRITY, (event) => {
       this.latest.replayIntegrity = event;
+      // replayIntegrity is not an ImmutableSnapshot field — no reducer call
     });
     this.bus.on(EVENTS.CONSTITUTIONAL_DECISION, (event) => {
       this.latest.constitutionalDecision = event;
+      // constitutionalDecision is not an ImmutableSnapshot field — no reducer call
     });
     this.bus.on(
       EVENTS.AI_ORCHESTRATION_METRICS,
@@ -87,6 +108,7 @@ export class ApiServer {
         this.orchestrationMetrics.pop();
       }
       this.latest.aiOrchestrationMetrics = this.orchestrationMetrics;
+      this.snapshotReducer.apply('aiOrchestrationMetrics', event);
       },
     );
     this.bus.on(EVENTS.AI_AGENT_FAILURE, (event: { agent: string; error: string; timestamp: number }) => {
@@ -95,6 +117,7 @@ export class ApiServer {
         this.orchestrationFailures.pop();
       }
       this.latest.aiOrchestrationFailures = this.orchestrationFailures;
+      this.snapshotReducer.apply('aiOrchestrationFailures', event);
     });
     this.bus.on(EVENTS.AI_ROUTING_DECISION, (event: { triggerEvent: string; agents: string[]; timestamp: number }) => {
       this.routingDecisions.unshift(event);
@@ -102,6 +125,27 @@ export class ApiServer {
         this.routingDecisions.pop();
       }
       this.latest.aiRoutingDecisions = this.routingDecisions;
+      // aiRoutingDecisions is not an ImmutableSnapshot field — no reducer call
+    });
+    this.bus.on(EVENTS.REALITY_SNAPSHOT, (event) => {
+      this.latest.realitySnapshot = event;
+      this.snapshotReducer.apply('realitySnapshot', event);
+    });
+    this.bus.on(EVENTS.CAUSAL_INSIGHT, (event) => {
+      this.latest.causalInsight = event;
+      this.snapshotReducer.apply('causalInsights', event);
+    });
+    this.bus.on(EVENTS.ADVERSARIAL_AUDIT, (event) => {
+      this.latest.adversarialAudit = event;
+      this.snapshotReducer.apply('adversarialAudit', event);
+    });
+    this.bus.on(EVENTS.MARKET_MEMORY, (event) => {
+      this.latest.marketMemory = event;
+      this.snapshotReducer.apply('marketMemory', event);
+    });
+    this.bus.on(EVENTS.MULTI_TIMESCALE_VIEW, (event) => {
+      this.latest.multiTimescaleView = event;
+      this.snapshotReducer.apply('multiTimescaleView', event);
     });
 
     this.server = http.createServer((req, res) => {
@@ -115,6 +159,13 @@ export class ApiServer {
       if (path === '/state') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(this.latest));
+        return;
+      }
+
+      if (path === '/snapshot') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        const snap = this.snapshotReducer.toSerializable() as Record<string, unknown>;
+        res.end(JSON.stringify(snap));
         return;
       }
 
