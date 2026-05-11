@@ -285,6 +285,120 @@ function testEventBusEmitOrderPreserved() {
     }
 }
 // ---------------------------------------------------------------------------
+// ExecutionJournal tests
+// ---------------------------------------------------------------------------
+import { ExecutionJournal } from '../core/execution/journal.js';
+async function testJournalSuccessfulExecution() {
+    const coord = new ExecutionCoordinator({ leaseTtlMs: 5000, idempotencyTtlMs: 30000 });
+    const journal = new ExecutionJournal(coord);
+    const result = await journal.execute('CONTRACT-J1', 'key-j1', 'snap-1-abc', async () => 42);
+    assert.equal(result.ok, true, 'journal execution should succeed');
+    if (!result.ok)
+        return;
+    assert.equal(result.result, 42, 'result should be 42');
+    assert.ok(result.durationMs >= 0, 'durationMs should be non-negative');
+    const history = journal.getHistory();
+    const phases = history.map((e) => e.phase);
+    assert.ok(phases.includes('LOCK'), 'history should include LOCK');
+    assert.ok(phases.includes('VALIDATE_SNAPSHOT'), 'history should include VALIDATE_SNAPSHOT');
+    assert.ok(phases.includes('EXECUTE'), 'history should include EXECUTE');
+    assert.ok(phases.includes('CONFIRM'), 'history should include CONFIRM');
+    assert.ok(phases.includes('COMMIT'), 'history should include COMMIT');
+    assert.ok(phases.includes('LOG'), 'history should include LOG');
+}
+async function testJournalStaleSnapshotRejection() {
+    const coord = new ExecutionCoordinator({ leaseTtlMs: 5000, idempotencyTtlMs: 30000 });
+    const journal = new ExecutionJournal(coord);
+    const result = await journal.execute('CONTRACT-J2', 'key-j2', 'snap-0-init', async () => 99);
+    assert.equal(result.ok, false, 'stale snapshot should be rejected');
+    if (result.ok)
+        return;
+    assert.equal(result.reason, 'stale-snapshot', 'reason should be stale-snapshot');
+    const failures = journal.getFailures();
+    assert.ok(failures.length > 0, 'failures should be recorded');
+    assert.equal(failures[0]?.phase, 'ROLLBACK', 'phase should be ROLLBACK');
+}
+async function testJournalExecutionErrorRollback() {
+    const coord = new ExecutionCoordinator({ leaseTtlMs: 5000, idempotencyTtlMs: 30000 });
+    const journal = new ExecutionJournal(coord);
+    const result = await journal.execute('CONTRACT-J3', 'key-j3', 'snap-5-xyz', async () => {
+        throw new Error('intentional failure');
+    });
+    assert.equal(result.ok, false, 'thrown error should produce ok=false');
+    if (result.ok)
+        return;
+    assert.ok(result.reason.includes('execution-error'), 'reason should include execution-error');
+    // After rollback, the contract lock should be released → next acquire succeeds
+    const lease = coord.acquire('CONTRACT-J3', 'key-j3b', Date.now());
+    assert.equal(lease.acquired, true, 'contract should be acquirable after rollback');
+}
+async function testJournalDuplicateIdempotencyKey() {
+    const coord = new ExecutionCoordinator({ leaseTtlMs: 5000, idempotencyTtlMs: 30000 });
+    const journal = new ExecutionJournal(coord);
+    const r1 = await journal.execute('CONTRACT-J4', 'key-j4-dup', 'snap-7-abc', async () => 1);
+    assert.equal(r1.ok, true, 'first execution should succeed');
+    const r2 = await journal.execute('CONTRACT-J4', 'key-j4-dup', 'snap-7-abc', async () => 2);
+    assert.equal(r2.ok, false, 'duplicate key should be rejected');
+    if (r2.ok)
+        return;
+    assert.equal(r2.reason, 'duplicate', 'reason should be duplicate');
+}
+// ---------------------------------------------------------------------------
+// InvariantChecker tests
+// ---------------------------------------------------------------------------
+import { InvariantChecker } from '../core/invariants/checker.js';
+import { SnapshotReducer as SnapshotReducer2 } from '../core/snapshot/reducer.js';
+function testInvariantCheckerValidSnapshot() {
+    const checker = new InvariantChecker();
+    const reducer = new SnapshotReducer2();
+    const snap = reducer.apply('probability', { estimatedProbability: 0.65, confidenceInterval: [0.5, 0.8] });
+    const violations = checker.check(snap);
+    assert.equal(violations.length, 0, 'valid snapshot should have no violations');
+}
+function testInvariantCheckerProbabilityOutOfRange() {
+    const checker = new InvariantChecker();
+    const reducer = new SnapshotReducer2();
+    const snap = reducer.apply('probability', { estimatedProbability: 1.5 });
+    const violations = checker.check(snap);
+    assert.ok(violations.some((v) => v.invariant === 'PROBABILITY_IN_RANGE'), 'should detect out-of-range probability');
+    assert.ok(violations.some((v) => v.severity === 'critical'), 'should be critical severity');
+}
+function testInvariantCheckerCIOrdering() {
+    const checker = new InvariantChecker();
+    const reducer = new SnapshotReducer2();
+    // CI lower > upper is a violation
+    const snap = reducer.apply('probability', { estimatedProbability: 0.6, confidenceInterval: [0.9, 0.3] });
+    const violations = checker.check(snap);
+    assert.ok(violations.some((v) => v.invariant === 'CONFIDENCE_INTERVAL_ORDERED'), 'should detect inverted CI');
+}
+function testInvariantCheckerCustomRule() {
+    const checker = new InvariantChecker();
+    checker.register((snap) => {
+        if ((snap.sequence ?? 0) > 5) {
+            return { invariant: 'MAX_SEQUENCE_5', snapshotId: snap.snapshotId, details: 'exceeded 5', severity: 'warning', timestamp: Date.now() };
+        }
+        return null;
+    });
+    const reducer = new SnapshotReducer2();
+    // Apply 6 events to increment sequence to 6
+    let snap = reducer.apply('probability', {});
+    for (let i = 0; i < 5; i++)
+        snap = reducer.apply('probability', {});
+    const violations = checker.check(snap);
+    assert.ok(violations.some((v) => v.invariant === 'MAX_SEQUENCE_5'), 'custom invariant should fire');
+}
+function testInvariantCheckerViolationSummary() {
+    const checker = new InvariantChecker();
+    const reducer = new SnapshotReducer2();
+    // Multiple out-of-range probabilities
+    for (let i = 0; i < 3; i++) {
+        const snap = reducer.apply('probability', { estimatedProbability: 2.0 });
+        checker.check(snap);
+    }
+    const summary = checker.violationSummary();
+    assert.ok(summary['PROBABILITY_IN_RANGE'] >= 3, 'summary should count 3+ violations');
+}
+// ---------------------------------------------------------------------------
 // Runner
 // ---------------------------------------------------------------------------
 async function run() {
@@ -303,6 +417,17 @@ async function run() {
     testSnapshotReducerImmutability();
     testSnapshotReducerBoundedArrays();
     testEventBusEmitOrderPreserved();
+    // Execution Journal
+    await testJournalSuccessfulExecution();
+    await testJournalStaleSnapshotRejection();
+    await testJournalExecutionErrorRollback();
+    await testJournalDuplicateIdempotencyKey();
+    // Invariant Checker
+    testInvariantCheckerValidSnapshot();
+    testInvariantCheckerProbabilityOutOfRange();
+    testInvariantCheckerCIOrdering();
+    testInvariantCheckerCustomRule();
+    testInvariantCheckerViolationSummary();
     process.stdout.write('chaos-ok\n');
 }
 run().catch((err) => {

@@ -2,6 +2,7 @@ import { loadConfig } from './core/config/system-config.js';
 import { EventBus } from './core/event-bus/bus.js';
 import { EVENTS } from './core/event-bus/events.js';
 import { Logger } from './core/telemetry/logger.js';
+import { installErrorTelemetryBus } from './core/errors/handler.js';
 import { MetricsRegistry } from './core/metrics/registry.js';
 import { Tracer } from './core/tracing/tracer.js';
 import { ApiServer } from './apps/api/server.js';
@@ -44,6 +45,7 @@ import { ReplayIntegrityService } from './services/replay-integrity/service.js';
 async function main(): Promise<void> {
   const config = loadConfig();
   const bus = new EventBus();
+  installErrorTelemetryBus(bus);
   const logger = new Logger('god-tier-quant-system');
   const metrics = new MetricsRegistry();
   const tracer = new Tracer(bus, 'main');

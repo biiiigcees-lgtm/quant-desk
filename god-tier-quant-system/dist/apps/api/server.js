@@ -1,6 +1,10 @@
 import http from 'node:http';
 import { EVENTS } from '../../core/event-bus/events.js';
 import { SnapshotReducer } from '../../core/snapshot/reducer.js';
+import { InvariantChecker } from '../../core/invariants/checker.js';
+import { ReplayStorage } from '../../core/replay/storage.js';
+import { ExecutionJournal } from '../../core/execution/journal.js';
+import { ExecutionCoordinator } from '../../core/determinism/execution-coordinator.js';
 export class ApiServer {
     constructor(bus, host, port) {
         this.bus = bus;
@@ -12,11 +16,33 @@ export class ApiServer {
         this.orchestrationFailures = [];
         this.routingDecisions = [];
         this.snapshotReducer = new SnapshotReducer();
+        this.invariantChecker = new InvariantChecker();
+        this.replayStorage = new ReplayStorage(process.env['REPLAY_LOG_PATH'] ?? '/tmp/quant-replay.log');
+        const coordinator = new ExecutionCoordinator();
+        this.executionJournal = new ExecutionJournal(coordinator);
+        // Run invariant checks whenever the snapshot updates
+        this.snapshotReducer.subscribe((snap) => {
+            const violations = this.invariantChecker.check(snap);
+            if (violations.length > 0) {
+                for (const v of violations) {
+                    this.bus.emit(EVENTS.TELEMETRY, {
+                        level: v.severity === 'critical' ? 'error' : 'warn',
+                        context: 'InvariantChecker',
+                        invariant: v.invariant,
+                        snapshotId: v.snapshotId,
+                        details: v.details,
+                        timestamp: v.timestamp,
+                    });
+                }
+            }
+        });
     }
     start() {
         this.bus.on(EVENTS.PROBABILITY, (event) => {
             this.latest.probability = event;
             this.snapshotReducer.apply('probability', event);
+            const snap = this.snapshotReducer.getSnapshot();
+            this.replayStorage.append(EVENTS.PROBABILITY, event, { snapshotId: snap.snapshotId });
         });
         this.bus.on(EVENTS.AGGREGATED_SIGNAL, (event) => {
             this.latest.signal = event;
@@ -189,6 +215,31 @@ export class ApiServer {
                     strategyGenome: this.latest.strategyGenome ?? null,
                     replayIntegrity: this.latest.replayIntegrity ?? null,
                 }));
+                return;
+            }
+            if (path === '/invariants') {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    violations: this.invariantChecker.getViolations().slice(-50),
+                    criticalCount: this.invariantChecker.getCriticalViolations().length,
+                    hasCritical: this.invariantChecker.hasCriticalViolations(),
+                    summary: this.invariantChecker.violationSummary(),
+                }));
+                return;
+            }
+            if (path === '/journal') {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    history: this.executionJournal.getHistory(50),
+                    failures: this.executionJournal.getFailures().slice(-20),
+                }));
+                return;
+            }
+            if (path === '/replay/verify') {
+                void this.replayStorage.verify().then((result) => {
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify(result));
+                });
                 return;
             }
             res.writeHead(404, { 'Content-Type': 'application/json' });
