@@ -1,4 +1,5 @@
 import { EVENTS } from '../../../core/event-bus/events.js';
+import { coerceToCanonical, validateCanonicalAIOutput } from '../../../core/ai/canonical-output.js';
 export class AiAggregationService {
     constructor(bus) {
         this.bus = bus;
@@ -9,9 +10,27 @@ export class AiAggregationService {
         this.bus.on(EVENTS.AI_AGENT_RESPONSE, (event) => {
             this.pruneState(event.timestamp);
             const current = this.state.get(event.contractId) ?? { byAgent: {}, updatedAt: event.timestamp };
+            // Validate against canonical schema; fall back to coercion if invalid.
+            const validated = validateCanonicalAIOutput(event.output);
+            const canonical = validated.ok ? validated.data : coerceToCanonical(event.output, event.agent);
+            // Reject outputs where coercion indicates complete failure (confidence=0, riskLevel=1, BLOCK).
+            const isHallucination = canonical.confidence === 0 && canonical.riskLevel === 1
+                && canonical.executionRecommendation === 'BLOCK';
+            if (isHallucination) {
+                this.bus.emit(EVENTS.TELEMETRY, {
+                    level: 'warn',
+                    context: 'AiAggregationService',
+                    message: `agent=${event.agent} output failed canonical validation — suppressed`,
+                    agent: event.agent,
+                    contractId: event.contractId,
+                    timestamp: Date.now(),
+                });
+                return;
+            }
             current.byAgent[event.agent] = {
                 output: event.output,
-                confidence: extractConfidence(event.output),
+                canonical,
+                confidence: canonical.confidence,
                 timestamp: event.timestamp,
             };
             current.updatedAt = event.timestamp;

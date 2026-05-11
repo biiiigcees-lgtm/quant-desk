@@ -91,7 +91,7 @@ export class EpistemicHealthService {
         };
         this.latest.set(contractId, event);
         this.bus.emit(EVENTS.EPISTEMIC_HEALTH, event);
-        // Cross threshold into critical epistemic state → trigger safe-mode
+        // Cross threshold into critical epistemic state → trigger safe-mode execution block
         const nowCritical = status === 'critical';
         if (nowCritical && !s.lastEmittedSafeMode) {
             s.lastEmittedSafeMode = true;
@@ -102,9 +102,44 @@ export class EpistemicHealthService {
                 ece,
                 timestamp: Date.now(),
             });
+            this.bus.emit(EVENTS.TELEMETRY, {
+                level: 'error',
+                context: 'EpistemicHealthService',
+                message: `safe-mode activated — epistemic score=${score.toFixed(3)} grade=${healthGrade}`,
+                contractId,
+                score,
+                healthGrade,
+                calibrationHealth,
+                driftHealth,
+                anomalyHealth,
+                stabilityHealth,
+                timestamp: Date.now(),
+            });
         }
         else if (!nowCritical && s.lastEmittedSafeMode) {
             s.lastEmittedSafeMode = false;
+            // Recovery — log restoration
+            this.bus.emit(EVENTS.TELEMETRY, {
+                level: 'info',
+                context: 'EpistemicHealthService',
+                message: `safe-mode cleared — epistemic score recovered to ${score.toFixed(3)} grade=${healthGrade}`,
+                contractId,
+                score,
+                healthGrade,
+                timestamp: Date.now(),
+            });
+        }
+        else if (status === 'degraded') {
+            // Warn on degraded state even if not yet critical
+            this.bus.emit(EVENTS.TELEMETRY, {
+                level: 'warn',
+                context: 'EpistemicHealthService',
+                message: `epistemic health degraded — score=${score.toFixed(3)} grade=${healthGrade}`,
+                contractId,
+                score,
+                healthGrade,
+                timestamp: Date.now(),
+            });
         }
     }
 }
