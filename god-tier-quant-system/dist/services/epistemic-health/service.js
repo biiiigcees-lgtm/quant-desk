@@ -1,9 +1,9 @@
 import { EVENTS } from '../../core/event-bus/events.js';
 import { safeHandler } from '../../core/errors/handler.js';
 const WINDOW = 20;
-const DRIFT_HEALTH = { none: 1.0, low: 0.85, medium: 0.6, high: 0.3 };
+const DRIFT_HEALTH = { none: 1, low: 0.85, medium: 0.6, high: 0.3 };
 const ANOMALY_HEALTH = {
-    none: 1.0, low: 0.8, medium: 0.55, high: 0.25, critical: 0.0,
+    none: 1, low: 0.8, medium: 0.55, high: 0.25, critical: 0,
 };
 function pushWindow(arr, val) {
     arr.push(val);
@@ -65,21 +65,22 @@ export class EpistemicHealthService {
     }
     emit(contractId) {
         const s = this.state;
-        const ece = s.eceWindow.length > 0 ? s.eceWindow[s.eceWindow.length - 1] : 0;
+        const ece = s.eceWindow.at(-1) ?? 0;
         const calibrationHealth = Math.max(0, Math.min(1, 1 - mean(s.eceWindow) * 5));
-        const driftHealth = DRIFT_HEALTH[s.latestDriftSeverity] ?? 1.0;
-        const anomalyHealth = ANOMALY_HEALTH[s.latestAnomalySeverity] ?? 1.0;
+        const driftHealth = DRIFT_HEALTH[s.latestDriftSeverity] ?? 1;
+        const anomalyHealth = ANOMALY_HEALTH[s.latestAnomalySeverity] ?? 1;
         const stabilityHealth = Math.max(0, Math.min(1, 1 - variance(s.truthScoreWindow) * 3));
         const score = Number((calibrationHealth * 0.35 +
             driftHealth * 0.25 +
             anomalyHealth * 0.25 +
             stabilityHealth * 0.15).toFixed(4));
-        const healthGrade = score >= 0.85 ? 'A' :
-            score >= 0.70 ? 'B' :
-                score >= 0.50 ? 'C' :
-                    score >= 0.30 ? 'D' : 'F';
+        const healthGrade = healthGradeFromScore(score);
+        const status = statusFromScore(score);
         const event = {
             contractId,
+            score,
+            status,
+            components: buildComponents(calibrationHealth, driftHealth, anomalyHealth, stabilityHealth),
             epistemicHealthScore: score,
             calibrationHealth: Number(calibrationHealth.toFixed(4)),
             driftHealth: Number(driftHealth.toFixed(4)),
@@ -90,9 +91,9 @@ export class EpistemicHealthService {
         };
         this.latest.set(contractId, event);
         this.bus.emit(EVENTS.EPISTEMIC_HEALTH, event);
-        // Cross threshold into degraded epistemic state → trigger safe-mode
-        const nowDegraded = score < 0.40;
-        if (nowDegraded && !s.lastEmittedSafeMode) {
+        // Cross threshold into critical epistemic state → trigger safe-mode
+        const nowCritical = status === 'critical';
+        if (nowCritical && !s.lastEmittedSafeMode) {
             s.lastEmittedSafeMode = true;
             this.bus.emit(EVENTS.EXECUTION_CONTROL, {
                 contractId,
@@ -102,8 +103,34 @@ export class EpistemicHealthService {
                 timestamp: Date.now(),
             });
         }
-        else if (!nowDegraded && s.lastEmittedSafeMode) {
+        else if (!nowCritical && s.lastEmittedSafeMode) {
             s.lastEmittedSafeMode = false;
         }
     }
+}
+function healthGradeFromScore(score) {
+    if (score >= 0.85)
+        return 'A';
+    if (score >= 0.7)
+        return 'B';
+    if (score >= 0.5)
+        return 'C';
+    if (score >= 0.3)
+        return 'D';
+    return 'F';
+}
+function statusFromScore(score) {
+    if (score >= 0.7)
+        return 'stable';
+    if (score >= 0.4)
+        return 'degraded';
+    return 'critical';
+}
+function buildComponents(calibrationHealth, driftHealth, anomalyHealth, stabilityHealth) {
+    return {
+        contradiction: Number((1 - stabilityHealth).toFixed(4)),
+        calibration: Number((1 - calibrationHealth).toFixed(4)),
+        drift: Number((1 - driftHealth).toFixed(4)),
+        anomaly: Number((1 - anomalyHealth).toFixed(4)),
+    };
 }

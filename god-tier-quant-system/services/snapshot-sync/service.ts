@@ -4,6 +4,7 @@ import { EVENTS } from '../../core/event-bus/events.js';
 import {
   AnomalyEvent,
   CalibrationEvent,
+  CanonicalDecisionSnapshot,
   DecisionSnapshotEvent,
   DecisionSnapshotInvalidEvent,
   DriftEvent,
@@ -58,110 +59,63 @@ export class SnapshotSyncService {
 
   start(): void {
     this.bus.on<MarketDataEvent>(EVENTS.MARKET_DATA, (event) => {
-      this.recordSource(event.contractId, 'market_data', event, event.timestamp);
-      this.tryEmitSnapshot(event.contractId, EVENTS.MARKET_DATA, event.timestamp);
+      if (this.recordSource(event.contractId, 'market_data', event, event.timestamp)) {
+        this.tryEmitSnapshot(event.contractId, EVENTS.MARKET_DATA, event.timestamp);
+      }
     });
     this.bus.on<MicrostructureEvent>(EVENTS.MICROSTRUCTURE, (event) => {
-      this.recordSource(event.contractId, 'microstructure', event, event.timestamp);
-      this.tryEmitSnapshot(event.contractId, EVENTS.MICROSTRUCTURE, event.timestamp);
+      if (this.recordSource(event.contractId, 'microstructure', event, event.timestamp)) {
+        this.tryEmitSnapshot(event.contractId, EVENTS.MICROSTRUCTURE, event.timestamp);
+      }
     });
     this.bus.on<FeatureEvent>(EVENTS.FEATURES, (event) => {
-      this.recordSource(event.contractId, 'features', event, event.timestamp);
-      this.tryEmitSnapshot(event.contractId, EVENTS.FEATURES, event.timestamp);
+      if (this.recordSource(event.contractId, 'features', event, event.timestamp)) {
+        this.tryEmitSnapshot(event.contractId, EVENTS.FEATURES, event.timestamp);
+      }
     });
     this.bus.on<ProbabilityEvent>(EVENTS.PROBABILITY, (event) => {
-      this.recordSource(event.contractId, 'probability', event, event.timestamp);
-      this.tryEmitSnapshot(event.contractId, EVENTS.PROBABILITY, event.timestamp);
+      if (this.recordSource(event.contractId, 'probability', event, event.timestamp)) {
+        this.tryEmitSnapshot(event.contractId, EVENTS.PROBABILITY, event.timestamp);
+      }
     });
     this.bus.on<CalibrationEvent>(EVENTS.CALIBRATION_UPDATE, (event) => {
-      this.recordSource(event.contractId, 'calibration', event, event.timestamp);
-      this.tryEmitSnapshot(event.contractId, EVENTS.CALIBRATION_UPDATE, event.timestamp);
+      if (this.recordSource(event.contractId, 'calibration', event, event.timestamp)) {
+        this.tryEmitSnapshot(event.contractId, EVENTS.CALIBRATION_UPDATE, event.timestamp);
+      }
     });
     this.bus.on<DriftEvent>(EVENTS.DRIFT_EVENT, (event) => {
-      this.recordSource(event.contractId, 'drift', event, event.timestamp);
-      this.tryEmitSnapshot(event.contractId, EVENTS.DRIFT_EVENT, event.timestamp);
+      if (this.recordSource(event.contractId, 'drift', event, event.timestamp)) {
+        this.tryEmitSnapshot(event.contractId, EVENTS.DRIFT_EVENT, event.timestamp);
+      }
     });
     this.bus.on<AnomalyEvent>(EVENTS.ANOMALY, (event) => {
-      this.recordSource(event.contractId, 'anomaly', event, event.timestamp);
-      this.tryEmitSnapshot(event.contractId, EVENTS.ANOMALY, event.timestamp);
+      if (this.recordSource(event.contractId, 'anomaly', event, event.timestamp)) {
+        this.tryEmitSnapshot(event.contractId, EVENTS.ANOMALY, event.timestamp);
+      }
     });
     this.bus.on<ExecutionPlan>(EVENTS.EXECUTION_PLAN, (event) => {
-      this.recordSource(event.contractId, 'execution_plan', event, event.timestamp);
-      this.tryEmitSnapshot(event.contractId, EVENTS.EXECUTION_PLAN, event.timestamp);
+      if (this.recordSource(event.contractId, 'execution_plan', event, event.timestamp)) {
+        this.tryEmitSnapshot(event.contractId, EVENTS.EXECUTION_PLAN, event.timestamp);
+      }
     });
   }
 
-  private recordSource<T>(contractId: string, source: SnapshotSourceKind, value: T, timestamp: number): void {
+  private recordSource<T>(contractId: string, source: SnapshotSourceKind, value: T, timestamp: number): boolean {
     const state = this.getContractState(contractId);
-    if (source === 'market_data') {
-      const prev = state.sources.market_data;
-      state.sources.market_data = {
-        value: value as MarketDataEvent,
-        timestamp,
-        version: (prev?.version ?? 0) + 1,
-      };
-      return;
+    const sourceState = state.sources as Record<SnapshotSourceKind, SourceRecord<unknown> | undefined>;
+    const prev = sourceState[source];
+    if (prev && timestamp < prev.timestamp) {
+      this.emitStaleSourceTelemetry(contractId, source, timestamp, prev.timestamp);
+      return false;
     }
-    if (source === 'microstructure') {
-      const prev = state.sources.microstructure;
-      state.sources.microstructure = {
-        value: value as MicrostructureEvent,
-        timestamp,
-        version: (prev?.version ?? 0) + 1,
-      };
-      return;
-    }
-    if (source === 'features') {
-      const prev = state.sources.features;
-      state.sources.features = {
-        value: value as FeatureEvent,
-        timestamp,
-        version: (prev?.version ?? 0) + 1,
-      };
-      return;
-    }
-    if (source === 'probability') {
-      const prev = state.sources.probability;
-      state.sources.probability = {
-        value: value as ProbabilityEvent,
-        timestamp,
-        version: (prev?.version ?? 0) + 1,
-      };
-      return;
-    }
-    if (source === 'calibration') {
-      const prev = state.sources.calibration;
-      state.sources.calibration = {
-        value: value as CalibrationEvent,
-        timestamp,
-        version: (prev?.version ?? 0) + 1,
-      };
-      return;
-    }
-    if (source === 'drift') {
-      const prev = state.sources.drift;
-      state.sources.drift = {
-        value: value as DriftEvent,
-        timestamp,
-        version: (prev?.version ?? 0) + 1,
-      };
-      return;
-    }
-    if (source === 'anomaly') {
-      const prev = state.sources.anomaly;
-      state.sources.anomaly = {
-        value: value as AnomalyEvent,
-        timestamp,
-        version: (prev?.version ?? 0) + 1,
-      };
-      return;
-    }
-    const prev = state.sources.execution_plan;
-    state.sources.execution_plan = {
-      value: value as ExecutionPlan,
+
+    sourceState[source] = {
+      value: value as unknown,
       timestamp,
       version: (prev?.version ?? 0) + 1,
     };
+
+    return true;
   }
 
   private tryEmitSnapshot(contractId: string, triggerEvent: string, nowTs: number): void {
@@ -231,8 +185,32 @@ export class SnapshotSyncService {
     };
 
     const marketStateHash = this.buildHash(contractId, state.sequence, sourceMeta, snapshotState);
+    const snapshotId = this.buildSnapshotId(contractId, state.sequence, marketStateHash);
+    const canonicalSnapshot: CanonicalDecisionSnapshot = {
+      snapshotId,
+      contractId,
+      sequence: state.sequence,
+      timestamp: nowTs,
+      hash: marketStateHash,
+      market: marketData,
+      microstructure,
+      indicators: features,
+      aiContext: {
+        probability,
+        calibration,
+        drift,
+        anomaly: snapshotState.anomaly,
+      },
+      executionState: snapshotState.executionPlan,
+      riskState: snapshotState.executionPlan
+        ? {
+            safetyMode: snapshotState.executionPlan.safetyMode,
+            reason: snapshotState.executionPlan.routeReason,
+          }
+        : null,
+    };
     const snapshot: DecisionSnapshotEvent = {
-      snapshot_id: `${contractId}:${state.sequence}:${nowTs}`,
+      snapshot_id: snapshotId,
       contractId,
       triggerEvent,
       timestamp: nowTs,
@@ -240,6 +218,7 @@ export class SnapshotSyncService {
       eventSequence: state.sequence,
       sourceMeta,
       state: snapshotState,
+      canonical: canonicalSnapshot,
     };
 
     this.bus.emit(EVENTS.DECISION_SNAPSHOT, snapshot);
@@ -287,6 +266,29 @@ export class SnapshotSyncService {
       state,
     });
     return createHash('sha256').update(payload).digest('hex');
+  }
+
+  private buildSnapshotId(contractId: string, sequence: number, marketStateHash: string): string {
+    return `${contractId}:${sequence}:${marketStateHash.slice(0, 16)}`;
+  }
+
+  private emitStaleSourceTelemetry(
+    contractId: string,
+    source: SnapshotSourceKind,
+    rejectedTimestamp: number,
+    latestTimestamp: number,
+  ): void {
+    this.bus.emit(EVENTS.TELEMETRY, {
+      name: 'snapshot.stale-event-rejected',
+      value: 1,
+      tags: {
+        contractId,
+        source,
+        rejectedTimestamp: String(rejectedTimestamp),
+        latestTimestamp: String(latestTimestamp),
+      },
+      timestamp: Date.now(),
+    });
   }
 
   private emitInvalid(

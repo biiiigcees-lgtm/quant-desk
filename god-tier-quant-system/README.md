@@ -109,6 +109,20 @@ npm run test:replay-memory
 npm run test:authority-determinism
 ```
 
+## Hardening Regression Pack
+
+```bash
+cd god-tier-quant-system
+npm run test:hardening
+```
+
+Expanded deterministic gate:
+
+```bash
+cd god-tier-quant-system
+npm run test:determinism
+```
+
 ## Python Quant Modules
 
 - `models/bayesian/bayes_update.py`

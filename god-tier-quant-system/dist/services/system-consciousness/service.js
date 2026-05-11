@@ -1,6 +1,6 @@
 import { EVENTS } from '../../core/event-bus/events.js';
 export class SystemConsciousnessService {
-    constructor(bus, options) {
+    constructor(bus, options = { epistemicFloor: 0.35 }) {
         this.bus = bus;
         this.options = options;
         this.latestBelief = null;
@@ -48,6 +48,13 @@ export class SystemConsciousnessService {
             tradeAllowed: this.latestDecision.trade_allowed,
             epistemicFloor: this.options.epistemicFloor,
         });
+        const contradictions = this.latestBelief.summary.contradictions.map((item) => ({
+            source: item.hypothesis1,
+            target: item.hypothesis2,
+            severity: contradictionSeverity(item.conflictStrength),
+            detail: item.conflictReason,
+        }));
+        const cognitiveStressState = cognitiveStressFromAggregate(aggregateStress);
         const consciousness = {
             contractId: this.latestDecision.contractId,
             cycleId: this.latestDecision.cycle_id,
@@ -65,19 +72,17 @@ export class SystemConsciousnessService {
                 aggregate: aggregateStress,
             },
             executionConfidence,
+            contradictions,
+            contradictionDensity,
+            cognitiveStressState,
             invalidationPath,
             timestamp: Date.now(),
         };
-        let status = 'stable';
-        if (aggregateStress >= 0.72) {
-            status = 'critical';
-        }
-        else if (aggregateStress >= 0.45) {
-            status = 'degraded';
-        }
+        const status = healthStatusFromAggregate(aggregateStress);
+        const score = clamp(1 - aggregateStress, 0, 1);
         const health = {
             contractId: this.latestDecision.contractId,
-            score: clamp(1 - aggregateStress, 0, 1),
+            score,
             status,
             components: {
                 contradiction: contradictionStress,
@@ -85,6 +90,12 @@ export class SystemConsciousnessService {
                 drift: driftStress,
                 anomaly: clamp(uncertaintyTopology, 0, 1),
             },
+            epistemicHealthScore: score,
+            calibrationHealth: clamp(1 - calibrationStress, 0, 1),
+            driftHealth: clamp(1 - driftStress, 0, 1),
+            anomalyHealth: clamp(1 - uncertaintyTopology, 0, 1),
+            stabilityHealth: clamp(1 - contradictionStress, 0, 1),
+            healthGrade: healthGradeFromScore(score),
             timestamp: consciousness.timestamp,
         };
         this.bus.emit(EVENTS.SYSTEM_CONSCIOUSNESS, consciousness);
@@ -114,4 +125,42 @@ function clamp(value, min, max) {
         return min;
     }
     return Math.max(min, Math.min(max, value));
+}
+function contradictionSeverity(strength) {
+    if (strength >= 0.7) {
+        return 'high';
+    }
+    if (strength >= 0.4) {
+        return 'medium';
+    }
+    return 'low';
+}
+function healthGradeFromScore(score) {
+    if (score >= 0.85)
+        return 'A';
+    if (score >= 0.7)
+        return 'B';
+    if (score >= 0.5)
+        return 'C';
+    if (score >= 0.3)
+        return 'D';
+    return 'F';
+}
+function cognitiveStressFromAggregate(stress) {
+    if (stress >= 0.72) {
+        return 'critical';
+    }
+    if (stress >= 0.45) {
+        return 'elevated';
+    }
+    return 'stable';
+}
+function healthStatusFromAggregate(stress) {
+    if (stress >= 0.72) {
+        return 'critical';
+    }
+    if (stress >= 0.45) {
+        return 'degraded';
+    }
+    return 'stable';
 }

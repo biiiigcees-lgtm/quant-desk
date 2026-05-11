@@ -47,8 +47,6 @@ export const EVENTS = {
     REALITY_SNAPSHOT: 'reality:snapshot',
     CAUSAL_INSIGHT: 'causal:insight',
     PARTICIPANT_FLOW: 'participant:flow',
-    SYSTEM_CONSCIOUSNESS: 'system:consciousness',
-    EPISTEMIC_HEALTH: 'epistemic:health',
     ADVERSARIAL_AUDIT: 'adversarial:audit',
     MARKET_MEMORY: 'market:memory',
     MULTI_TIMESCALE_VIEW: 'cognition:multiscale',

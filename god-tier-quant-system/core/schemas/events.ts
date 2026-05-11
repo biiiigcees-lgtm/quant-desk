@@ -1,5 +1,8 @@
 export type Side = 'YES' | 'NO';
 export type ExecutionMode = 'normal' | 'safe-mode' | 'hard-stop';
+export type OrderStyle = 'market' | 'passive' | 'sliced';
+export type DriftSeverity = 'low' | 'medium' | 'high';
+export type DirectionScore = 1 | 0 | -1;
 export type Regime =
   | 'trending'
   | 'choppy'
@@ -98,7 +101,7 @@ export interface ExecutionPlan {
   executionId: string;
   contractId: string;
   direction: Side;
-  orderStyle: 'market' | 'passive' | 'sliced';
+  orderStyle: OrderStyle;
   slices: number;
   expectedSlippage: number;
   fillProbability: number;
@@ -236,7 +239,7 @@ export interface DriftEvent {
   contractId: string;
   psi: number;
   kl: number;
-  severity: 'low' | 'medium' | 'high';
+  severity: DriftSeverity;
   timestamp: number;
 }
 
@@ -262,6 +265,121 @@ export interface SimulationUniverseEvent {
   scenarioCount: number;
   worstCasePnl: number;
   tailProbability: number;
+  executionPathDivergence: number;
+  candidateDivergences: Record<string, number>;
+  bestCandidatePlan: string;
+  mirrorConfidence: number;
+  timestamp: number;
+}
+
+export interface ExecutionPathMirrorEvent {
+  contractId: string;
+  actualStyle: OrderStyle;
+  candidateDivergences: Record<string, number>;
+  bestCandidatePlan: string;
+  klDivergence: number;
+  timestamp: number;
+}
+
+export type StrategyLifecyclePhase = 'birth' | 'growth' | 'maturity' | 'decay' | 'extinction';
+
+export interface StrategyLifecycleEvent {
+  strategyId: string;
+  phase: StrategyLifecyclePhase;
+  previousPhase: StrategyLifecyclePhase;
+  reason?: string;
+  timestamp: number;
+}
+
+export interface AdversarialAuditEvent {
+  contractId: string;
+  targetExecutionId?: string;
+  weakAssumptions: string[];
+  contradictingEvidence: string[];
+  overconfidenceFlags: string[];
+  hiddenRegimeRisk: boolean;
+  adversarialScore: number;
+  counterNarrative: string;
+  timestamp: number;
+}
+
+export type SystemState = 'nominal' | 'cautious' | 'degraded' | 'halted';
+
+export interface RealitySnapshot {
+  contractId: string;
+  systemState: SystemState;
+  actionableState: boolean;
+  uncertaintyState: 'low' | 'medium' | 'high' | 'extreme';
+  executionPermission: boolean;
+  canonicalSnapshotId: string;
+  truthScore: number;
+  calibrationFactor: number;
+  driftFactor: number;
+  anomalyFactor: number;
+  beliefFactor: number;
+  timestamp: number;
+}
+
+export interface CausalInsight {
+  contractId: string;
+  cause: string;
+  effect: string;
+  causalStrength: number;
+  reverseStrength: number;
+  confidence: number;
+  spurious: boolean;
+  timestamp: number;
+}
+
+export type ParticipantType =
+  | 'liquidity-provider'
+  | 'momentum'
+  | 'panic-flow'
+  | 'arbitrage'
+  | 'trapped-trader';
+
+export interface ParticipantFlowEvent {
+  contractId: string;
+  dominant: ParticipantType;
+  distribution: Record<ParticipantType, number>;
+  aggressionIndex: number;
+  trappedTraderSignal: boolean;
+  timestamp: number;
+}
+
+export interface MarketMemoryEvent {
+  contractId: string;
+  recurrenceScore: number;
+  stressPatternMatch: boolean;
+  historicalOutcomeSignal: number;
+  regimeSignature: string;
+  memoryDepth: number;
+  timestamp: number;
+}
+
+export interface MultiTimescaleViewEvent {
+  contractId: string;
+  tick: { direction: DirectionScore; strength: number };
+  local: { direction: DirectionScore; strength: number };
+  regime: { direction: DirectionScore; strength: number };
+  macro: { direction: DirectionScore; strength: number };
+  coherenceScore: number;
+  temporalAlignment: 'aligned' | 'mixed' | 'divergent';
+  timestamp: number;
+}
+
+export interface BeliefGraphEvent {
+  contractId: string;
+  nodes: Array<{
+    id: string;
+    type: string;
+    belief: number;
+    uncertainty: number;
+    rationale?: string;
+  }>;
+  edges: Array<{ from: string; to: string; weight: number }>;
+  constitutionalAdjustment: number;
+  graphConfidence: number;
   timestamp: number;
 }
 
@@ -290,6 +408,28 @@ export interface SnapshotSourceMeta {
   required: boolean;
 }
 
+export interface CanonicalDecisionSnapshot {
+  snapshotId: string;
+  contractId: string;
+  sequence: number;
+  timestamp: number;
+  hash: string;
+  market: MarketDataEvent;
+  microstructure: MicrostructureEvent;
+  indicators: FeatureEvent;
+  aiContext: {
+    probability: ProbabilityEvent;
+    calibration: CalibrationEvent;
+    drift: DriftEvent;
+    anomaly: AnomalyEvent | null;
+  };
+  executionState: ExecutionPlan | null;
+  riskState: {
+    safetyMode: ExecutionMode;
+    reason: string;
+  } | null;
+}
+
 export interface DecisionSnapshotEvent {
   snapshot_id: string;
   contractId: string;
@@ -308,12 +448,13 @@ export interface DecisionSnapshotEvent {
     anomaly: AnomalyEvent | null;
     executionPlan: ExecutionPlan | null;
   };
+  canonical?: CanonicalDecisionSnapshot;
 }
 
 export interface DecisionSnapshotInvalidEvent {
   contractId: string;
   triggerEvent: string;
-  reason: 'missing-source' | 'stale-source' | 'clock-drift';
+  reason: 'missing-source' | 'stale-source' | 'clock-drift' | 'stale-event';
   missingSources?: SnapshotSourceKind[];
   staleSources?: Array<{ source: SnapshotSourceKind; ageMs: number }>;
   driftMs?: number;
@@ -509,6 +650,14 @@ export interface SystemConsciousnessEvent {
     aggregate: number;
   };
   executionConfidence: number;
+  contradictions: Array<{
+    source: string;
+    target: string;
+    severity: 'low' | 'medium' | 'high';
+    detail: string;
+  }>;
+  contradictionDensity: number;
+  cognitiveStressState: 'stable' | 'elevated' | 'critical';
   invalidationPath: string;
   timestamp: number;
 }
@@ -523,6 +672,13 @@ export interface EpistemicHealthEvent {
     drift: number;
     anomaly: number;
   };
+  // Detailed decomposition fields used by dedicated epistemic health service.
+  epistemicHealthScore: number;
+  calibrationHealth: number;
+  driftHealth: number;
+  anomalyHealth: number;
+  stabilityHealth: number;
+  healthGrade: 'A' | 'B' | 'C' | 'D' | 'F';
   timestamp: number;
 }
 

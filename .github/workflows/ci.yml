@@ -27,8 +27,7 @@ jobs:
       - run: npm run check
       - run: npm run build
       - run: npm run smoke
-      - run: npm run test:slice-6
-      - run: npm run test:cognitive
+      - run: npm run test:determinism
 
   frontend:
     name: Frontend

@@ -1,10 +1,16 @@
+import { ExecutionCoordinator } from '../../core/determinism/execution-coordinator.js';
 import { EVENTS } from '../../core/event-bus/events.js';
 export class ExecutionIntelligenceEngine {
     constructor(bus) {
         this.bus = bus;
-        this.idempotency = new Map();
+        this.coordinator = new ExecutionCoordinator({
+            leaseTtlMs: 5000,
+            idempotencyTtlMs: 30000,
+        });
         this.states = new Map();
-        this.idempotencyTtlMs = 60 * 60 * 1000;
+        this.latestConstitutionalSnapshotSeq = new Map();
+        this.latestConstitutionalDecisionTs = new Map();
+        this.latestRiskDecisionTs = new Map();
         this.aiExecutionAdvisory = null;
     }
     start() {
@@ -31,16 +37,7 @@ export class ExecutionIntelligenceEngine {
             this.handleOrderEvent(order);
         });
     }
-    pruneIdempotency(nowMs = Date.now()) {
-        const cutoff = nowMs - this.idempotencyTtlMs;
-        for (const [key, ts] of this.idempotency.entries()) {
-            if (ts < cutoff) {
-                this.idempotency.delete(key);
-            }
-        }
-    }
     handleConstitutionalDecision(decision) {
-        this.pruneIdempotency();
         const executionId = `exec-${decision.contractId}-${decision.cycle_id}`;
         if (!decision.trade_allowed || decision.execution_mode === 'blocked') {
             this.publishState({
@@ -53,42 +50,70 @@ export class ExecutionIntelligenceEngine {
             });
             return;
         }
-        const dedupeKey = `${decision.contractId}:${decision.cycle_id}`;
-        if (this.idempotency.has(dedupeKey)) {
+        if (this.isStaleConstitutionalDecision(decision)) {
+            this.publishState({
+                executionId,
+                contractId: decision.contractId,
+                phase: 'blocked',
+                reason: 'stale-constitutional-snapshot',
+                safetyMode: 'safe-mode',
+                timestamp: Date.now(),
+            });
             return;
         }
-        this.idempotency.set(dedupeKey, Date.now());
-        const direction = decision.final_probability >= 0.5 ? 'YES' : 'NO';
-        const safetyMode = decision.risk_level >= 75 ? 'safe-mode' : 'normal';
-        const baselineSize = 150 * Math.max(0.02, Math.abs(decision.edge_score)) * Math.max(0.1, decision.confidence_score);
-        const size = clamp(baselineSize, 5, 800);
-        const limitPrice = clamp(decision.final_probability, 0.01, 0.99);
-        let orderStyle = decision.execution_mode === 'passive' ? 'passive' : 'market';
-        if (this.aiExecutionAdvisory && this.aiExecutionAdvisory.confidence >= 0.55) {
-            orderStyle = this.aiExecutionAdvisory.orderStyle;
+        const dedupeKey = `constitutional:${decision.contractId}:${decision.snapshot_id}`;
+        const lease = this.coordinator.acquire(decision.contractId, dedupeKey);
+        if (!lease.acquired) {
+            if (lease.reason === 'duplicate') {
+                return;
+            }
+            this.publishState({
+                executionId,
+                contractId: decision.contractId,
+                phase: 'blocked',
+                reason: 'execution-lock-contention',
+                safetyMode: 'safe-mode',
+                timestamp: Date.now(),
+            });
+            return;
         }
-        const slices = this.resolveSlices(orderStyle);
-        const slippage = this.resolveSlippage(orderStyle);
-        const fillProbability = this.resolveFillProbability(orderStyle);
-        const plan = {
-            executionId,
-            contractId: decision.contractId,
-            direction,
-            orderStyle,
-            slices,
-            expectedSlippage: slippage,
-            fillProbability,
-            limitPrice,
-            size,
-            latencyBudgetMs: this.resolveLatencyBudget(orderStyle, safetyMode),
-            routeReason: 'constitutional-decision',
-            safetyMode,
-            timestamp: Date.now(),
-        };
-        this.emitPlanLifecycle(plan, 'constitutional-created');
+        try {
+            const direction = decision.final_probability >= 0.5 ? 'YES' : 'NO';
+            const safetyMode = decision.risk_level >= 75 ? 'safe-mode' : 'normal';
+            const baselineSize = 150 * Math.max(0.02, Math.abs(decision.edge_score)) * Math.max(0.1, decision.confidence_score);
+            const size = clamp(baselineSize, 5, 800);
+            const limitPrice = clamp(decision.final_probability, 0.01, 0.99);
+            let orderStyle = decision.execution_mode === 'passive' ? 'passive' : 'market';
+            if (this.aiExecutionAdvisory && this.aiExecutionAdvisory.confidence >= 0.55) {
+                orderStyle = this.aiExecutionAdvisory.orderStyle;
+            }
+            const slices = this.resolveSlices(orderStyle);
+            const slippage = this.resolveSlippage(orderStyle);
+            const fillProbability = this.resolveFillProbability(orderStyle);
+            const plan = {
+                executionId,
+                contractId: decision.contractId,
+                direction,
+                orderStyle,
+                slices,
+                expectedSlippage: slippage,
+                fillProbability,
+                limitPrice,
+                size,
+                latencyBudgetMs: this.resolveLatencyBudget(orderStyle, safetyMode),
+                routeReason: 'constitutional-decision',
+                safetyMode,
+                timestamp: Date.now(),
+            };
+            this.emitPlanLifecycle(plan, 'constitutional-created');
+            this.coordinator.release(decision.contractId, lease.token ?? '', true);
+        }
+        catch (error) {
+            this.coordinator.release(decision.contractId, lease.token ?? '', false);
+            throw error;
+        }
     }
     handleRiskDecision(decision) {
-        this.pruneIdempotency();
         const executionId = this.buildExecutionId(decision);
         if (!decision.approved || decision.size <= 0) {
             this.publishState({
@@ -101,13 +126,52 @@ export class ExecutionIntelligenceEngine {
             });
             return;
         }
-        const dedupeKey = `${decision.contractId}:${decision.direction}:${Math.floor(decision.timestamp / 1000)}`;
-        if (this.idempotency.has(dedupeKey)) {
+        const latestTs = this.latestRiskDecisionTs.get(decision.contractId);
+        if (latestTs !== undefined && decision.timestamp < latestTs) {
+            this.publishState({
+                executionId,
+                contractId: decision.contractId,
+                phase: 'blocked',
+                reason: 'stale-risk-decision',
+                safetyMode: decision.safetyMode,
+                timestamp: Date.now(),
+            });
             return;
         }
-        this.idempotency.set(dedupeKey, Date.now());
-        const plan = this.buildPlanFromRiskDecision(decision, executionId);
-        this.emitPlanLifecycle(plan, plan.routeReason);
+        this.latestRiskDecisionTs.set(decision.contractId, decision.timestamp);
+        const dedupeKey = [
+            'risk',
+            decision.contractId,
+            decision.direction,
+            decision.timestamp,
+            decision.safetyMode,
+            decision.limitPrice.toFixed(4),
+            decision.size.toFixed(4),
+        ].join(':');
+        const lease = this.coordinator.acquire(decision.contractId, dedupeKey);
+        if (!lease.acquired) {
+            if (lease.reason === 'duplicate') {
+                return;
+            }
+            this.publishState({
+                executionId,
+                contractId: decision.contractId,
+                phase: 'blocked',
+                reason: 'execution-lock-contention',
+                safetyMode: decision.safetyMode,
+                timestamp: Date.now(),
+            });
+            return;
+        }
+        try {
+            const plan = this.buildPlanFromRiskDecision(decision, executionId);
+            this.emitPlanLifecycle(plan, plan.routeReason);
+            this.coordinator.release(decision.contractId, lease.token ?? '', true);
+        }
+        catch (error) {
+            this.coordinator.release(decision.contractId, lease.token ?? '', false);
+            throw error;
+        }
     }
     buildPlanFromRiskDecision(decision, executionId) {
         let orderStyle = 'market';
@@ -253,6 +317,24 @@ export class ExecutionIntelligenceEngine {
         }
         return 'cancelled';
     }
+    isStaleConstitutionalDecision(decision) {
+        const snapshotSeq = parseSnapshotSequence(decision.snapshot_id);
+        if (snapshotSeq !== null) {
+            const latestSnapshotSeq = this.latestConstitutionalSnapshotSeq.get(decision.contractId);
+            if (latestSnapshotSeq !== undefined && snapshotSeq < latestSnapshotSeq) {
+                return true;
+            }
+            if (latestSnapshotSeq === undefined || snapshotSeq > latestSnapshotSeq) {
+                this.latestConstitutionalSnapshotSeq.set(decision.contractId, snapshotSeq);
+            }
+        }
+        const latestDecisionTs = this.latestConstitutionalDecisionTs.get(decision.contractId);
+        if (latestDecisionTs !== undefined && decision.timestamp < latestDecisionTs) {
+            return true;
+        }
+        this.latestConstitutionalDecisionTs.set(decision.contractId, decision.timestamp);
+        return false;
+    }
     buildExecutionId(decision) {
         return `exec-${decision.contractId}-${decision.direction}-${Math.floor(decision.timestamp / 1000)}`;
     }
@@ -266,4 +348,15 @@ function clamp(value, min, max) {
         return min;
     }
     return Math.max(min, Math.min(max, value));
+}
+function parseSnapshotSequence(snapshotId) {
+    const parts = snapshotId.split(':');
+    if (parts.length < 2) {
+        return null;
+    }
+    const sequence = Number(parts[1]);
+    if (!Number.isInteger(sequence) || sequence < 0) {
+        return null;
+    }
+    return sequence;
 }

@@ -103,9 +103,89 @@ function testBlockedConstitutionalDecisionDoesNotEmitPlan(): void {
   assert.equal(blocked, 1, 'blocked constitutional decisions must emit blocked execution state');
 }
 
+function testStaleConstitutionalDecisionIsBlocked(): void {
+  const bus = new EventBus();
+  new ExecutionIntelligenceEngine(bus).start();
+
+  const reasons: string[] = [];
+  bus.on(EVENTS.EXECUTION_STATE, (event: { phase: string; reason: string }) => {
+    if (event.phase === 'blocked') {
+      reasons.push(event.reason);
+    }
+  });
+
+  bus.emit(EVENTS.CONSTITUTIONAL_DECISION, {
+    cycle_id: 'cycle-fresh',
+    snapshot_id: 'KXBTC-LC:2:freshhash',
+    market_state_hash: 'c'.repeat(64),
+    contractId: 'KXBTC-LC',
+    trade_allowed: true,
+    final_probability: 0.62,
+    edge_score: 0.08,
+    risk_level: 40,
+    execution_mode: 'market',
+    regime_state: 'trending',
+    confidence_score: 0.81,
+    simulation_result: {
+      passed: true,
+      divergenceScore: 0.12,
+      scenarioCount: 256,
+      tailProbability: 0.12,
+      worstCasePnl: -15,
+      reason: 'ok',
+    },
+    governance_log: [],
+    agent_conflicts: [],
+    agent_consensus: {
+      market_confidence: 0.8,
+      risk_confidence: 0.8,
+      execution_confidence: 0.8,
+      calibration_score: 0.8,
+    },
+    timestamp: 2_000,
+  });
+
+  bus.emit(EVENTS.CONSTITUTIONAL_DECISION, {
+    cycle_id: 'cycle-stale',
+    snapshot_id: 'KXBTC-LC:1:stalehash',
+    market_state_hash: 'd'.repeat(64),
+    contractId: 'KXBTC-LC',
+    trade_allowed: true,
+    final_probability: 0.58,
+    edge_score: 0.05,
+    risk_level: 35,
+    execution_mode: 'market',
+    regime_state: 'trending',
+    confidence_score: 0.74,
+    simulation_result: {
+      passed: true,
+      divergenceScore: 0.11,
+      scenarioCount: 256,
+      tailProbability: 0.1,
+      worstCasePnl: -12,
+      reason: 'ok',
+    },
+    governance_log: [],
+    agent_conflicts: [],
+    agent_consensus: {
+      market_confidence: 0.78,
+      risk_confidence: 0.76,
+      execution_confidence: 0.77,
+      calibration_score: 0.79,
+    },
+    timestamp: 1_000,
+  });
+
+  assert.ok(
+    reasons.includes('stale-constitutional-snapshot'),
+    'older constitutional decisions should be blocked as stale',
+  );
+}
+
 async function run(): Promise<void> {
   await testConstitutionalDecisionDrivesExecutionLifecycle();
   testBlockedConstitutionalDecisionDoesNotEmitPlan();
+  testStaleConstitutionalDecisionIsBlocked();
   process.stdout.write('execution-lifecycle-ok\n');
 }
 

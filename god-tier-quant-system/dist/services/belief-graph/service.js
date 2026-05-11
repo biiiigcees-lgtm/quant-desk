@@ -26,25 +26,34 @@ export class BeliefGraphService {
         this.bus.on(EVENTS.DECISION_SNAPSHOT, (event) => {
             this.onSnapshot(event);
         });
+        this.bus.on(EVENTS.MICROSTRUCTURE, (event) => {
+            const gs = this.getGraphState(event.contractId);
+            this.updateMicrostructureNode(gs, event);
+            this.emitLegacyUpdate(event.contractId, event.timestamp);
+        });
         // Calibration events feed into confidence nodes
         this.bus.on(EVENTS.CALIBRATION_UPDATE, (event) => {
             const gs = this.getGraphState(event.contractId);
             this.updateCalibrationNode(gs, event);
+            this.emitLegacyUpdate(event.contractId, event.timestamp);
         });
         // Drift events feed into regime transition nodes
         this.bus.on(EVENTS.DRIFT_EVENT, (event) => {
             const gs = this.getGraphState(event.contractId);
             this.updateDriftNode(gs, event);
+            this.emitLegacyUpdate(event.contractId, event.timestamp);
         });
         // Anomaly events feed into anomaly detection nodes
         this.bus.on(EVENTS.ANOMALY, (event) => {
             const gs = this.getGraphState(event.contractId);
             this.updateAnomalyNode(gs, event);
+            this.emitLegacyUpdate(event.contractId, event.timestamp);
         });
         // Feature intelligence events update microstructure nodes
         this.bus.on(EVENTS.FEATURE_INTELLIGENCE, (event) => {
             const gs = this.getGraphState(event.contractId);
             this.updateFeatureNode(gs, event);
+            this.emitLegacyUpdate(event.contractId, event.timestamp);
         });
     }
     onSnapshot(snapshot) {
@@ -74,6 +83,50 @@ export class BeliefGraphService {
             timestamp: Date.now(),
         };
         this.bus.emit(EVENTS.BELIEF_GRAPH_STATE, beefEvent);
+        this.emitLegacyUpdate(snapshot.contractId, beefEvent.timestamp);
+    }
+    updateMicrostructureNode(gs, event) {
+        const now = Date.now();
+        const belief = clamp(0.5 + event.obi * 0.35 + event.sweepProbability * 0.15 - event.spreadExpansionScore * 0.2, 0.01, 0.99);
+        const node = {
+            nodeId: 'microstructure-imbalance',
+            hypothesis: `microstructure_obi=${event.obi.toFixed(3)} sweep=${event.sweepProbability.toFixed(3)}`,
+            nodeType: 'market',
+            evidence: belief,
+            uncertainty: clamp(event.spreadExpansionScore + (event.liquidityRegime === 'vacuum' ? 0.2 : 0), 0, 1),
+            lastUpdatedMs: now,
+            decayFactor: 1,
+            regime: 'trending',
+        };
+        gs.nodes.set(node.nodeId, node);
+    }
+    emitLegacyUpdate(contractId, timestamp) {
+        const gs = this.getGraphState(contractId);
+        const nodes = Array.from(gs.nodes.values()).map((node) => ({
+            id: node.nodeId,
+            type: node.nodeId.startsWith('microstructure-') ? 'microstructure' : node.nodeType,
+            belief: Number(node.evidence.toFixed(4)),
+            uncertainty: Number(node.uncertainty.toFixed(4)),
+            rationale: node.hypothesis,
+        }));
+        const edges = Array.from(gs.edges.values()).map((edge) => ({
+            from: edge.source,
+            to: edge.target,
+            weight: Number(edge.causalStrength.toFixed(4)),
+        }));
+        const avgBelief = nodes.length > 0 ? nodes.reduce((sum, node) => sum + node.belief, 0) / nodes.length : 0.5;
+        const avgUncertainty = nodes.length > 0
+            ? nodes.reduce((sum, node) => sum + node.uncertainty, 0) / nodes.length
+            : 0.5;
+        const event = {
+            contractId,
+            nodes,
+            edges,
+            constitutionalAdjustment: Number(clamp((avgBelief - 0.5) * 0.18, -0.09, 0.09).toFixed(6)),
+            graphConfidence: Number(clamp(1 - avgUncertainty, 0, 1).toFixed(6)),
+            timestamp,
+        };
+        this.bus.emit(EVENTS.BELIEF_GRAPH_UPDATE, event);
     }
     applyRegimeDecay(gs, currentRegime) {
         const now = Date.now();
