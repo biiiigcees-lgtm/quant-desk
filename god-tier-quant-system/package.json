@@ -21,7 +21,9 @@
     "test:belief-graph": "node --enable-source-maps dist/tests/belief-graph.test.js",
     "test:organism-phases": "node --enable-source-maps dist/tests/organism-phases.test.js",
     "test:chaos": "node --enable-source-maps dist/tests/chaos.test.js",
-    "test:hardening": "npm run test:snapshot-sync && npm run test:execution-lifecycle && npm run test:orchestration-parser-guard && npm run test:orchestration-router-reliability && npm run test:orchestration-authority && npm run test:slice-6 && npm run test:organism-phases && npm run test:chaos",
+    "test:cognitive": "node --enable-source-maps dist/tests/cognitive-services.test.js",
+    "test:system-hardening": "node --enable-source-maps dist/tests/system-hardening.test.js",
+    "test:hardening": "npm run test:snapshot-sync && npm run test:execution-lifecycle && npm run test:orchestration-parser-guard && npm run test:orchestration-router-reliability && npm run test:orchestration-authority && npm run test:slice-6 && npm run test:organism-phases && npm run test:chaos && npm run test:cognitive && npm run test:system-hardening",
     "test:determinism": "npm run test:hardening && npm run test:replay-memory && npm run test:authority-determinism && npm run test:belief-graph"
   },
   "devDependencies": {

@@ -787,6 +787,43 @@ export interface BeliefGraphSummary {
   timestamp: number;
 }
 
+export type GovernanceMode = 'NORMAL' | 'DEGRADED' | 'SAFE' | 'LOCKED';
+
+export interface RiskGovernanceEvent {
+  mode: GovernanceMode;
+  previousMode: GovernanceMode;
+  reason: string;
+  timestamp: number;
+}
+
+export interface LineageChainEvent {
+  snapshotId: string;
+  contractId: string;
+  marketEventSeq: number;
+  marketTimestamp: number;
+  aiAgents: Array<{
+    agent: string;
+    requestId: string;
+    confidence: number;
+    recommendation: string;
+    latencyMs: number;
+  }>;
+  executionDecision?: {
+    executionId: string;
+    direction: string;
+    safetyMode: string;
+    tradeAllowed: boolean;
+  };
+  constitutionalDecision?: {
+    cycleId: string;
+    tradeAllowed: boolean;
+    edgeScore: number;
+    riskLevel: number;
+  };
+  completedAt?: number;
+  timestamp: number;
+}
+
 export interface BeliefGraphStateEvent {
   contractId: string;
   snapshot_id: string;

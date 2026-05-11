@@ -38,9 +38,17 @@ import { AiAgentRouterService } from './services/ai-orchestration/router/service
 import { AiAggregationService } from './services/ai-orchestration/aggregation/service.js';
 import { OpenRouterProvider } from './services/ai-orchestration/providers/openrouter.js';
 import { SystemConsciousnessService } from './services/system-consciousness/service.js';
+import { EpistemicHealthService } from './services/epistemic-health/service.js';
+import { AdversarialAuditorService } from './services/adversarial-auditor/service.js';
+import { MarketMemoryService } from './services/market-memory/service.js';
+import { MultiTimescaleCognitionService } from './services/multiscale-cognition/service.js';
 import { DigitalImmuneSystemService } from './services/digital-immune-system/service.js';
 import { StrategyGenomeService } from './services/strategy-genome/service.js';
 import { ReplayIntegrityService } from './services/replay-integrity/service.js';
+import { LogicalClock } from './core/clock/clock.js';
+import { RiskGovernor } from './core/risk/governor.js';
+import { MemoryLifecycleManager } from './core/memory/lifecycle.js';
+import { EventLineageTracer } from './core/observability/lineage.js';
 async function main() {
     const config = loadConfig();
     const bus = new EventBus();
@@ -83,6 +91,10 @@ async function main() {
     const consciousness = new SystemConsciousnessService(bus, {
         epistemicFloor: config.organism.epistemicFloor,
     });
+    const epistemicHealth = new EpistemicHealthService(bus);
+    const adversarialAuditor = new AdversarialAuditorService(bus);
+    const marketMemory = new MarketMemoryService(bus);
+    const multiTimescale = new MultiTimescaleCognitionService(bus);
     const immuneSystem = new DigitalImmuneSystemService(bus, {
         cooldownMs: config.organism.immuneCooldownMs,
     });
@@ -90,6 +102,10 @@ async function main() {
     const replayIntegrity = new ReplayIntegrityService(bus, replay, {
         minimumSampleSize: config.organism.replayValidationMinSamples,
     });
+    const clock = new LogicalClock();
+    const riskGovernor = new RiskGovernor(bus);
+    const memoryLifecycle = new MemoryLifecycleManager();
+    const lineageTracer = new EventLineageTracer(bus);
     const openRouterProvider = new OpenRouterProvider({
         apiKey: config.openRouter.apiKey,
         timeoutMs: config.openRouter.timeoutMs,
@@ -108,7 +124,7 @@ async function main() {
             cooldownMs: config.orchestration.circuitBreaker.cooldownMs,
         },
     });
-    const api = new ApiServer(bus, config.apiHost, config.apiPort);
+    const api = new ApiServer(bus, config.apiHost, config.apiPort, riskGovernor, lineageTracer);
     const researchLab = new ResearchLabServer(bus, config.apiHost, config.apiPort + 1);
     globalContext.start();
     micro.start();
@@ -135,6 +151,10 @@ async function main() {
     beliefGraph.start();
     constitutionalDecision.start();
     consciousness.start();
+    epistemicHealth.start();
+    adversarialAuditor.start();
+    marketMemory.start();
+    multiTimescale.start();
     immuneSystem.start();
     strategyGenome.start();
     replayIntegrity.start();
@@ -142,6 +162,10 @@ async function main() {
     aiAggregation.start();
     snapshotSync.start();
     aiRouter.start();
+    riskGovernor.start();
+    lineageTracer.start();
+    memoryLifecycle.register('lineage', () => lineageTracer.pruneOlderThan(30 * 60 * 1000));
+    memoryLifecycle.start(5 * 60 * 1000);
     bus.on(EVENTS.TELEMETRY, (event) => {
         metrics.record(event);
     });
@@ -156,10 +180,12 @@ async function main() {
         researchLab: `${config.apiHost}:${config.apiPort + 1}`,
         aiOrchestration: config.orchestration.enabled,
         aiOrchestrationShadowMode: config.orchestration.shadowMode,
+        logicalTick: clock.globalCurrent(),
     });
     const shutdown = async () => {
         logger.info('shutting down');
         const span = tracer.startSpan('shutdown');
+        memoryLifecycle.stop();
         marketData.stop();
         await api.stop();
         await researchLab.stop();
