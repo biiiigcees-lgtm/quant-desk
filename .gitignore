@@ -5,3 +5,8 @@ node_modules/
 .vercel/
 *.bak
 .vercel
+
+# Next.js build artifacts
+.next/
+ui/.next/
+ui/tsconfig.tsbuildinfo

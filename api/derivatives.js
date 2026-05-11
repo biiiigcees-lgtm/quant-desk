@@ -1,5 +1,4 @@
-// BTC derivatives data — funding rate, OI from Bybit
-// Server-side to avoid CORS/geo issues (fapi.binance.com is geo-blocked from US)
+// BTC derivatives data — funding rate, OI from Bybit with Binance and OKX fallback
 
 const STALE_CACHE_TTL_MS = 180000;
 let lastGoodSnapshot = null;
@@ -151,7 +150,6 @@ async function fetchBybitOI() {
   if (!list?.length) return null;
   const latest  = Number.parseFloat(list[0].openInterest);
   const prev    = list[1] ? Number.parseFloat(list[1].openInterest) : latest;
-  // openInterestValue from Bybit is the notional USD value of the OI
   const oiUsd   = Number.parseFloat(list[0].openInterestValue || 0);
   return {
     openInterest:    latest,

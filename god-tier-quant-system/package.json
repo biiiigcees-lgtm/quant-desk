@@ -1,0 +1,30 @@
+{
+  "name": "god-tier-quant-system",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "smoke": "node --enable-source-maps dist/tests/smoke.js",
+    "test:snapshot-sync": "node --enable-source-maps dist/tests/snapshot-sync.test.js",
+    "test:constitutional-decision": "node --enable-source-maps dist/tests/constitutional-decision.test.js",
+    "test:execution-lifecycle": "node --enable-source-maps dist/tests/execution-lifecycle.test.js",
+    "test:orchestration-authority": "node --enable-source-maps dist/tests/orchestration-authority.test.js",
+    "test:orchestration-parser-guard": "node --enable-source-maps dist/tests/orchestration-parser-guard.test.js",
+    "test:orchestration-router-reliability": "node --enable-source-maps dist/tests/orchestration-router-reliability.test.js",
+    "test:slice-6-services": "node --enable-source-maps dist/tests/slice-6-services.test.js",
+    "test:slice-6": "npm run test:slice-6-services",
+    "test:replay-memory": "node --enable-source-maps dist/tests/replay-memory.test.js",
+    "test:authority-determinism": "node --enable-source-maps dist/tests/authority-determinism.test.js",
+    "test:belief-graph": "node --enable-source-maps dist/tests/belief-graph.test.js",
+    "test:organism-phases": "node --enable-source-maps dist/tests/organism-phases.test.js",
+    "test:hardening": "npm run test:snapshot-sync && npm run test:execution-lifecycle && npm run test:orchestration-parser-guard && npm run test:orchestration-router-reliability && npm run test:orchestration-authority && npm run test:slice-6 && npm run test:organism-phases",
+    "test:determinism": "npm run test:hardening && npm run test:replay-memory && npm run test:authority-determinism && npm run test:belief-graph"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}

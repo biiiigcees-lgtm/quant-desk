@@ -4,19 +4,33 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QUANT//DESK — BTC Institutional Intelligence</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:     #080809; --bg1:   #0d0d0f; --bg2:  #111114; --bg3:  #161619;
-  --border: #1e1e22; --b2:    #252529; --b3:   #2e2e34;
-  --text:   #c4c4cc; --t2:    #72727e; --t3:   #3a3a44;
-  --green:  #00e676; --g2:    #00c853; --g3:   rgba(0,230,118,.12);
-  --red:    #ff1744; --r2:    #d50000; --r3:   rgba(255,23,68,.12);
-  --amber:  #ffab00; --cyan:  #00e5ff; --blue: #2979ff; --purple:#aa00ff;
-  --white:  #eeeef5;
+  --bg: #0A0F1C;
+  --bg1: #101826;
+  --bg2: #141F30;
+  --bg3: #1A2638;
+  --border: rgba(255,255,255,0.06);
+  --b2: rgba(255,255,255,0.1);
+  --b3: rgba(255,255,255,0.16);
+  --text: #E6EDF3;
+  --t2: #7D8590;
+  --t3: #5F6B7A;
+  --green: #00E5A8;
+  --g2: #00c18d;
+  --g3: rgba(0,229,168,.14);
+  --red: #FF4D4D;
+  --r2: #ff2f2f;
+  --r3: rgba(255,77,77,.14);
+  --amber: #FFB020;
+  --cyan: #4DA3FF;
+  --blue: #4DA3FF;
+  --purple: #B388FF;
+  --white: #E6EDF3;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;overflow:hidden}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:11px;overflow-x:hidden;overflow-y:auto}
 ::-webkit-scrollbar{width:3px;height:3px}
 ::-webkit-scrollbar-track{background:var(--bg1)}
 ::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
@@ -40,8 +54,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Pl
 .ws-label{font-size:9px;color:var(--t2)}
 .ws-source{font-size:8px;color:var(--t3);letter-spacing:.6px;text-transform:uppercase}
 .ws-source.coinbase{color:var(--cyan)}
-.ws-source.kraken{color:var(--amber)}
-.ws-source.rest{color:var(--t2)}
+.ws-source.rest{color:var(--amber)}
 .ws-toggle{background:var(--bg2);border:1px solid var(--border);color:var(--t3);font-size:7px;letter-spacing:.6px;padding:2px 6px;border-radius:2px;cursor:pointer}
 .ws-toggle:hover{color:var(--amber);border-color:rgba(255,171,0,.3)}
 .ws-toggle.active{color:var(--amber);border-color:rgba(255,171,0,.5)}
@@ -50,6 +63,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Pl
 .ws-toggle:disabled{opacity:.45;cursor:not-allowed}
 .up{color:var(--green)!important}.dn{color:var(--red)!important}.neut{color:var(--t2)!important}
 .num{font-variant-numeric:tabular-nums}
+.mono{font-family:'JetBrains Mono',monospace}
 
 /* ── TAPE ── */
 #tape{height:20px;background:var(--bg1);border-bottom:1px solid var(--border);overflow:hidden;display:flex;align-items:center}
@@ -58,11 +72,28 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Pl
 .ti{font-size:9px;color:var(--text)}.ti b{color:var(--white);font-weight:600}
 
 /* ── MAIN GRID ── */
-#app{display:grid;grid-template-columns:220px 1fr 240px;height:calc(100vh - 56px);gap:1px;background:var(--border)}
+#app{
+  display:grid;
+  grid-template-columns:320px minmax(0,1fr) 340px;
+  grid-template-rows:minmax(560px,1fr) 250px;
+  grid-template-areas:
+    "market decision ai"
+    "execution execution execution";
+  min-height:calc(100vh - 128px);
+  height:auto;
+  gap:1px;
+  background:var(--border);
+  align-items:start;
+}
+#left-col{grid-area:market}
+#center-col{grid-area:decision}
+#right-col{grid-area:ai}
+#execution-zone{grid-area:execution}
 
 /* ── PANELS ── */
 .col{display:flex;flex-direction:column;gap:1px;background:var(--border)}
 .panel{background:var(--bg1);display:flex;flex-direction:column;overflow:hidden}
+.zone-shell{display:flex;flex-direction:column;gap:1px;background:var(--border)}
 .ph{padding:6px 10px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .ph-title{font-size:9px;font-weight:600;letter-spacing:1.2px;color:var(--t2);text-transform:uppercase}
 .badge{font-size:8px;padding:1px 5px;border-radius:2px;font-weight:700}
@@ -71,6 +102,27 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Pl
 .badge-ai{background:rgba(88,0,134,.78);color:#ffffff;border:1px solid rgba(212,154,255,.68)}
 .badge-warn{background:rgba(255,171,0,.1);color:var(--amber);border:1px solid rgba(255,171,0,.3)}
 .pb{padding:8px 10px;flex:1;overflow-y:auto}
+
+/* ── DECISION CORE ── */
+#decisionCore{border-top:1px solid var(--border)}
+.dc-grid{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:1px;background:var(--border)}
+.dc-main,.dc-card{background:var(--bg1);padding:10px}
+.dc-k{font-size:8px;letter-spacing:.9px;color:var(--t2);text-transform:uppercase}
+.dc-signal{font-size:26px;font-weight:700;line-height:1.05;margin-top:6px;font-family:'JetBrains Mono',monospace}
+.dc-sub{font-size:9px;color:var(--t2);margin-top:4px}
+.dc-v{font-size:16px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.dc-v.warn{color:var(--amber)}
+.dc-v.ok{color:var(--green)}
+.dc-v.bad{color:var(--red)}
+.mt8{margin-top:8px}
+
+/* ── EXECUTION STRIP ── */
+#execution-zone .pb{padding:0}
+.exec-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:1px;background:var(--border)}
+.exec-card{background:var(--bg1);padding:8px 9px;min-height:74px}
+.exec-k{font-size:8px;color:var(--t3);letter-spacing:.7px;text-transform:uppercase}
+.exec-v{font-size:14px;font-weight:700;margin-top:6px;font-family:'JetBrains Mono',monospace}
+.exec-note{font-size:8px;color:var(--t2);margin-top:4px}
 
 /* ── METRIC ROWS ── */
 .mr{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)}
@@ -101,7 +153,7 @@ canvas{width:100%;height:100%;display:block}
 .cross-neut{background:rgba(122,122,136,.1);color:var(--t2);border:1px solid var(--border)}
 
 /* ── SIGNALS STRIP ── */
-#sigs{display:grid;grid-template-columns:repeat(14,1fr);gap:1px;background:var(--border);flex-shrink:0}
+#sigs{display:grid;grid-template-columns:repeat(10,1fr);gap:1px;background:var(--border);flex-shrink:0}
 .sig{background:var(--bg2);padding:5px 2px;text-align:center}
 .sig-n{font-size:7px;color:var(--t3);letter-spacing:.3px;margin-bottom:2px}
 .sig-v{font-size:10px;font-weight:700}
@@ -145,11 +197,84 @@ canvas{width:100%;height:100%;display:block}
 .k-above{background:var(--g2);transition:width .4s}
 .k-below{background:var(--r2);transition:width .4s}
 .k-edge{text-align:center;font-size:11px;font-weight:700;padding:4px 0}
-
 .k-phase{font-size:7px;font-weight:700;letter-spacing:.8px;padding:1px 5px;border-radius:2px}
 .k-phase.open{background:var(--g3);color:var(--green);border:1px solid rgba(0,230,118,.3)}
 .k-phase.caution{background:rgba(255,171,0,.12);color:var(--amber);border:1px solid rgba(255,171,0,.3)}
 .k-phase.closing{background:var(--r3);color:var(--red);border:1px solid rgba(255,23,68,.3);animation:pulse .6s infinite}
+.k-countdown-wrap{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
+.k-ring{width:60px;height:60px;flex-shrink:0}
+.k-ring-bg{fill:none;stroke:var(--bg3);stroke-width:4}
+.k-ring-arc{fill:none;stroke:var(--green);stroke-width:4;stroke-linecap:round;stroke-dasharray:163.4;stroke-dashoffset:0;transform:rotate(-90deg);transform-origin:30px 30px;transition:stroke-dashoffset .25s linear,stroke .5s}
+.k-ring-txt{font-size:9px;font-weight:700;fill:var(--t2);text-anchor:middle;font-variant-numeric:tabular-nums}
+.k-countdown-info{flex:1;display:flex;flex-direction:column;gap:2px}
+.k-countdown-val{font-size:20px;font-weight:700;letter-spacing:1px;font-variant-numeric:tabular-nums;line-height:1}
+.k-close-time{font-size:8px;color:var(--t3)}
+.k-entry-guidance{font-size:8px;font-weight:700;letter-spacing:.5px;padding:2px 5px;border-radius:2px;text-align:center;margin-top:2px}
+.k-entry-guidance.eg-open{color:var(--green);background:var(--g3);border:1px solid rgba(0,230,118,.3)}
+.k-entry-guidance.eg-caution{color:var(--amber);background:rgba(255,171,0,.1);border:1px solid rgba(255,171,0,.3)}
+.k-entry-guidance.eg-closing{color:var(--red);background:var(--r3);border:1px solid rgba(255,23,68,.4);animation:pulse .6s infinite}
+.k-trend-arrow{font-size:11px;margin-left:4px;font-weight:700}
+.k-target-box{margin-top:6px;padding:8px;border-top:1px solid var(--border);border-radius:3px;background:linear-gradient(180deg,rgba(0,229,255,.06),rgba(0,0,0,0) 42%)}
+.k-target-label{display:inline-flex;align-items:center;gap:6px;margin-bottom:6px;padding:2px 6px;border-radius:2px;background:rgba(0,229,255,.12);border:1px solid rgba(0,229,255,.28);color:var(--cyan);font-size:8px;font-weight:700;letter-spacing:.8px;line-height:1.2}
+.k-target-label::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px rgba(0,229,255,.55)}
+.k-target-row{display:flex;gap:6px;align-items:center;margin-top:0;padding:6px;border:1px solid rgba(0,229,255,.18);border-radius:3px;background:rgba(0,229,255,.04)}
+.k-target-input{flex:1;min-width:0;background:var(--bg1);border:1px solid rgba(0,229,255,.28);border-radius:2px;color:var(--white);font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;padding:6px 8px;outline:none;box-shadow:0 0 0 1px rgba(0,229,255,.06) inset}
+.k-target-input::placeholder{color:rgba(255,255,255,.45)}
+.k-target-input:focus{border-color:rgba(0,229,255,.65);box-shadow:0 0 0 1px rgba(0,229,255,.2),0 0 14px rgba(0,229,255,.12)}
+.k-target-btn{background:var(--bg2);border:1px solid rgba(0,229,255,.3);color:var(--white);font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.7px;padding:5px 8px;border-radius:2px;cursor:pointer;white-space:nowrap}
+.k-target-btn:hover{color:var(--cyan);border-color:rgba(0,229,255,.5)}
+.k-target-btn.clear{border-color:rgba(255,171,0,.3)}
+.k-target-btn.clear:hover{color:var(--amber);border-color:rgba(255,171,0,.5)}
+.k-target-hero{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 0 10px;border-bottom:1px solid var(--border);margin-bottom:6px}
+.k-target-hero-val{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;line-height:1;color:var(--white);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.k-target-hero-val.manual{color:var(--cyan);text-shadow:0 0 8px rgba(0,229,255,.22)}
+.k-target-hero-pill{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.7px;line-height:1;padding:2px 7px;border-radius:2px;border:1px solid var(--border);background:var(--bg3);color:var(--t2)}
+.k-target-hero-pill.pill-manual{color:var(--cyan);border-color:rgba(0,229,255,.35)}
+.k-target-hero-pill.pill-auto{color:var(--green);border-color:rgba(0,230,118,.32)}
+.k-target-meta{margin-top:4px;font-size:8px;color:var(--t3);letter-spacing:.5px;line-height:1.4}
+.k-target-meta.manual{color:var(--cyan)}
+.k-manual-box{margin-top:6px;padding:8px;border-top:1px solid var(--border);border-radius:3px;background:linear-gradient(180deg,rgba(255,171,0,.06),rgba(0,0,0,0) 42%)}
+.k-manual-label{display:inline-flex;align-items:center;gap:6px;margin-bottom:6px;padding:2px 6px;border-radius:2px;background:rgba(255,171,0,.12);border:1px solid rgba(255,171,0,.28);color:var(--amber);font-size:8px;font-weight:700;letter-spacing:.8px;line-height:1.2}
+.k-manual-label::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--amber);box-shadow:0 0 10px rgba(255,171,0,.55)}
+.k-manual-meta{margin-top:4px;font-size:8px;color:var(--t3);letter-spacing:.5px;line-height:1.4}
+.k-manual-meta.manual{color:var(--amber)}
+.k-target-impact{margin-top:8px;padding:7px 8px;border:1px solid rgba(0,230,118,.2);border-radius:3px;background:linear-gradient(180deg,rgba(0,230,118,.05),rgba(0,0,0,0) 60%)}
+.k-target-impact-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px}
+.k-target-impact-title{font-size:8px;font-weight:700;letter-spacing:.8px;color:var(--green)}
+.k-target-impact-sub{font-size:8px;color:var(--t3);letter-spacing:.4px}
+.k-target-impact-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
+.k-impact-card{display:flex;flex-direction:column;gap:2px;padding:5px 6px;border-radius:2px;border:1px solid rgba(122,122,136,.2);background:rgba(255,255,255,.02)}
+.k-impact-k{font-size:7px;color:var(--t3);letter-spacing:.6px}
+.k-impact-v{font-size:10px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text)}
+.k-impact-v.up{color:var(--green)}
+.k-impact-v.dn{color:var(--red)}
+.k-target-spark-wrap{margin-top:6px;padding:5px 6px;border-radius:2px;border:1px solid rgba(122,122,136,.18);background:rgba(255,255,255,.02)}
+.k-target-spark-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px}
+.k-target-spark-label{font-size:7px;color:var(--t3);letter-spacing:.6px}
+.k-target-spark-meta{font-size:7px;color:var(--t3);letter-spacing:.5px}
+.k-target-spark-svg{width:100%;height:26px;display:block}
+.k-target-spark-mid{stroke:rgba(122,122,136,.35);stroke-width:1;stroke-dasharray:2 2}
+.k-target-spark-q{stroke:rgba(122,122,136,.22);stroke-width:1;stroke-dasharray:1.5 2.5}
+.k-target-spark-path{fill:none;stroke:var(--green);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.k-target-spark-dot{fill:var(--green)}
+.k-target-spark-scale{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:2px;padding:0 1px}
+.k-target-spark-scale span{font-size:7px;color:var(--t3);letter-spacing:.4px;line-height:1;text-align:center;opacity:.72}
+.k-why-strip{margin-top:8px;padding:7px 8px;border:1px solid rgba(0,229,255,.18);border-radius:3px;background:linear-gradient(180deg,rgba(0,229,255,.04),rgba(0,0,0,0) 60%)}
+.k-why-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px}
+.k-why-title{font-size:8px;font-weight:700;letter-spacing:.8px;color:var(--cyan)}
+.k-why-sub{font-size:8px;color:var(--t3);letter-spacing:.4px}
+.k-why-pills{display:flex;flex-wrap:wrap;gap:5px}
+.k-why-pill{display:inline-flex;align-items:center;gap:4px;max-width:100%;padding:3px 6px;border-radius:2px;border:1px solid rgba(122,122,136,.18);background:rgba(255,255,255,.03);font-size:8px;line-height:1.35;color:var(--text)}
+.k-why-pill .why-k{color:var(--t3);text-transform:uppercase;letter-spacing:.6px;flex-shrink:0}
+.k-why-pill .why-v{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.k-why-pill.why-bull{border-color:rgba(0,230,118,.25);color:var(--green)}
+.k-why-pill.why-bear{border-color:rgba(255,23,68,.25);color:var(--red)}
+.k-why-pill.why-warn{border-color:rgba(255,171,0,.25);color:var(--amber)}
+.tl-open{color:var(--green)}
+.tl-caution{color:var(--amber)}
+.tl-closing{color:var(--red);animation:pulse .8s infinite}
+body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinite}
+@keyframes countdown-pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
 /* ── BET SIGNAL ── */
 #bet-wrap{background:var(--bg1);border-top:1px solid var(--border);flex-shrink:0}
@@ -200,7 +325,51 @@ canvas{width:100%;height:100%;display:block}
 .traj-lbl{font-size:7px;color:var(--t2);letter-spacing:.8px;margin-bottom:1px}
 .traj-val{font-size:9px;font-weight:500}
 
-@media(max-width:900px){#app{grid-template-columns:1fr}#left-col,#right-col{display:none}}
+@media(max-width:1200px){
+  #app{grid-template-columns:280px minmax(0,1fr);grid-template-areas:"market decision" "execution execution"}
+  #right-col{display:none}
+}
+@media(max-width:900px){
+  #app{grid-template-columns:1fr;grid-template-areas:"decision" "market" "execution";grid-template-rows:auto auto auto}
+  #left-col,#right-col{display:flex}
+  .dc-grid{grid-template-columns:1fr}
+  .exec-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:640px){
+  html,body{overflow-x:hidden;overflow-y:auto}
+  #topbar,#oracleBar,#sessionBar{flex-wrap:wrap;height:auto;gap:4px 8px;padding:6px 8px}
+  #topbar{align-items:flex-start}
+  #oracleBar{align-items:flex-start}
+  #sessionBar{align-items:flex-start}
+  #kTopTargetBar{position:relative;top:auto;padding:6px 8px}
+  #app{height:auto;min-height:calc(100dvh - 128px);grid-template-columns:1fr}
+  #chart-hdr{flex-wrap:wrap;gap:4px;padding:6px 8px}
+  #canvasWrap{height:220px}
+  .system-banner-stack{top:128px;width:100%;padding:0 10px}
+  .system-banner{min-width:0;width:100%}
+  #rsiWrap{height:48px}
+  .k-top-target-input{min-width:0;max-width:none;width:100%}
+  #sigs{grid-template-columns:repeat(5,1fr)}
+  #of-row{grid-template-columns:repeat(2,1fr)}
+  #bet-inner{grid-template-columns:1fr}
+  .pb{padding:6px 8px}
+}
+@media (max-width:480px){
+  #topbar{padding:4px 6px;gap:4px}
+  .tb-logo{font-size:11px;letter-spacing:1px}
+  .tb-price{font-size:16px}
+  .tb-stat,.tb-sep,.ws-latency,.clock-text{display:none}
+  #oracleBar,#sessionBar{padding:4px 6px;gap:4px}
+  #oracleBar{height:auto}
+  #sessionBar{height:auto}
+  #kTopTargetBar{padding:5px 6px}
+  #chart-hdr .ema-legend,#chart-hdr .ema-legend-tight{display:none}
+  #canvasWrap{height:180px}
+  .system-banner-stack{top:110px}
+  #sigs{grid-template-columns:repeat(2,1fr)}
+  #of-row{grid-template-columns:1fr}
+  #signalAlert{top:64px}
+}
 
 /* ── PRICE FLASH ── */
 @keyframes pflash-up{0%{color:var(--white)}20%{color:#00ff88;text-shadow:0 0 16px rgba(0,255,136,.9)}100%{color:var(--white)}}
@@ -226,6 +395,26 @@ canvas{width:100%;height:100%;display:block}
 .sb-val.up{color:var(--green)!important}.sb-val.dn{color:var(--red)!important}
 .sb-sep{color:var(--border)}
 #kbHint{font-size:7px;color:var(--t3);background:var(--bg2);border:1px solid var(--border);padding:1px 5px;border-radius:2px;letter-spacing:.5px;cursor:default}
+
+/* ── TOP KALSHI TARGET BAR ── */
+#kTopTargetBar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:34px;padding:6px 12px;background:linear-gradient(90deg,rgba(0,229,255,.08),rgba(255,171,0,.05) 46%,rgba(0,0,0,0));border-bottom:1px solid rgba(0,229,255,.14);position:sticky;top:74px;z-index:95;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.k-top-target-title{font-size:8px;font-weight:700;letter-spacing:1px;color:var(--cyan);white-space:nowrap;padding:2px 6px;border-radius:2px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.2)}
+.k-top-target-hero{display:flex;align-items:center;gap:6px;flex-shrink:0;min-width:0}
+.k-top-target-pill{font-size:8px;letter-spacing:.7px;line-height:1;padding:2px 7px;border-radius:2px;border:1px solid var(--border);background:var(--bg3);color:var(--t2)}
+.k-top-target-pill.pill-manual{color:var(--cyan);border-color:rgba(0,229,255,.35)}
+.k-top-target-pill.pill-auto{color:var(--green);border-color:rgba(0,230,118,.32)}
+.k-top-target-val{font-size:16px;font-weight:700;line-height:1;color:var(--white);font-variant-numeric:tabular-nums;letter-spacing:-.02em;white-space:nowrap}
+.k-top-target-val.manual{color:var(--cyan);text-shadow:0 0 8px rgba(0,229,255,.22)}
+.k-top-target-controls{display:flex;align-items:center;gap:6px;flex:1;min-width:0;flex-wrap:wrap}
+.k-top-target-input{flex:1;min-width:180px;max-width:280px;background:var(--bg1);border:1px solid rgba(0,229,255,.28);border-radius:2px;color:var(--white);font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;padding:6px 8px;outline:none;box-shadow:0 0 0 1px rgba(0,229,255,.06) inset}
+.k-top-target-input::placeholder{color:rgba(255,255,255,.45)}
+.k-top-target-input:focus{border-color:rgba(0,229,255,.65);box-shadow:0 0 0 1px rgba(0,229,255,.2),0 0 14px rgba(0,229,255,.12)}
+.k-top-target-btn{background:var(--bg2);border:1px solid rgba(0,229,255,.3);color:var(--white);font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.7px;padding:5px 8px;border-radius:2px;cursor:pointer;white-space:nowrap}
+.k-top-target-btn:hover{color:var(--cyan);border-color:rgba(0,229,255,.5)}
+.k-top-target-btn.clear{border-color:rgba(255,171,0,.3)}
+.k-top-target-btn.clear:hover{color:var(--amber);border-color:rgba(255,171,0,.5)}
+.k-top-target-meta{font-size:8px;color:var(--t3);letter-spacing:.5px;line-height:1.4;white-space:nowrap;flex-shrink:0}
+.k-top-target-meta.manual{color:var(--cyan)}
 /* ── RSI STRIP ── */
 #rsiWrap{height:58px;position:relative;border-top:1px solid var(--border);flex-shrink:0;background:var(--bg)}
 #rsiCanvas{display:block}
@@ -233,6 +422,12 @@ canvas{width:100%;height:100%;display:block}
 /* ── SIGNAL ALERT ── */
 #signalAlert{position:fixed;top:76px;left:50%;transform:translateX(-50%);z-index:999;pointer-events:none;transition:opacity .3s;opacity:0}
 #signalAlert.show{opacity:1}
+.system-banner-stack{position:fixed;top:110px;left:50%;transform:translateX(-50%);z-index:998;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.system-banner{min-width:320px;max-width:min(86vw,760px);padding:10px 14px;border-radius:3px;border:1px solid var(--border);font-size:10px;font-weight:700;letter-spacing:.8px;box-shadow:0 8px 24px rgba(0,0,0,.28);transition:opacity .2s ease,transform .2s ease}
+.system-banner.hidden{display:none;opacity:0;transform:translateY(-6px)}
+.system-banner-detail{display:block;font-size:8px;font-weight:500;letter-spacing:.45px;color:rgba(255,255,255,.78);margin-top:3px}
+.system-banner-lock{background:rgba(213,0,0,.92);border-color:rgba(255,23,68,.65);color:#fff5f6}
+.system-banner-stale{background:rgba(255,171,0,.92);border-color:rgba(255,171,0,.55);color:#201400}
 @keyframes sa-drop{0%{transform:translateY(-8px);opacity:0}100%{transform:translateY(0);opacity:1}}
 .sa-inner{padding:7px 22px;border-radius:3px;font-weight:700;font-size:12px;letter-spacing:2px;animation:sa-drop .35s ease-out}
 .sa-above{background:rgba(0,230,118,.14);border:1px solid rgba(0,230,118,.55);color:var(--green);box-shadow:0 4px 28px rgba(0,230,118,.22)}
@@ -364,42 +559,6 @@ canvas{width:100%;height:100%;display:block}
 .traj-title{font-size:8px;color:var(--t3);letter-spacing:.8px;margin-bottom:6px}
 .ai-status-loading{color:var(--t3);font-style:italic}
 .ai-status-error{color:var(--red)}
-
-/* ── KALSHI GOD-TIER COUNTDOWN ── */
-.k-arc-wrap{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);margin:4px 0}
-.k-arc-svg{overflow:visible;flex-shrink:0}
-.k-countdown-info{display:flex;flex-direction:column;gap:2px;flex:1}
-.k-countdown-val{font-size:22px;font-weight:700;letter-spacing:1px;font-variant-numeric:tabular-nums;line-height:1}
-.k-closes-at{font-size:8px;color:var(--t3);letter-spacing:.5px}
-.k-entry-guide{font-size:8px;font-weight:700;letter-spacing:.8px;text-align:center;padding:3px 6px;border-radius:2px;margin:3px 0}
-.eg-open{color:var(--green);background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.25)}
-.eg-caution{color:var(--amber);background:rgba(255,171,0,.08);border:1px solid rgba(255,171,0,.25)}
-.eg-closing{color:var(--red);background:rgba(255,23,68,.08);border:1px solid rgba(255,23,68,.25);animation:pulse .5s infinite}
-.k-agree-badge{font-size:7px;font-weight:700;padding:1px 5px;border-radius:2px;letter-spacing:.8px}
-.k-agree{background:rgba(0,230,118,.15);color:var(--green);border:1px solid rgba(0,230,118,.3)}
-.k-diverge{background:rgba(255,171,0,.15);color:var(--amber);border:1px solid rgba(255,171,0,.3)}
-.k-trend-arrow{font-size:11px;font-weight:700}
-.k-bid-ask-row{display:flex;justify-content:space-between;padding:3px 0;font-size:9px;border-bottom:1px solid var(--border)}
-.k-bid-lbl{color:var(--t3);font-size:8px}
-.k-bid-val{color:var(--green);font-weight:700}
-.k-ask-val{color:var(--red);font-weight:700}
-
-/* ── BET SIGNAL GOD-TIER ── */
-.bet-active-dur{font-size:8px;color:var(--cyan);letter-spacing:.5px;margin-bottom:2px;font-weight:600}
-.bet-sig-count{font-size:8px;color:var(--t3);letter-spacing:.3px;margin-bottom:3px}
-.bet-sig-mini-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-top:3px}
-.bet-sig-cell{height:5px;border-radius:1px;background:var(--bg3)}
-.bsc-bull{background:var(--green)}.bsc-bear{background:var(--red)}.bsc-neut{background:var(--amber)}
-.bet-nearest-row{font-size:8px;color:var(--t2);margin-bottom:3px;letter-spacing:.3px}
-.bet-missing-sigs{font-size:8px;color:var(--t3);line-height:1.6;margin-top:3px;border-top:1px solid var(--border);padding-top:3px}
-.bet-ev-row{font-size:9px;font-weight:700;padding:3px 6px;border-radius:2px;margin-bottom:4px;letter-spacing:.2px}
-.bet-ev-pos{color:var(--green);background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.2)}
-.bet-ev-neg{color:var(--red);background:rgba(255,23,68,.08);border:1px solid rgba(255,23,68,.2)}
-.bet-ev-neut{color:var(--t2);background:var(--bg2);border:1px solid var(--border)}
-.bet-timing-row{font-size:8px;font-weight:700;letter-spacing:.8px;padding:2px 6px;border-radius:2px;margin-bottom:6px;text-align:center}
-.bet-timing-open{color:var(--green);background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.2)}
-.bet-timing-caution{color:var(--amber);background:rgba(255,171,0,.08);border:1px solid rgba(255,171,0,.2)}
-.bet-timing-closing{color:var(--red);background:rgba(255,23,68,.08);border:1px solid rgba(255,23,68,.2);animation:pulse .6s infinite}
 </style>
 </head>
 <body>
@@ -425,10 +584,20 @@ canvas{width:100%;height:100%;display:block}
 </div>
 
 <div id="signalAlert"><div class="sa-inner sa-above" id="saInner">&#x26A1; SIGNAL ACTIVE</div></div>
+<div class="system-banner-stack" id="systemBannerStack">
+  <div class="system-banner system-banner-lock hidden" id="executionLockBanner">
+    <span id="executionLockText">🔒 EXECUTION LOCKED</span>
+    <span class="system-banner-detail" id="executionLockDetail">Risk conditions currently block execution.</span>
+  </div>
+  <div class="system-banner system-banner-stale hidden" id="staleDataBanner">
+    <span id="staleDataText">⚠️ STALE DATA</span>
+    <span class="system-banner-detail" id="staleDataDetail">Refreshing market state before retry.</span>
+  </div>
+</div>
 <div id="oracleBar">
-  <div class="ob-src"><div class="ob-dot wait" id="obDotBnc"></div><span class="ob-src-label">BNC</span><span id="obPriceBnc" class="ob-src-price">—</span></div>
-  <div class="ob-src"><div class="ob-dot wait" id="obDotKrk"></div><span class="ob-src-label">KRK</span><span id="obPriceKrk" class="ob-src-price">—</span></div>
-  <div class="ob-src"><div class="ob-dot wait" id="obDotByb"></div><span class="ob-src-label">BYB</span><span id="obPriceByb" class="ob-src-price">—</span></div>
+  <div class="ob-src"><div class="ob-dot wait" id="obDotBnc"></div><span class="ob-src-label">CBT</span><span id="obPriceBnc" class="ob-src-price">—</span></div>
+  <div class="ob-src"><div class="ob-dot wait" id="obDotKrk"></div><span class="ob-src-label">BOOK</span><span id="obPriceKrk" class="ob-src-price">—</span></div>
+  <div class="ob-src"><div class="ob-dot wait" id="obDotByb"></div><span class="ob-src-label">CCP</span><span id="obPriceByb" class="ob-src-price">—</span></div>
   <span class="ob-sep">│</span>
   <div class="ob-src ob-src-oracle">ORACLE <span id="oraclePrice" class="ob-src-oracle-price">—</span></div>
   <div class="ob-src ob-src-dev">DEV <span id="oracleDev" class="ob-src-dev-val">—</span></div>
@@ -441,14 +610,33 @@ canvas{width:100%;height:100%;display:block}
   <div class="sb-item">LAST <span class="sb-val" id="sbLast">-</span></div>
   <span class="sb-sep">|</span>
   <div class="sb-item">MSG/S <span class="sb-val" id="sbMps">0</span></div>
+  <div class="sb-item">LAT P50 <span class="sb-val" id="sbLatP50">—</span></div>
+  <div class="sb-item">LAT P95 <span class="sb-val" id="sbLatP95">—</span></div>
+  <div class="sb-item">GAP P95 <span class="sb-val" id="sbGapP95">—</span></div>
   <div class="sb-item">CANDLES <span class="sb-val" id="sbCandles">0</span></div>
   <span class="sb-sep">|</span>
   <div class="sb-item">RV <span class="sb-val" id="sbRv">—</span></div>
   <div class="sb-item">ADX <span class="sb-val" id="sbAdx">—</span></div>
+  <span class="sb-sep">|</span>
+  <div class="sb-item">K ROUND <span class="sb-val" id="sbKRound">—:——</span></div>
+  <div class="sb-item">K TARGET <span class="sb-val" id="sbKTarget">$——</span></div>
   <div class="flex-fill"></div>
-  <button class="ws-toggle" id="wsToggle" onclick="toggleWsFallback()" title="Force Kraken websocket feed">KRAKEN OFF</button>
+  <button class="ws-toggle" id="wsToggle" onclick="toggleWsFallback()" title="Reconnect or restore Coinbase live feed">LIVE OK</button>
   <button class="ws-toggle" id="wsRestToggle" onclick="toggleWsRest()" title="Force Coinbase REST polling mode">REST OFF</button>
-  <span id="kbHint" title="A=AI  S=Sound  F=Fullscreen  K=Kraken  R=REST">A · S · F · K · R</span>
+  <span id="kbHint" title="A=AI  S=Sound  F=Fullscreen  K=Live Reconnect  R=REST">A · S · F · K · R</span>
+</div>
+<div id="kTopTargetBar">
+  <div class="k-top-target-title">KALSHI ROUND TARGET</div>
+  <div class="k-top-target-hero">
+    <div class="k-top-target-val" id="kTargetHeroVal">—</div>
+    <div class="k-top-target-pill" id="kTargetHeroPill">AUTO</div>
+  </div>
+  <div class="k-top-target-controls">
+    <input class="k-top-target-input" id="kTargetInput" type="number" min="0" step="1" placeholder="Manual round target" aria-label="Manual Kalshi round target price" />
+    <button class="k-top-target-btn" id="kTargetApply" type="button">APPLY</button>
+    <button class="k-top-target-btn clear" id="kTargetClear" type="button">CLEAR</button>
+  </div>
+  <div class="k-top-target-meta" id="kTargetMeta">AUTO TARGET · follows live BTC price</div>
 </div>
 <!-- TICKER TAPE -->
 <div id="tape"><div id="tape-track">
@@ -495,7 +683,29 @@ canvas{width:100%;height:100%;display:block}
 </div>
 
 <!-- CENTER -->
-<div class="col">
+<div class="col zone-shell" id="center-col">
+  <div class="panel panel-fixed" id="decisionCore">
+    <div class="ph"><span class="ph-title">DECISION ENGINE CORE</span><span class="badge badge-live">PRIORITY</span></div>
+    <div class="dc-grid">
+      <div class="dc-main">
+        <div class="dc-k">SYSTEM BELIEF</div>
+        <div class="dc-signal" id="dcSignal">STANDBY</div>
+        <div class="dc-sub" id="dcInvalidation">Awaiting high-quality alignment and execution permission.</div>
+      </div>
+      <div class="dc-card">
+        <div class="dc-k">CONFIDENCE</div>
+        <div class="dc-v" id="dcConfidence">—</div>
+        <div class="dc-k mt8">EDGE</div>
+        <div class="dc-v" id="dcEdge">—</div>
+      </div>
+      <div class="dc-card">
+        <div class="dc-k">RISK LEVEL</div>
+        <div class="dc-v" id="dcRisk">—</div>
+        <div class="dc-k mt8">EXECUTION</div>
+        <div class="dc-v" id="dcExecution">—</div>
+      </div>
+    </div>
+  </div>
   <!-- Chart -->
   <div id="chart-wrap" class="panel">
     <div id="chart-hdr">
@@ -533,10 +743,6 @@ canvas{width:100%;height:100%;display:block}
     <div class="sig"><div class="sig-n">STOCH</div><div class="sig-v sv-neut" id="s7">—</div></div>
     <div class="sig"><div class="sig-n">MOM</div><div class="sig-v sv-neut" id="s8">—</div></div>
     <div class="sig"><div class="sig-n">DELTA</div><div class="sig-v sv-neut" id="s9">—</div></div>
-    <div class="sig"><div class="sig-n">STOCH D</div><div class="sig-v sv-neut" id="s10">—</div></div>
-    <div class="sig"><div class="sig-n">KALMAN</div><div class="sig-v sv-neut" id="s11">—</div></div>
-    <div class="sig"><div class="sig-n">FUND</div><div class="sig-v sv-neut" id="s12">—</div></div>
-    <div class="sig"><div class="sig-n">ATR MOM</div><div class="sig-v sv-neut" id="s13">—</div></div>
   </div>
   <!-- Orderflow -->
   <div id="of-row">
@@ -580,7 +786,10 @@ canvas{width:100%;height:100%;display:block}
         <div class="mr"><span class="ml">TRAJ SLOPE</span><span class="mv num" id="bm2">—</span></div>
         <div class="mr"><span class="ml">REGIME</span><span class="mv num" id="bm3">—</span></div>
         <div class="mr"><span class="ml">KALSHI EDGE</span><span class="mv num" id="bm4">—</span></div>
-        <div class="mr mr-no-border"><span class="ml">REC SIZE</span><span class="mv num txt-amber" id="bm5">—</span></div>
+        <div class="mr"><span class="ml">REC SIZE</span><span class="mv num txt-amber" id="bm5">—</span></div>
+        <div class="mr"><span class="ml">EV / $1 BET</span><span class="mv num" id="bm6">—</span></div>
+        <div class="mr"><span class="ml">ENTRY TIMING</span><span class="mv num" id="bm7">—</span></div>
+        <div class="mr mr-no-border"><span class="ml">SIGNAL AGE</span><span class="mv num" id="bm8">—</span></div>
       </div>
     </div>
   </div>
@@ -592,7 +801,7 @@ canvas{width:100%;height:100%;display:block}
 </div>
 
 <!-- RIGHT -->
-<div id="right-col" class="col">
+<div id="right-col" class="col zone-shell">
   <!-- Regime -->
   <div class="panel panel-fixed">
     <div class="ph"><span class="ph-title">REGIME + PROBABILITY</span><span class="badge badge-live">LIVE</span></div>
@@ -667,49 +876,100 @@ canvas{width:100%;height:100%;display:block}
       <div class="mr mr-no-border"><span class="ml">LAST 5</span><div class="acc-dots" id="accDots"></div></div>
     </div>
   </div>
+  <div class="panel panel-fixed">
+    <div class="ph"><span class="ph-title">SYSTEM PERFORMANCE</span><span class="badge badge-live">LAST 50</span></div>
+    <div class="pb">
+      <div class="mr"><span class="ml">WIN RATE</span><span class="mv num" id="perfWinRate">—</span></div>
+      <div class="mr"><span class="ml">CONF WINS</span><span class="mv num" id="perfConfWins">—</span></div>
+      <div class="mr"><span class="ml">BEST RISK</span><span class="mv num" id="perfBestRisk">—</span></div>
+      <div class="mr mr-no-border"><span class="ml">WINDOW</span><span class="mv num" id="perfWindow">—</span></div>
+    </div>
+  </div>
   <!-- Kalshi -->
   <div class="panel panel-fixed">
     <div class="ph"><span class="ph-title">KALSHI DIVERGENCE</span><span class="badge badge-live">15MIN</span></div>
     <div class="pb">
       <div class="k-summary">
         <span class="k-summary-above">ABOVE <span class="num" id="kAp">—</span></span>
-        <span style="display:flex;align-items:center;gap:4px">
-          <span class="k-agree-badge k-agree" id="kAgreeBadge">AGREE</span>
-          <span class="k-trend-arrow" id="kTrendArrow">—</span>
-        </span>
         <span class="k-summary-below">BELOW <span class="num" id="kBp">—</span></span>
       </div>
       <div class="k-bar-wrap"><div class="k-above k-half" id="kABar"></div><div class="k-below k-half" id="kBBar"></div></div>
-      <!-- SVG Arc Countdown Ring -->
-      <div class="k-arc-wrap">
-        <svg class="k-arc-svg" width="80" height="80" viewBox="0 0 80 80">
-          <circle cx="40" cy="40" r="34" fill="none" stroke="#1e1e22" stroke-width="6"/>
-          <circle id="kArcRing" cx="40" cy="40" r="34" fill="none" stroke="var(--green)" stroke-width="6"
-            stroke-dasharray="213.6" stroke-dashoffset="0" stroke-linecap="round"
-            transform="rotate(-90 40 40)"/>
-          <text id="kArcTime" x="40" y="37" text-anchor="middle" font-family="IBM Plex Mono,monospace"
-            font-size="10" font-weight="700" fill="#eeeef5">—:——</text>
-          <text id="kArcPhase" x="40" y="50" text-anchor="middle" font-family="IBM Plex Mono,monospace"
-            font-size="6" font-weight="700" fill="#72727e" letter-spacing="1">OPEN</text>
+      <div class="mr"><span class="ml">KALSHI ABOVE</span><span class="mv num" id="kA">—</span><span class="k-trend-arrow" id="kTrend">→</span></div>
+      <div class="mr"><span class="ml">MODEL ABOVE</span><span class="mv num" id="kM">—</span></div>
+      <div class="mr"><span class="ml">EDGE</span><span class="mv num" id="kE">—</span></div>
+      <div class="mr"><span class="ml">EV / $1 BET</span><span class="mv num" id="kEV">—</span></div>
+      <div class="mr"><span class="ml">ROUND TARGET</span><span class="mv num" id="kStr">—</span></div>
+      <div class="k-manual-box">
+        <div class="k-manual-label">MANUAL ABOVE%</div>
+        <div class="k-target-row">
+          <input class="k-target-input" id="kManualInput" type="number" min="0" max="100" step="1" placeholder="Override Kalshi ABOVE %" aria-label="Manual Kalshi ABOVE percent" />
+          <button class="k-target-btn" id="kManualApply" type="button">APPLY</button>
+          <button class="k-target-btn clear" id="kManualClear" type="button">CLEAR</button>
+        </div>
+        <div class="k-manual-meta" id="kManualMeta">LIVE ABOVE% · follows Kalshi feed</div>
+      </div>
+      <div class="k-target-impact">
+        <div class="k-target-impact-head">
+          <div class="k-target-impact-title">TARGET IMPACT</div>
+          <div class="k-target-impact-sub" id="kTaSource">AUTO BLEND</div>
+        </div>
+        <div class="k-target-impact-grid">
+          <div class="k-impact-card">
+            <span class="k-impact-k">ADJ ABOVE</span>
+            <span class="k-impact-v" id="kTaProb">—</span>
+          </div>
+          <div class="k-impact-card">
+            <span class="k-impact-k">DISTANCE</span>
+            <span class="k-impact-v" id="kTaDist">—</span>
+          </div>
+          <div class="k-impact-card">
+            <span class="k-impact-k">BLEND</span>
+            <span class="k-impact-v" id="kTaBlend">—</span>
+          </div>
+        </div>
+        <div class="k-target-spark-wrap">
+          <div class="k-target-spark-head">
+            <span class="k-target-spark-label">ROUND TREND</span>
+            <span class="k-target-spark-meta" id="kTaSparkMeta">0 pts</span>
+          </div>
+          <svg class="k-target-spark-svg" id="kTaSparkSvg" viewBox="0 0 120 26" preserveAspectRatio="none" aria-label="Target-adjusted probability trend">
+            <path class="k-target-spark-q" d="M30 2 L30 24"></path>
+            <path class="k-target-spark-q" d="M60 2 L60 24"></path>
+            <path class="k-target-spark-q" d="M90 2 L90 24"></path>
+            <path class="k-target-spark-mid" d="M0 13 L120 13"></path>
+            <path class="k-target-spark-path" id="kTaSparkPath" d="M2 13 L118 13"></path>
+            <circle class="k-target-spark-dot" id="kTaSparkDot" cx="118" cy="13" r="1.8"></circle>
+          </svg>
+          <div class="k-target-spark-scale" aria-hidden="true">
+            <span>25%</span>
+            <span>50%</span>
+            <span>75%</span>
+          </div>
+        </div>
+      </div>
+      <div class="k-why-strip">
+        <div class="k-why-head">
+          <div class="k-why-title">WHY NOW</div>
+          <div class="k-why-sub" id="kWhySub">READING LIVE FLOW</div>
+        </div>
+        <div class="k-why-pills">
+          <div class="k-why-pill" id="kWhy1"><span class="why-k">REGIME</span><span class="why-v">—</span></div>
+          <div class="k-why-pill" id="kWhy2"><span class="why-k">EDGE</span><span class="why-v">—</span></div>
+          <div class="k-why-pill" id="kWhy3"><span class="why-k">TIMING</span><span class="why-v">—</span></div>
+        </div>
+      </div>
+      <div class="k-countdown-wrap">
+        <svg class="k-ring" viewBox="0 0 60 60" id="kRingSvg">
+          <circle class="k-ring-bg" cx="30" cy="30" r="26"/>
+          <circle class="k-ring-arc" cx="30" cy="30" r="26" id="kRingArc"/>
+          <text class="k-ring-txt" x="30" y="34" id="kRingTxt">—:——</text>
         </svg>
         <div class="k-countdown-info">
           <div class="k-countdown-val" id="kCountdown">—:——</div>
           <div class="k-phase open" id="kPhase">OPEN</div>
-          <div class="k-closes-at" id="kClosesAt">CLOSES AT —</div>
+          <div class="k-close-time">CLOSES <span id="kWin2">——</span></div>
+          <div class="k-entry-guidance eg-open" id="kEntryGuidance">LOADING…</div>
         </div>
-      </div>
-      <!-- Entry guidance -->
-      <div class="k-entry-guide eg-open" id="kEntryGuide">OPTIMAL ENTRY WINDOW</div>
-      <!-- Market rows -->
-      <div class="mr"><span class="ml">KALSHI ABOVE</span><span class="mv num" id="kA">—</span></div>
-      <div class="mr"><span class="ml">MODEL ABOVE</span><span class="mv num" id="kM">—</span></div>
-      <div class="mr"><span class="ml">EDGE</span><span class="mv num" id="kE">—</span></div>
-      <div class="mr"><span class="ml">EV / $1 BET</span><span class="mv num" id="kEV">—</span></div>
-      <div class="mr"><span class="ml">STRIKE</span><span class="mv num" id="kStr">—</span></div>
-      <!-- YES Bid / Ask -->
-      <div class="k-bid-ask-row">
-        <span><span class="k-bid-lbl">YES BID</span> <span class="k-bid-val" id="kYesBid">—</span></span>
-        <span><span class="k-bid-lbl">YES ASK</span> <span class="k-ask-val" id="kYesAsk">—</span></span>
       </div>
       <div class="k-edge num" id="kEdgeBox">—</div>
     </div>
@@ -744,6 +1004,23 @@ canvas{width:100%;height:100%;display:block}
   </div>
 </div>
 
+<!-- EXECUTION ZONE -->
+<div id="execution-zone" class="panel panel-fixed">
+  <div class="ph"><span class="ph-title">EXECUTION + MICROSTRUCTURE LAYER</span><span class="badge badge-warn">OPS</span></div>
+  <div class="pb">
+    <div class="exec-grid">
+      <div class="exec-card"><div class="exec-k">SPREAD</div><div class="exec-v" id="exSpread">—</div><div class="exec-note">Top of book</div></div>
+      <div class="exec-card"><div class="exec-k">LATENCY</div><div class="exec-v" id="exLatency">—</div><div class="exec-note">Feed freshness</div></div>
+      <div class="exec-card"><div class="exec-k">SLIPPAGE</div><div class="exec-v" id="exSlippage">—</div><div class="exec-note">Expected impact</div></div>
+      <div class="exec-card"><div class="exec-k">FLOW TOXICITY</div><div class="exec-v" id="exToxicity">—</div><div class="exec-note">Execution hazard</div></div>
+      <div class="exec-card"><div class="exec-k">KELLY SIZE</div><div class="exec-v" id="exKelly">—</div><div class="exec-note">Sizing envelope</div></div>
+      <div class="exec-card"><div class="exec-k">EV / $1</div><div class="exec-v" id="exEv">—</div><div class="exec-note">Decision economics</div></div>
+      <div class="exec-card"><div class="exec-k">RISK LOCK</div><div class="exec-v" id="exLock">—</div><div class="exec-note">Veto authority</div></div>
+      <div class="exec-card"><div class="exec-k">ROUND PHASE</div><div class="exec-v" id="exPhase">—</div><div class="exec-note">Timing pressure</div></div>
+    </div>
+  </div>
+</div>
+
 </div><!-- #app -->
 
 <script>
@@ -754,6 +1031,16 @@ canvas{width:100%;height:100%;display:block}
 // ║  Channels: ticker · level2_50 · matches                     ║
 // ║  Backend: /api/analyze (OpenRouter proxy)                   ║
 // ╚══════════════════════════════════════════════════════════════╝
+
+// Avoid restoring stale scroll offsets that can hide chart sections behind sticky bars.
+if (typeof history !== 'undefined' && 'scrollRestoration' in history) {
+  history.scrollRestoration = 'manual';
+}
+if (globalThis.window !== undefined) {
+  globalThis.window.addEventListener('load', () => {
+    globalThis.window.scrollTo(0, 0);
+  }, { once: true });
+}
 
 // ─────────────────────────────────────────────
 // MARKET STORE — single source of truth
@@ -790,13 +1077,26 @@ var marketStore = {
 
   // Probabilities
   regime: 'NEUTRAL', pAbove: 0.5, pBelow: 0.5,
+  pDecisionAbove: 0.5, pDecisionBelow: 0.5,
+  verdictDecision: 'ABOVE',
   verdict: 'ABOVE', confidence: 70,
   kalshiAbove: 50, kalshiBelow: 50,
-  kalshiBid: null, kalshiAsk: null, _kalshiHistory: [],
-  evAbove: 0, evBelow: 0, kalshiEV: 0,
   kellyFull: 0, kellyEdge: 0, kellyWR: 0,
   dataQuality: 1,
   calibrationBias: 0,
+  kalshiManualAbovePct: null,
+  kalshiAboveSource: 'live',
+  kalshiManualTargetPrice: null,
+  kalshiManualTargetRoundTs: null,
+  kalshiTargetSource: 'auto',
+  kalshiTargetExpiryNotice: '',
+  kalshiTargetDistance: 0,
+  kalshiTargetDistancePct: 0,
+  kalshiTargetBlend: 0,
+  kalshiTargetOnlyAbove: 0.5,
+  kalshiTargetSpark: [],
+  kalshiTargetSparkRoundTs: null,
+  kalshiTargetSparkLastTs: 0,
 
   // Bet signal
   betData: null,
@@ -808,7 +1108,315 @@ var marketStore = {
   wsConnected: false, wsLatency: 0, lastMsgTs: 0,
   wsSource: 'coinbase', manualFallback: false, manualRest: false,
   msgCount: 0, reconnectCount: 0,
+
+  // Adaptive calibration + feed quality metrics
+  adaptiveScoutWeights: null,
+  adaptiveScoutSampleN: 0,
+  wsLatencyP50: null,
+  wsLatencyP95: null,
+  wsGapP95: null,
+  systemTruth: {
+    currentBelief: { direction: 'NEUTRAL', confidence: 0 },
+    executionAllowed: false,
+    riskLevel: 'MEDIUM',
+    authority: {
+      source: 'COGNITION_LAYER',
+      realityValid: true,
+      riskVeto: false,
+      simulationPassed: false,
+    },
+    snapshotId: '',
+    lastUpdated: 0,
+  },
+  systemTruthMeta: { riskScalar: 0, secureDecision: false, verdict: 'ABOVE' },
+  systemTruthReady: false,
+  executionLockReason: '',
+  staleWarning: '',
+  performanceStats: null,
 };
+
+const DEFAULT_SYSTEM_TRUTH = {
+  currentBelief: { direction: 'NEUTRAL', confidence: 0 },
+  executionAllowed: false,
+  riskLevel: 'MEDIUM',
+  authority: {
+    source: 'COGNITION_LAYER',
+    realityValid: true,
+    riskVeto: false,
+    simulationPassed: false,
+  },
+  snapshotId: '',
+  lastUpdated: 0,
+};
+
+let _truthPublishTimer = null;
+let _truthPublishInFlight = false;
+let _lastTruthPublishSignature = '';
+let _performanceRefreshInFlight = false;
+let _resultSyncInFlight = false;
+
+function getSystemTruthClient() {
+  if (globalThis._systemTruthClient) return globalThis._systemTruthClient;
+  return {
+    deriveSystemTruth(input) {
+      const pDecisionAbove = Number.isFinite(input.pDecisionAbove) ? input.pDecisionAbove : input.pAbove;
+      const quality = Number.isFinite(input.dataQuality) ? input.dataQuality : 1;
+      const confidence = Number.isFinite(input.confidence) ? input.confidence : 0;
+      const directionalEdge = Math.abs((Number.isFinite(pDecisionAbove) ? pDecisionAbove : 0.5) - 0.5) * 2;
+      const roundPhase = input.roundPhase ?? 'open';
+      const secureDecision = confidence >= (roundPhase === 'closing' ? 50 : 35) && quality >= 0.65 && directionalEdge >= (roundPhase === 'closing' ? 0.12 : 0.08);
+      const riskScalar = clamp(Math.max((input.flowToxicity || 0) / 100, clamp((input.realizedVol || 0) / 120, 0, 1)), 0, 1);
+      let riskLevel = 'LOW';
+      if (riskScalar >= 0.75) riskLevel = 'CRITICAL';
+      else if (riskScalar >= 0.55) riskLevel = 'HIGH';
+      else if (riskScalar >= 0.35) riskLevel = 'MEDIUM';
+      const realityValid = quality >= 0.65;
+      const riskVeto = riskLevel === 'HIGH' || riskLevel === 'CRITICAL';
+      const simulationPassed = secureDecision;
+      const boundedDecisionAbove = Number.isFinite(pDecisionAbove) ? pDecisionAbove : 0.5;
+      const verdict = boundedDecisionAbove >= 0.5 ? 'ABOVE' : 'BELOW';
+      let direction = 'NEUTRAL';
+      if (secureDecision) {
+        direction = verdict === 'ABOVE' ? 'UP' : 'DOWN';
+      }
+      const authority = {
+        source: 'COGNITION_LAYER',
+        realityValid,
+        riskVeto,
+        simulationPassed,
+      };
+      return {
+        currentBelief: { direction, confidence: clamp(confidence, 0, 100) },
+        executionAllowed: direction !== 'NEUTRAL' && authority.realityValid && !authority.riskVeto && authority.simulationPassed,
+        riskLevel,
+        authority,
+        riskScalar,
+        secureDecision,
+        verdict,
+      };
+    },
+    shouldRetryStale(response, attempt) {
+      return Boolean(response?.stale) && attempt === 0;
+    },
+  };
+}
+
+function createClientSnapshotId() {
+  return `${Date.now()}-${Math.random().toString(16).slice(2, 10).padEnd(8, '0').slice(0, 8)}`;
+}
+
+function deriveLocalSystemTruth() {
+  const client = getSystemTruthClient();
+  return client.deriveSystemTruth({
+    ...marketStore,
+    roundPhase: kalshiRound().phase,
+  });
+}
+
+function buildTruthPublishSignature(derivedTruth) {
+  return JSON.stringify([
+    derivedTruth.currentBelief.direction,
+    derivedTruth.currentBelief.confidence,
+    derivedTruth.executionAllowed,
+    derivedTruth.riskLevel,
+    derivedTruth.authority?.realityValid,
+    derivedTruth.authority?.riskVeto,
+    derivedTruth.authority?.simulationPassed,
+    marketStore.price,
+    marketStore.lastMsgTs,
+    marketStore.pDecisionAbove,
+    marketStore.flowToxicity,
+    marketStore.realizedVol,
+  ]);
+}
+
+function syncSystemTruthMirror(nextTruth, meta = {}) {
+  const currentBelief = nextTruth?.currentBelief || DEFAULT_SYSTEM_TRUTH.currentBelief;
+  const authority = nextTruth?.authority || DEFAULT_SYSTEM_TRUTH.authority;
+  marketStore.systemTruth = {
+    currentBelief: {
+      direction: currentBelief.direction || 'NEUTRAL',
+      confidence: Number.isFinite(currentBelief.confidence) ? currentBelief.confidence : 0,
+    },
+    executionAllowed: typeof nextTruth?.executionAllowed === 'boolean' ? nextTruth.executionAllowed : false,
+    riskLevel: nextTruth?.riskLevel || 'MEDIUM',
+    authority: {
+      source: authority?.source || 'COGNITION_LAYER',
+      realityValid: typeof authority?.realityValid === 'boolean' ? authority.realityValid : true,
+      riskVeto: typeof authority?.riskVeto === 'boolean' ? authority.riskVeto : false,
+      simulationPassed: typeof authority?.simulationPassed === 'boolean' ? authority.simulationPassed : false,
+    },
+    snapshotId: typeof nextTruth?.snapshotId === 'string' ? nextTruth.snapshotId : '',
+    lastUpdated: Number.isFinite(nextTruth?.lastUpdated) ? nextTruth.lastUpdated : 0,
+  };
+  marketStore.systemTruthMeta = {
+    riskScalar: Number.isFinite(meta.riskScalar) ? meta.riskScalar : marketStore.systemTruthMeta?.riskScalar || 0,
+    secureDecision: typeof meta.secureDecision === 'boolean' ? meta.secureDecision : Boolean(marketStore.systemTruthMeta?.secureDecision),
+    verdict: meta.verdict || marketStore.systemTruthMeta?.verdict || 'ABOVE',
+  };
+  marketStore.systemTruthReady = true;
+
+  if (marketStore.systemTruth.executionAllowed) {
+    marketStore.executionLockReason = '';
+  } else if (marketStore.systemTruth.riskLevel === 'HIGH' || marketStore.systemTruth.riskLevel === 'CRITICAL') {
+    marketStore.executionLockReason = `EXECUTION_LOCKED: Risk level ${marketStore.systemTruth.riskLevel}`;
+  } else {
+    marketStore.executionLockReason = 'EXECUTION_LOCKED: Execution disabled by system truth';
+  }
+
+  updateSystemStatusBanners();
+}
+
+function setStaleWarning(reason = '') {
+  marketStore.staleWarning = reason;
+  updateSystemStatusBanners();
+}
+
+function updateSystemStatusBanners() {
+  const lockBanner = document.getElementById('executionLockBanner');
+  const lockText = document.getElementById('executionLockText');
+  const lockDetail = document.getElementById('executionLockDetail');
+  const staleBanner = document.getElementById('staleDataBanner');
+  const staleText = document.getElementById('staleDataText');
+  const staleDetail = document.getElementById('staleDataDetail');
+
+  if (lockBanner) {
+    const shouldShowLock = marketStore.systemTruthReady && !marketStore.systemTruth.executionAllowed && !!marketStore.executionLockReason;
+    lockBanner.classList.toggle('hidden', !shouldShowLock);
+    if (lockText) lockText.textContent = '🔒 EXECUTION LOCKED';
+    if (lockDetail) {
+      const belief = marketStore.systemTruth?.currentBelief?.direction || 'NEUTRAL';
+      const confidence = Number.isFinite(marketStore.systemTruth?.currentBelief?.confidence) ? marketStore.systemTruth.currentBelief.confidence.toFixed(0) : '0';
+      lockDetail.textContent = `${marketStore.executionLockReason} · belief ${belief} @ ${confidence}%`;
+    }
+  }
+
+  if (staleBanner) {
+    const shouldShowStale = Boolean(marketStore.staleWarning);
+    staleBanner.classList.toggle('hidden', !shouldShowStale);
+    if (staleText) staleText.textContent = '⚠️ STALE DATA';
+    if (staleDetail) staleDetail.textContent = marketStore.staleWarning || 'Refreshing market state before retry.';
+  }
+}
+
+async function publishSystemTruth(force = false) {
+  const derivedTruth = deriveLocalSystemTruth();
+  const signature = buildTruthPublishSignature(derivedTruth);
+  if (!force && signature === _lastTruthPublishSignature) {
+    return marketStore.systemTruth;
+  }
+  if (_truthPublishInFlight && !force) {
+    return marketStore.systemTruth;
+  }
+
+  _truthPublishInFlight = true;
+  try {
+    const response = await fetch('/api/system-truth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        currentBelief: derivedTruth.currentBelief,
+        executionAllowed: derivedTruth.executionAllowed,
+        riskLevel: derivedTruth.riskLevel,
+        authority: derivedTruth.authority,
+        snapshotId: createClientSnapshotId(),
+        lastUpdated: Date.now(),
+      }),
+    });
+    if (!response.ok) throw new Error(`system-truth HTTP ${response.status}`);
+
+    const acknowledgedTruth = await response.json();
+    syncSystemTruthMirror(acknowledgedTruth, derivedTruth);
+    _lastTruthPublishSignature = signature;
+    return marketStore.systemTruth;
+  } catch (error) {
+    marketStore.setState({ staleWarning: 'System truth sync failed; retrying automatically.' });
+    console.warn('system truth publish failed:', error?.message || error);
+    return marketStore.systemTruth;
+  } finally {
+    _truthPublishInFlight = false;
+  }
+}
+
+function scheduleSystemTruthPublish(force = false) {
+  if (force) {
+    void publishSystemTruth(true);
+    return;
+  }
+  if (_truthPublishTimer) return;
+  _truthPublishTimer = setTimeout(() => {
+    _truthPublishTimer = null;
+    void publishSystemTruth();
+  }, 250);
+}
+
+async function forceMarketRefresh() {
+  await Promise.allSettled([
+    bootstrapCandles(),
+    pollOracle(),
+    pollDerivatives(),
+    fetchKalshiLive(),
+  ]);
+  await publishSystemTruth(true);
+}
+
+async function refreshPerformancePanel() {
+  if (_performanceRefreshInFlight) return;
+  _performanceRefreshInFlight = true;
+  try {
+    const response = await fetch('/api/performance', {
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!response.ok) throw new Error(`performance HTTP ${response.status}`);
+    marketStore.performanceStats = await response.json();
+  } catch (error) {
+    console.debug('performance refresh skipped:', error?.message || error);
+  } finally {
+    _performanceRefreshInFlight = false;
+  }
+}
+
+async function syncResolvedResults() {
+  if (_resultSyncInFlight) return;
+  const pending = (marketStore.signalLog || []).filter((entry) =>
+    entry?.resolved === true
+    && entry?.reported !== true
+    && (entry?.direction === 'UP' || entry?.direction === 'DOWN')
+    && (entry?.actual === 'UP' || entry?.actual === 'DOWN')
+    && Number.isFinite(entry?.confidence)
+  );
+  if (!pending.length) return;
+
+  _resultSyncInFlight = true;
+  let recordedAny = false;
+  try {
+    for (const entry of pending) {
+      const response = await fetch('/api/record-result', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(4000),
+        body: JSON.stringify({
+          direction: entry.direction,
+          actual: entry.actual,
+          confidence: entry.confidence,
+          riskLevel: entry.riskLevel || 'MEDIUM',
+        }),
+      });
+      if (!response.ok) throw new Error(`record-result HTTP ${response.status}`);
+      entry.reported = true;
+      recordedAny = true;
+    }
+
+    if (recordedAny) {
+      marketStore.signalLog = [...(marketStore.signalLog || [])];
+      await refreshPerformancePanel();
+    }
+  } catch (error) {
+    console.debug('result sync skipped:', error?.message || error);
+  } finally {
+    _resultSyncInFlight = false;
+  }
+}
 
 // ─────────────────────────────────────────────
 // WS STATUS — called by module bridge
@@ -842,8 +1450,7 @@ function updateWsSourceUI() {
   const src = marketStore.wsSource || '—';
   const sourceHelp = {
     coinbase: 'Primary Coinbase websocket feed',
-    kraken: 'Fallback Kraken websocket feed',
-    rest: 'REST polling fallback feed',
+    rest: 'Coinbase REST polling mode',
     '—': 'Waiting for first market update',
   };
   if (srcEl) {
@@ -852,21 +1459,20 @@ function updateWsSourceUI() {
     srcEl.title = sourceHelp[src] || sourceHelp['—'];
   }
 
-  const fallbackEnabled = !!marketStore.manualFallback;
   const restEnabled = !!marketStore.manualRest;
 
   if (toggle) {
-    toggle.classList.toggle('active', fallbackEnabled);
-    toggle.textContent = fallbackEnabled ? 'KRAKEN ON' : 'KRAKEN OFF';
-    toggle.title = fallbackEnabled ? 'Disable Kraken override (return to auto)' : 'Force Kraken websocket feed';
-    toggle.disabled = restEnabled;
+    toggle.classList.toggle('active', !restEnabled);
+    toggle.textContent = restEnabled ? 'LIVE OFF' : 'LIVE OK';
+    toggle.title = restEnabled ? 'Return to Coinbase live mode' : 'Reconnect Coinbase live feed';
+    toggle.disabled = false;
   }
 
   if (restToggle) {
     restToggle.classList.toggle('rest-active', restEnabled);
     restToggle.textContent = restEnabled ? 'REST ON' : 'REST OFF';
     restToggle.title = restEnabled ? 'Disable REST override (return to auto)' : 'Force Coinbase REST polling mode';
-    restToggle.disabled = fallbackEnabled;
+    restToggle.disabled = false;
   }
 
   if (typeof updateWsFreshnessUI === 'function') updateWsFreshnessUI();
@@ -898,17 +1504,16 @@ function updateWsFreshnessUI() {
 }
 
 function setWsControlMode(mode) {
-  const nextMode = ['auto', 'fallback', 'rest'].includes(mode) ? mode : 'auto';
-  marketStore.manualFallback = nextMode === 'fallback';
+  const nextMode = ['auto', 'rest'].includes(mode) ? mode : 'auto';
+  marketStore.manualFallback = false;
   marketStore.manualRest = nextMode === 'rest';
 
   const ws = globalThis._wsEngine;
   if (ws) {
     if (typeof ws.setManualMode === 'function') {
       ws.setManualMode(nextMode);
-    } else {
-      if (typeof ws.setManualFallback === 'function') ws.setManualFallback(nextMode === 'fallback');
-      if (typeof ws.setForceRest === 'function') ws.setForceRest(nextMode === 'rest');
+    } else if (typeof ws.setForceRest === 'function') {
+      ws.setForceRest(nextMode === 'rest');
     }
   }
 
@@ -916,7 +1521,18 @@ function setWsControlMode(mode) {
 }
 
 function toggleWsFallback() {
-  setWsControlMode(marketStore.manualFallback ? 'auto' : 'fallback');
+  if (marketStore.manualRest) {
+    setWsControlMode('auto');
+    return;
+  }
+
+  const ws = globalThis._wsEngine;
+  if (ws && typeof ws.reconnect === 'function') {
+    ws.reconnect();
+    return;
+  }
+
+  setWsControlMode('auto');
 }
 
 function toggleWsRest() {
@@ -928,18 +1544,17 @@ function toggleWsRest() {
 // ─────────────────────────────────────────────
 async function bootstrapCandles() {
   try {
-    const r = await fetch(
-      'https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=900&limit=200'
-    );
+    const r = await fetch('/api/ohlcv');
     const d = await r.json();
-    if (!Array.isArray(d)) throw new Error('bad candles');
-    const normalized = d.map(c => ({
-      time: Number(c?.[0]),
-      low: Number(c?.[1]),
-      high: Number(c?.[2]),
-      open: Number(c?.[3]),
-      close: Number(c?.[4]),
-      volume: Number(c?.[5]),
+    const rows = Array.isArray(d) ? d : d?.candles;
+    if (!Array.isArray(rows)) throw new Error('bad candles');
+    const normalized = rows.map(c => ({
+      time: Number(c?.time ?? c?.[0]),
+      low: Number(c?.low ?? c?.[1]),
+      high: Number(c?.high ?? c?.[2]),
+      open: Number(c?.open ?? c?.[3]),
+      close: Number(c?.close ?? c?.[4]),
+      volume: Number(c?.volume ?? c?.[5]),
     })).filter(c =>
       Number.isFinite(c.time)
       && Number.isFinite(c.low)
@@ -1156,6 +1771,58 @@ function getCalibrationStats(log){
   return {n,meanP,hitRate,bias,brier};
 }
 
+function getRegimeScoutCalibration(log, regime){
+  if(!Array.isArray(log)||!log.length||!regime) return null;
+  const resolved=log.filter(e=>
+    e?.resolved===true
+    && e?.regime===regime
+    && typeof e?.correct==='boolean'
+    && Number.isFinite(e?.trendP)
+    && Number.isFinite(e?.meanRevP)
+    && Number.isFinite(e?.flowP)
+  );
+  if(!resolved.length) return null;
+  const n=resolved.length;
+  const brier=(key)=>resolved.reduce((a,e)=>{
+    const y=e.correct?1:0;
+    return a+((e[key]-y)**2);
+  },0)/n;
+  return {
+    n,
+    trend: brier('trendP'),
+    meanRev: brier('meanRevP'),
+    flow: brier('flowP'),
+  };
+}
+
+function getAdaptiveRegimeWeights(baseWeights, regime, log){
+  const base=baseWeights[regime]||baseWeights.TRANSITIONAL;
+  const stats=getRegimeScoutCalibration(log, regime);
+  if(!stats||stats.n<8){
+    return {
+      trend: base.trend,
+      meanRev: base.meanRev,
+      volatility: base.volatility,
+      flow: base.flow,
+      sampleN: stats?.n||0,
+    };
+  }
+  const reliability=Math.min(1,stats.n/40);
+  const factor=(b)=>{
+    const raw=1+((0.25-b)*2.2);
+    const clamped=clamp(raw,0.65,1.45);
+    return 1+((clamped-1)*reliability);
+  };
+  const adj={
+    trend: base.trend*factor(stats.trend),
+    meanRev: base.meanRev*factor(stats.meanRev),
+    volatility: base.volatility,
+    flow: base.flow*factor(stats.flow),
+    sampleN: stats.n,
+  };
+  return adj;
+}
+
 function calibrateProbability(baseP,s,p){
   let out=clamp(baseP,0.05,0.95);
   const stats=getCalibrationStats(s.signalLog);
@@ -1183,6 +1850,7 @@ function computeIndicators() {
   const C = marketStore.candles;
   if (C.length < 22) return;
   const p=marketStore.price;
+  enforceKalshiManualTargetRoundScope();
   const closes = C.map(c=>c.close);
 
   const e9a=computeEMA(closes,9), e21a=computeEMA(closes,21);
@@ -1311,7 +1979,9 @@ function computeIndicators() {
     LOW_LIQUIDITY:  { trend:0.5, meanRev:0.8, volatility:0.9, flow:1.5 },
     TRANSITIONAL:   { trend:0.8, meanRev:0.8, volatility:0.9, flow:1 },
   };
-  const w = weights[regime] || weights.TRANSITIONAL;
+  const w = getAdaptiveRegimeWeights(weights, regime, marketStore.signalLog);
+  marketStore.adaptiveScoutWeights = w;
+  marketStore.adaptiveScoutSampleN = w.sampleN || 0;
   const sc = marketStore.scoutScores;
   const directionalScore = sc.trend*w.trend + sc.meanRev*w.meanRev + sc.flow*w.flow;
   const totalW = w.trend + w.meanRev + w.flow;
@@ -1325,6 +1995,7 @@ function computeIndicators() {
   const probEdge = Math.abs(marketStore.pAbove - 0.5) * 2;
   const confRaw = probEdge * (regimeConf / 100) * (marketStore.dataQuality || 1) * 100;
   marketStore.confidence = Math.round(clamp(confRaw, 5, 99));
+  updateKalshiTargetDecisionMetrics(marketStore);
 
   // ── 4-Scenario probabilities ──
   const pa = marketStore.pAbove;
@@ -1373,18 +2044,20 @@ function computeIndicators() {
   // Only override if no live Kalshi data
   if (!marketStore._kalshiLive) { marketStore.kalshiAbove = ka; marketStore.kalshiBelow = 100 - ka; }
 
-  // ── Kelly (Kalshi-correct: uses YES ask/bid prices, not even-money) ──
-  const _yesAsk = Number.isFinite(marketStore.kalshiAsk) ? marketStore.kalshiAsk : marketStore.kalshiAbove / 100;
-  const _yesBid = Number.isFinite(marketStore.kalshiBid) ? marketStore.kalshiBid : marketStore.kalshiAbove / 100;
-  const _noBidImplied = 1 - _yesBid; // cost of buying NO (complement of YES bid)
-  const _evAbove = marketStore.pAbove - _yesAsk;       // EV per $1 buying YES
-  const _evBelow = marketStore.pBelow - _noBidImplied; // EV per $1 buying NO
-  const _kfAbove = _evAbove > 0 ? Math.min(0.25, _evAbove / Math.max(0.01, 1 - _yesAsk)) : 0;
-  const _kfBelow = _evBelow > 0 ? Math.min(0.25, _evBelow / Math.max(0.01, 1 - _noBidImplied)) : 0;
-  const kf = Math.max(_kfAbove, _kfBelow);
-  const edge = marketStore.pAbove >= 0.5 ? _evAbove : _evBelow;
-  marketStore.kellyFull = kf; marketStore.kellyEdge = edge; marketStore.kellyWR = marketStore.pAbove;
-  marketStore.evAbove = _evAbove; marketStore.evBelow = _evBelow;
+  // ── Kelly (corrected formula using bid/ask) ──
+  const yesAsk = marketStore.kalshiAsk || marketStore.kalshiAbove / 100;
+  const yesBid = marketStore.kalshiBid || marketStore.kalshiAbove / 100;
+  const pDecisionAbove = Number.isFinite(marketStore.pDecisionAbove) ? marketStore.pDecisionAbove : marketStore.pAbove;
+  const pDecisionBelow = Number.isFinite(marketStore.pDecisionBelow) ? marketStore.pDecisionBelow : marketStore.pBelow;
+  const evAbove = pDecisionAbove - yesAsk;
+  const evBelow = pDecisionBelow - (1 - yesBid);
+  const kfAbove = evAbove > 0 ? Math.min(0.25, evAbove / (1 - yesAsk)) : 0;
+  const kfBelow = evBelow > 0 ? Math.min(0.25, evBelow / yesBid) : 0;
+  const kf = Math.max(kfAbove, kfBelow);
+  const edge = pDecisionAbove >= 0.5 ? evAbove : evBelow;
+  marketStore.kellyFull = kf;
+  marketStore.kellyEdge = edge;
+  marketStore.kellyWR = pDecisionAbove;
   marketStore.kalshiEV = edge;
 
   // ── Bet signal (current cycle) ──
@@ -1401,14 +2074,33 @@ function computeIndicators() {
     const log = marketStore.signalLog || [];
     const last = log[log.length - 1];
     if (!last || Date.now() - last.ts > 60000) {
-      log.push({ ts: Date.now(), verdict: marketStore.verdict, price: p, pAbove: marketStore.pAbove, conf: marketStore.confidence, resolved: false });
+      const beliefDirection = marketStore.systemTruth?.currentBelief?.direction;
+      let direction = 'UP';
+      if (beliefDirection === 'UP' || beliefDirection === 'DOWN') {
+        direction = beliefDirection;
+      } else if (marketStore.verdict === 'BELOW') {
+        direction = 'DOWN';
+      }
+      log.push({
+        ts: Date.now(),
+        verdict: marketStore.verdict,
+        direction,
+        price: p,
+        pAbove: marketStore.pAbove,
+        conf: marketStore.confidence,
+        confidence: clamp(marketStore.confidence, 0, 100),
+        resolved: false,
+        reported: false,
+        riskLevel: marketStore.systemTruth?.riskLevel || deriveLocalSystemTruth().riskLevel,
+        snapshotId: marketStore.systemTruth?.snapshotId || '',
+      });
+      const entry = log[log.length - 1];
+      entry.regime = marketStore.regime;
+      entry.trendP = clamp((marketStore.scoutScores?.trend + 1) / 2, 0.01, 0.99);
+      entry.meanRevP = clamp((marketStore.scoutScores?.meanRev + 1) / 2, 0.01, 0.99);
+      entry.flowP = clamp((marketStore.scoutScores?.flow + 1) / 2, 0.01, 0.99);
       if (log.length > 100) log.shift();
       marketStore.signalLog = log;
-      try {
-        localStorage.setItem('qdSignalLog', JSON.stringify(log));
-      } catch(e) {
-        console.debug('qdSignalLog persist skipped:', e?.message || e);
-      }
     }
   }
 
@@ -1423,9 +2115,11 @@ function computeIndicators() {
 
 function computeBetSignal() { // NOSONAR
   const s=marketStore;
-  const _emptyBet={active:false,alignment:0,bullSigs:0,totalSignals:14,verdict:'WAIT',conviction:0,
+  const pDecisionAbove = Number.isFinite(s.pDecisionAbove) ? s.pDecisionAbove : s.pAbove;
+  const pDecisionBelow = Number.isFinite(s.pDecisionBelow) ? s.pDecisionBelow : s.pBelow;
+  const _emptyBet={active:false,alignment:0,bullSigs:0,verdict:'WAIT',conviction:0,
     reasons:[],crossType:'NONE',emaSpread:s.emaSpread||0,slopeP:0,kEdge:0,
-    ev:0,roundPhase:'open',signalActiveDuration:null,convictionNote:''};
+    ev:0,timingLabel:'—',timingClass:'',activeDuration:0,roundPhase:'open'};
   if(!s.candles.length||!s.price) return _emptyBet;
   const closes=s.candles.map(c=>c.close);
   const e9a=computeEMA(closes,9), e21a=computeEMA(closes,21);
@@ -1441,97 +2135,68 @@ function computeBetSignal() { // NOSONAR
   else if (crossedBear) crossType='DEATH_CROSS';
   else if (e9>e21) crossType='BULL_ALIGNED';
 
-  // ── 14-Signal ensemble ──
-  // Signals 1-10 (original)
   const base10=[
     s.price>s.vwap, s.rsi>50&&s.rsi<75,
     s.macd>s.macdSig, e9>e21, s.cvd>0,
     slopeE9>0, slopeE21>0, slopeP>0,
-    (s.regime==='TRENDING'||s.regime==='VOL_EXPANSION')&&s.pAbove>=0.5,
-    s.imbalance>0,
+    (s.regime==='TRENDING'||s.regime==='VOL_EXPANSION')&&s.pAbove>=0.5, s.imbalance>0,
   ];
   const roughBull=base10.filter(Boolean).length>=5;
-  // Last bar price change for ATR momentum
-  const lastClose=closes[closes.length-1]||0;
-  const prev4Close=closes.length>=4?closes[closes.length-4]:lastClose;
-  const lastMove=lastClose-prev4Close;
-  // Signals 11-14 (new)
-  const sig11=roughBull?s.stoch>50:s.stoch<50;                                          // Stoch directional
-  const sig12=roughBull?(s.kalmanVelocity||0)>0:(s.kalmanVelocity||0)<0;               // Kalman velocity
-  const sig13=roughBull?(s.fundingRate||0)<-0.0001:(s.fundingRate||0)>0.0001;           // Funding alignment
-  const sig14=roughBull?(lastMove>0&&Math.abs(lastMove)>(s.atr||0)*0.3)               // ATR momentum
-                       :(lastMove<0&&Math.abs(lastMove)>(s.atr||0)*0.3);
+  const closes_=closes;
+  const lastClose=closes_[closes_.length-1]||0;
+  const prevClose=closes_[closes_.length-2]||lastClose;
+  const lastMove=lastClose-prevClose;
+  const sig11=roughBull?s.stoch>50:s.stoch<50;
+  const sig12=roughBull?(s.kalmanVelocity||0)>0:(s.kalmanVelocity||0)<0;
+  const sig13=roughBull?(s.fundingRate||0)<-0.0001:(s.fundingRate||0)>0.0001;
+  const sig14=roughBull
+    ?(lastMove>0&&Math.abs(lastMove)>(s.atr||0)*0.3)
+    :(lastMove<0&&Math.abs(lastMove)>(s.atr||0)*0.3);
   const allSigs=[...base10,sig11,sig12,sig13,sig14];
   const bsigs=allSigs.filter(Boolean).length;
   const align=bsigs/14;
 
   const trajBull=slopeP>0&&slopeE9>0&&slopeE21>0;
   const trajBear=slopeP<0&&slopeE9<0&&slopeE21<0;
-  // Use actual Kalshi ask/bid for edge (not mid)
-  const yesAsk=Number.isFinite(s.kalshiAsk)?s.kalshiAsk:s.kalshiAbove/100;
-  const yesBid=Number.isFinite(s.kalshiBid)?s.kalshiBid:s.kalshiAbove/100;
-  const noBidImpl=1-yesBid;
-  const evAbove=s.pAbove-yesAsk;
-  const evBelow=s.pBelow-noBidImpl;
-  const kEdge=Math.max(Math.abs(evAbove),Math.abs(evBelow));
-
+  const kEdge=Math.abs(pDecisionAbove-s.kalshiAbove/100);
   const quality=Number.isFinite(s.dataQuality)?s.dataQuality:1;
   const confGate=clamp((s.confidence||0)/100,0.4,1);
   const probGate=0.63+((1-quality)*0.07);
-  // Gates scaled for /14 denominator (≈9.5/14 bull, ≈4.5/14 bear)
   const alignBullGate=0.65+((1-quality)*0.06);
   const alignBearGate=0.35-((1-quality)*0.06);
+
+  const isBull=align>=alignBullGate&&trajBull&&e9>e21&&slopeE9>0&&pDecisionAbove>=probGate;
+  const isBear=align<=alignBearGate&&trajBear&&e9<e21&&slopeE9<0&&pDecisionBelow>=probGate;
   const edgeGate=0.04+((1-quality)*0.02);
+  const active=(isBull||isBear)&&kEdge>=edgeGate&&quality>=0.55&&confGate>=0.5;
+  let verdict='WAIT';
+  if (isBull) verdict='ABOVE';
+  else if (isBear) verdict='BELOW';
 
-  const isBull=align>=alignBullGate&&trajBull&&e9>e21&&slopeE9>0&&s.pAbove>=probGate;
-  const isBear=align<=alignBearGate&&trajBear&&e9<e21&&slopeE9<0&&s.pBelow>=probGate;
+  const roundStart=Math.floor(Date.now()/900000)*900000;
+  if(_signalLockRoundTs!==roundStart){_signalLockVerdict=null;_signalLockRoundTs=roundStart;}
+  if(active&&!_signalLockVerdict) _signalLockVerdict=verdict;
+  if(active&&_signalLockVerdict&&verdict!==_signalLockVerdict&&align>0.35&&align<0.65)
+    verdict=_signalLockVerdict;
 
-  // ── Round phase awareness ──
-  const kRound=kalshiRound();
-  const {secsLeft,phase:roundPhase}=kRound;
-
-  // ── Signal lock (prevents direction flip within a round) ──
-  const roundBoundaryMs=Math.ceil(Date.now()/900000)*900000;
-  if(_signalLockRoundTs!==roundBoundaryMs){
-    _signalLockVerdict=null;
-    _signalLockRoundTs=roundBoundaryMs;
-  }
-
-  let rawVerdict='WAIT';
-  if(isBull) rawVerdict='ABOVE';
-  else if(isBear) rawVerdict='BELOW';
-
-  const rawActive=(isBull||isBear)&&kEdge>=edgeGate&&quality>=0.55&&confGate>=0.5;
-
-  // Apply lock: hold direction unless alignment strongly reversed
-  let verdict=rawVerdict;
-  if(rawActive&&rawVerdict!=='WAIT'){
-    if(!_signalLockVerdict) _signalLockVerdict=rawVerdict;
-    // Only allow flip if signal alignment is strong (>65% or <35%)
-    const strongReversal=align>0.65||align<0.35;
-    if(!strongReversal&&_signalLockVerdict&&_signalLockVerdict!==rawVerdict){
-      verdict=_signalLockVerdict; // maintain locked direction
-    }
-  } else if(!rawActive){
-    // Reset lock at round boundary (lock was already reset above via roundBoundaryMs check)
-  }
-  const active=rawActive;
-
-  // ── Signal active duration ──
   if(active&&!_signalActiveTs) _signalActiveTs=Date.now();
   if(!active) _signalActiveTs=null;
-  const signalActiveDuration=active&&_signalActiveTs?Math.floor((Date.now()-_signalActiveTs)/1000):null;
+  const activeDuration=(active&&_signalActiveTs)?Math.floor((Date.now()-_signalActiveTs)/1000):0;
 
-  // ── Phase-aware conviction ──
-  let phaseConvMult=1.0, convictionNote='';
-  if(roundPhase==='closing'){phaseConvMult=0.65;convictionNote='CLOSING — HIGH RISK';}
-  else if(roundPhase==='caution'){phaseConvMult=0.85;convictionNote='LATE ENTRY (-15%)';}
+  const kRound=kalshiRound();
+  let phaseConvMult=1,timingLabel='OPTIMAL ENTRY',timingClass='tl-open';
+  if(kRound.secsLeft<=120){phaseConvMult=0.75;timingLabel='CLOSING - LOCK/WAIT';timingClass='tl-closing';}
+  else if(kRound.secsLeft<=300){phaseConvMult=0.88;timingLabel='CAUTION - LATE ENTRY';timingClass='tl-caution';}
   const conviction=active?Math.round(clamp(Math.max(align,1-align)*quality*confGate*phaseConvMult*100,0,99)):0;
 
-  const isBullDir=verdict==='ABOVE';
-  const ev=isBullDir?evAbove:evBelow;
+  const _yesAsk=s.kalshiAsk||s.kalshiAbove/100;
+  const _yesBid=s.kalshiBid||s.kalshiAbove/100;
+  const evAbove_=pDecisionAbove-_yesAsk;
+  const evBelow_=pDecisionBelow-(1-_yesBid);
+  let ev=0;
+  if (isBull) ev=evAbove_;
+  else if (isBear) ev=evBelow_;
 
-  // ── Reasons ──
   const reasons=[];
   if(isBull||isBear){
     const d=isBull;
@@ -1545,26 +2210,31 @@ function computeBetSignal() { // NOSONAR
     }
     const _regimeBull=['TRENDING','VOL_EXPANSION'],_regimeBear=['MEAN_REVERTING','RANGING'];
     const _regimeMatch=d?_regimeBull.includes(s.regime):_regimeBear.includes(s.regime);
-    let regimeType='warn'; if(_regimeMatch) regimeType=d?'bull':'bear';
-    let edgeType='warn'; if(kEdge>=0.08) edgeType=d?'bull':'bear';
-    let qualityType='warn'; if(quality>=0.75) qualityType=d?'bull':'bear';
+    let regimeType='warn';
+    if (_regimeMatch) regimeType=d?'bull':'bear';
+    let edgeType='warn';
+    if (kEdge>=0.08) edgeType=d?'bull':'bear';
+    let qualityType='warn';
+    if(quality>=0.75) qualityType=d?'bull':'bear';
     reasonsCore.push(
       {t:regimeType,txt:`Regime: ${s.regime.replaceAll('_',' ')} ${_regimeMatch?'✓':'⚠'}`},
       {t:edgeType,txt:`Kalshi edge ${(kEdge*100).toFixed(1)}% ${kEdge>=0.08?'— strong':'— moderate'}`},
       {t:qualityType,txt:`Feed quality ${(quality*100).toFixed(0)}% · confidence ${s.confidence||0}%`}
     );
-    // Kalman velocity reason
-    const kVel=s.kalmanVelocity||0;
-    const kVelOk=d?kVel>0:kVel<0;
-    reasonsCore.push({t:kVelOk?(d?'bull':'bear'):'warn',
-      txt:`Kalman velocity ${kVel>0?'▲':'▼'} ${Math.abs(kVel).toFixed(2)}/tick ${kVelOk?'✓':'⚠ diverging'}`});
-    if(convictionNote) reasonsCore.push({t:'warn',txt:`⚠ ${convictionNote}`});
+    if (Number.isFinite(s.kalshiTargetDistance)) {
+      const dist = s.kalshiTargetDistance;
+      const distTxt = `${dist >= 0 ? '+' : ''}${dist.toFixed(0)}`;
+      reasonsCore.push({
+        t: d ? 'bull' : 'bear',
+        txt: `Target distance ${distTxt} · blend ${(Number(s.kalshiTargetBlend || 0) * 100).toFixed(0)}%`
+      });
+    }
     reasons.push(...reasonsCore);
   }
 
-  return {active,verdict,conviction,bullSigs:bsigs,totalSignals:14,alignment:align,
-    crossType,reasons,emaSpread:s.emaSpread,slopeP,kEdge,
-    ev,evAbove,evBelow,roundPhase,signalActiveDuration,convictionNote};
+  return {active,verdict,conviction,bullSigs:bsigs,alignment:align,crossType,reasons,
+    emaSpread:s.emaSpread,slopeP,kEdge,
+    ev,timingLabel,timingClass,activeDuration,roundPhase:kRound.phase};
 }
 
 // ─────────────────────────────────────────────
@@ -1956,80 +2626,450 @@ function playSignalBeep(direction){
 let _soundEnabled=true;
 let _lastSignalVerdict=null;
 let _signalAlertTimer=null;
-// Signal lock — prevents direction flip-flop within a round
 let _signalLockVerdict=null;
 let _signalLockRoundTs=null;
 let _signalActiveTs=null;
 // ── Kalshi 15-min round countdown helper ──
-function updateKalshiCountdownDisplay(kr) {
-  const {secsLeft,mmss,phase}=kr;
-  // SVG arc (circumference of r=34 circle ≈ 213.6)
-  const arc=document.getElementById('kArcRing');
-  if(arc){
-    const circ=213.6;
-    const totalSecs=kr.totalMs?Math.max(900,kr.totalMs/1000):900;
-    arc.setAttribute('stroke-dashoffset',(circ*(1-secsLeft/totalSecs)).toFixed(2));
-    arc.setAttribute('stroke',phase==='closing'?'var(--red)':phase==='caution'?'var(--amber)':'var(--green)');
-  }
-  const arcTxt=document.getElementById('kArcTime');
-  if(arcTxt){
-    arcTxt.textContent=mmss;
-    arcTxt.setAttribute('fill',phase==='closing'?'#ff1744':phase==='caution'?'#ffab00':'#eeeef5');
-  }
-  const arcPhase=document.getElementById('kArcPhase');
-  if(arcPhase){
-    arcPhase.textContent=phase==='closing'?'CLOSING':phase==='caution'?'CAUTION':'OPEN';
-    arcPhase.setAttribute('fill',phase==='closing'?'#ff1744':phase==='caution'?'#ffab00':'#00e676');
-  }
-  // Closes-at text
-  const closesEl=document.getElementById('kClosesAt');
-  if(closesEl){
-    const closeTs=marketStore._kalshiCloseTs&&marketStore._kalshiCloseTs>Date.now()
-      ?marketStore._kalshiCloseTs
-      :Math.ceil(Date.now()/900000)*900000;
-    const d=new Date(closeTs);
-    closesEl.textContent=`CLOSES AT ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
-  }
-  // Entry guidance
-  const guideEl=document.getElementById('kEntryGuide');
-  if(guideEl){
-    if(secsLeft<=120){guideEl.textContent='CLOSING — LOCK BET / WAIT NEXT';guideEl.className='k-entry-guide eg-closing';}
-    else if(secsLeft<=300){guideEl.textContent='CAUTION ZONE — LATE ENTRY';guideEl.className='k-entry-guide eg-caution';}
-    else{guideEl.textContent='OPTIMAL ENTRY WINDOW';guideEl.className='k-entry-guide eg-open';}
-  }
-  // Keep legacy kCountdown/kPhase for renderAll compat
-  const cdEl=document.getElementById('kCountdown');
-  if(cdEl){cdEl.textContent=mmss;cdEl.style.color=phase==='closing'?'var(--red)':phase==='caution'?'var(--amber)':'var(--green)';}
-  const phEl=document.getElementById('kPhase');
-  if(phEl){phEl.textContent=phase==='closing'?'CLOSING':phase==='caution'?'CAUTION':'OPEN';phEl.className='k-phase '+phase;}
-}
-setInterval(()=>updateKalshiCountdownDisplay(kalshiRound()),250);
-
 function kalshiRound() {
   const now = Date.now();
-  // Use actual Kalshi market close time if available and in the future
-  const actualCloseTs = marketStore._kalshiCloseTs;
-  let nextClose;
-  let totalMs;
-  if (actualCloseTs && actualCloseTs > now) {
-    nextClose = actualCloseTs;
-    // Estimate window size: cap at 24h for display purposes
-    totalMs = Math.min(actualCloseTs - (marketStore._kalshiOpenTs || now - 900000), 86400000);
-  } else {
-    // Fallback: synthetic 15-min window aligned to clock
-    const roundMs = 900000;
-    nextClose = Math.ceil(now / roundMs) * roundMs;
-    totalMs = roundMs;
-  }
+  const roundMs = 900000; // 15 min in ms
+  const roundStart = Math.floor(now / roundMs) * roundMs;
+  const nextClose = Math.ceil(now / roundMs) * roundMs;
   const msLeft = nextClose - now;
-  const secsLeft = Math.max(0, Math.floor(msLeft / 1000));
+  const secsLeft = Math.floor(msLeft / 1000);
   const m = Math.floor(secsLeft / 60);
   const s = secsLeft % 60;
   const mmss = `${m}:${String(s).padStart(2,'0')}`;
   let phase = 'open';
   if (secsLeft <= 90) phase = 'closing';
   else if (secsLeft <= 300) phase = 'caution';
-  return { msLeft, secsLeft, mmss, phase, totalMs };
+  return { msLeft, secsLeft, mmss, phase, roundStart, nextClose };
+}
+
+function getKalshiRoundStartMs(ts = Date.now()) {
+  return Math.floor(ts / 900000) * 900000;
+}
+
+function formatKalshiTargetPrice(value) {
+  return Number.isFinite(value) ? `$${Math.round(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—';
+}
+
+function getAutoKalshiTargetPrice() {
+  if (Number.isFinite(marketStore.price) && marketStore.price > 0) return marketStore.price;
+  if (Number.isFinite(marketStore.kalmanPrice) && marketStore.kalmanPrice > 0) return marketStore.kalmanPrice;
+  return null;
+}
+
+function getActiveKalshiTargetPrice() {
+  if (Number.isFinite(marketStore.kalshiManualTargetPrice) && marketStore.kalshiManualTargetPrice > 0) {
+    return marketStore.kalshiManualTargetPrice;
+  }
+  return getAutoKalshiTargetPrice();
+}
+
+function pushKalshiTargetSparkPoint(s, roundStart, pDecisionAbove) {
+  if (s.kalshiTargetSparkRoundTs !== roundStart) {
+    s.kalshiTargetSparkRoundTs = roundStart;
+    s.kalshiTargetSpark = [];
+    s.kalshiTargetSparkLastTs = 0;
+  }
+  const now = Date.now();
+  const lastTs = Number.isFinite(s.kalshiTargetSparkLastTs) ? s.kalshiTargetSparkLastTs : 0;
+  if (!Array.isArray(s.kalshiTargetSpark)) s.kalshiTargetSpark = [];
+  if (!s.kalshiTargetSpark.length || now - lastTs >= 3000) {
+    s.kalshiTargetSpark.push(clamp(pDecisionAbove, 0.03, 0.97));
+    if (s.kalshiTargetSpark.length > 220) s.kalshiTargetSpark.shift();
+    s.kalshiTargetSparkLastTs = now;
+  }
+}
+
+function updateKalshiTargetDecisionMetrics(s = marketStore) {
+  const baseAbove = clamp(Number.isFinite(s.pAbove) ? s.pAbove : 0.5, 0.05, 0.95);
+  const activeTarget = getActiveKalshiTargetPrice();
+  const px = Number.isFinite(s.price) && s.price > 0 ? s.price : null;
+  const quality = clamp(Number.isFinite(s.dataQuality) ? s.dataQuality : 1, 0.35, 1);
+  const kr = kalshiRound();
+  const hasManual = Number.isFinite(s.kalshiManualTargetPrice) && s.kalshiManualTargetPrice > 0;
+  let pDecisionAbove = baseAbove;
+
+  if (!Number.isFinite(activeTarget) || !px) {
+    s.kalshiTargetDistance = 0;
+    s.kalshiTargetDistancePct = 0;
+    s.kalshiTargetBlend = 0;
+    s.kalshiTargetOnlyAbove = baseAbove;
+  } else {
+    const atr = Number.isFinite(s.atr) && s.atr > 0 ? s.atr : null;
+    const scale = Math.max((atr || 0) * 1.1, px * 0.0015, 35);
+    const targetDistance = activeTarget - px;
+    const requiredMoveNorm = clamp(targetDistance / scale, -5, 5);
+
+    // Positive required move means ABOVE is harder, so probability should decay.
+    const pTargetOnlyAbove = 1 / (1 + Math.exp(requiredMoveNorm * 1.35));
+    let blend = 0.4 + Math.min(0.25, Math.abs(requiredMoveNorm) * 0.08);
+    if (kr.secsLeft <= 300) blend += 0.08;
+    if (hasManual) blend += 0.08;
+    blend += (1 - quality) * 0.06;
+    blend = clamp(blend, 0.35, 0.82);
+
+    pDecisionAbove = clamp((baseAbove * (1 - blend)) + (pTargetOnlyAbove * blend), 0.03, 0.97);
+    s.kalshiTargetDistance = targetDistance;
+    s.kalshiTargetDistancePct = px > 0 ? (targetDistance / px) * 100 : 0;
+    s.kalshiTargetBlend = blend;
+    s.kalshiTargetOnlyAbove = pTargetOnlyAbove;
+  }
+  s.pDecisionAbove = pDecisionAbove;
+  s.pDecisionBelow = 1 - pDecisionAbove;
+  s.verdictDecision = pDecisionAbove >= 0.5 ? 'ABOVE' : 'BELOW';
+  pushKalshiTargetSparkPoint(s, kr.roundStart, pDecisionAbove);
+}
+
+function renderKalshiTargetSparkline(s = marketStore) {
+  const pathEl = document.getElementById('kTaSparkPath');
+  const dotEl = document.getElementById('kTaSparkDot');
+  const metaEl = document.getElementById('kTaSparkMeta');
+  if (!pathEl || !dotEl) return;
+  const points = Array.isArray(s.kalshiTargetSpark) ? s.kalshiTargetSpark : [];
+  const w = 120;
+  const h = 26;
+  const pad = 2;
+  const kr = kalshiRound();
+  const elapsedPct = clamp((1 - (kr.msLeft / 900000)) * 100, 0, 100);
+
+  if (metaEl) {
+    metaEl.textContent = `${points.length} pts · ${elapsedPct.toFixed(0)}% round`;
+  }
+
+  if (!points.length) {
+    pathEl.setAttribute('d', `M${pad} ${h / 2} L${w - pad} ${h / 2}`);
+    dotEl.setAttribute('cx', String(w - pad));
+    dotEl.setAttribute('cy', String(h / 2));
+    pathEl.style.stroke = 'var(--t3)';
+    dotEl.style.fill = 'var(--t3)';
+    return;
+  }
+
+  const n = points.length;
+  const d = points.map((v, i) => {
+    const x = n === 1 ? w - pad : pad + (i / (n - 1)) * (w - pad * 2);
+    const y = pad + (1 - clamp(v, 0.03, 0.97)) * (h - pad * 2);
+    return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`;
+  }).join(' ');
+  pathEl.setAttribute('d', d);
+
+  const last = clamp(points[n - 1], 0.03, 0.97);
+  const lastX = w - pad;
+  const lastY = pad + (1 - last) * (h - pad * 2);
+  dotEl.setAttribute('cx', String(lastX));
+  dotEl.setAttribute('cy', String(lastY.toFixed(2)));
+  const tone = last >= 0.5 ? 'var(--green)' : 'var(--red)';
+  pathEl.style.stroke = tone;
+  dotEl.style.fill = tone;
+}
+
+function syncKalshiTargetUI() {
+  const input = document.getElementById('kTargetInput');
+  const meta = document.getElementById('kTargetMeta');
+  const heroVal = document.getElementById('kTargetHeroVal');
+  const heroPill = document.getElementById('kTargetHeroPill');
+  if (input) {
+    const isEditing = document.activeElement === input;
+    const hasManual = Number.isFinite(marketStore.kalshiManualTargetPrice) && marketStore.kalshiManualTargetPrice > 0;
+    const hasDraft = input.dataset.draftActive === '1';
+    const draftValue = input.dataset.draftValue ?? '';
+    const nextValue = hasManual ? String(Math.round(marketStore.kalshiManualTargetPrice)) : '';
+    if (hasManual) {
+      input.dataset.draftActive = '0';
+      input.dataset.draftValue = '';
+    }
+    if (!isEditing && !hasDraft && input.value !== nextValue) input.value = nextValue;
+    if (!isEditing && hasDraft && !hasManual && input.value !== draftValue) input.value = draftValue;
+  }
+  if (meta) {
+    const manual = Number.isFinite(marketStore.kalshiManualTargetPrice) && marketStore.kalshiManualTargetPrice > 0;
+    const activeTarget = getActiveKalshiTargetPrice();
+    const suffix = (!manual && marketStore.kalshiTargetExpiryNotice)
+      ? ` · ${marketStore.kalshiTargetExpiryNotice}`
+      : '';
+    meta.textContent = manual
+      ? `MANUAL TARGET ACTIVE · ${formatKalshiTargetPrice(activeTarget)}`
+      : `AUTO TARGET · ${formatKalshiTargetPrice(activeTarget)}${suffix}`;
+    meta.className = `k-top-target-meta ${manual ? 'manual' : ''}`;
+  }
+  if (heroVal || heroPill) {
+    const manual = Number.isFinite(marketStore.kalshiManualTargetPrice) && marketStore.kalshiManualTargetPrice > 0;
+    const activeTarget = getActiveKalshiTargetPrice();
+    if (heroVal) {
+      heroVal.textContent = formatKalshiTargetPrice(activeTarget);
+      heroVal.className = `k-top-target-val ${manual ? 'manual' : ''}`;
+    }
+    if (heroPill) {
+      heroPill.textContent = manual ? 'MANUAL' : 'AUTO';
+      heroPill.className = `k-top-target-pill ${manual ? 'pill-manual' : 'pill-auto'}`;
+    }
+  }
+}
+
+function syncKalshiWhyNowUI(s = marketStore) {
+  const whySub = document.getElementById('kWhySub');
+  const why1 = document.getElementById('kWhy1');
+  const why2 = document.getElementById('kWhy2');
+  const why3 = document.getElementById('kWhy3');
+  if (!whySub || !why1 || !why2 || !why3) return;
+
+  const regime = (s.regime || 'TRANSITIONAL').replaceAll('_', ' ');
+  const regimeConf = Number.isFinite(s.regimeConf) ? `${Math.round(s.regimeConf)}%` : '—';
+  const pDecisionAbove = Number.isFinite(s.pDecisionAbove) ? s.pDecisionAbove : s.pAbove;
+  const directionalEdge = Number.isFinite(pDecisionAbove) && Number.isFinite(s.kalshiAbove)
+    ? (pDecisionAbove - s.kalshiAbove / 100)
+    : 0;
+  const edgePct = `${directionalEdge >= 0 ? '+' : ''}${(directionalEdge * 100).toFixed(1)}%`;
+  const betData = s.betData || {};
+  const timing = betData.timingLabel || '—';
+  const conviction = Number.isFinite(betData.conviction) ? `${betData.conviction}%` : '—';
+  const active = betData.active === true;
+  let regimeTone = '';
+  if (regime.includes('TREND') || regime.includes('VOL')) {
+    regimeTone = 'why-bull';
+  } else if (regime.includes('MEAN') || regime.includes('RANGE')) {
+    regimeTone = 'why-warn';
+  }
+  let edgeTone = 'why-warn';
+  if (directionalEdge > 0) {
+    edgeTone = 'why-bull';
+  } else if (directionalEdge < 0) {
+    edgeTone = 'why-bear';
+  }
+  let timingTone = '';
+  if (timing.includes('CLOSING')) {
+    timingTone = 'why-warn';
+  } else if (active) {
+    timingTone = 'why-bull';
+  }
+  const timingLive = betData.activeDuration ? ' · ' + betData.activeDuration + 's live' : '';
+    let kalshiEvText = '—';
+    if (Number.isFinite(s.kalshiEV)) {
+      kalshiEvText = (s.kalshiEV >= 0 ? '+' : '') + (s.kalshiEV * 100).toFixed(1) + '¢ EV';
+    }
+
+  whySub.textContent = active ? `CONVICTION ${conviction}` : 'STANDBY';
+
+  const setPill = (el, label, value, tone) => {
+    el.className = `k-why-pill ${tone || ''}`.trim();
+    el.innerHTML = `<span class="why-k">${label}</span><span class="why-v">${value}</span>`;
+  };
+
+  setPill(why1, 'REGIME', `${regime} · ${regimeConf}`, regimeTone);
+  setPill(why2, 'EDGE', `${edgePct} · ${kalshiEvText}`, edgeTone);
+  setPill(why3, 'TIMING', timing + timingLive, timingTone);
+}
+
+function setKalshiManualTargetPrice(value) {
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return clearKalshiManualTargetPrice();
+  }
+
+  const roundStart = getKalshiRoundStartMs();
+  marketStore.kalshiManualTargetPrice = parsed;
+  marketStore.kalshiManualTargetRoundTs = roundStart;
+  marketStore.kalshiTargetSource = 'manual';
+  marketStore.kalshiTargetExpiryNotice = '';
+  updateKalshiTargetDecisionMetrics(marketStore);
+  syncKalshiTargetUI();
+  return parsed;
+}
+
+function clearKalshiManualTargetPrice(reason = 'manual') {
+  marketStore.kalshiManualTargetPrice = null;
+  marketStore.kalshiManualTargetRoundTs = null;
+  marketStore.kalshiTargetSource = 'auto';
+  marketStore.kalshiTargetExpiryNotice = reason === 'round' ? 'ROUND RESET' : '';
+  updateKalshiTargetDecisionMetrics(marketStore);
+  syncKalshiTargetUI();
+  return null;
+}
+
+function enforceKalshiManualTargetRoundScope(roundInfo = kalshiRound()) {
+  const hasManual = Number.isFinite(marketStore.kalshiManualTargetPrice) && marketStore.kalshiManualTargetPrice > 0;
+  if (!hasManual) return false;
+  const manualRoundTs = Number.isFinite(marketStore.kalshiManualTargetRoundTs)
+    ? marketStore.kalshiManualTargetRoundTs
+    : null;
+  if (manualRoundTs !== roundInfo.roundStart) {
+    clearKalshiManualTargetPrice('round');
+    return true;
+  }
+  return false;
+}
+
+function hydrateKalshiTargetPrice() {
+  marketStore.kalshiManualTargetPrice = null;
+  marketStore.kalshiManualTargetRoundTs = null;
+  marketStore.kalshiTargetSource = 'auto';
+  marketStore.kalshiTargetExpiryNotice = '';
+  updateKalshiTargetDecisionMetrics(marketStore);
+  syncKalshiTargetUI();
+}
+
+function setupKalshiTargetControls() {
+  const input = document.getElementById('kTargetInput');
+  const apply = document.getElementById('kTargetApply');
+  const clear = document.getElementById('kTargetClear');
+  if (!input || !apply || !clear) return;
+
+  const normalize = v => String(v ?? '').trim().replaceAll(',', '');
+  const commit = () => {
+    const raw = normalize(input.value || input.dataset.draftValue || '');
+    const applied = setKalshiManualTargetPrice(raw);
+    if (Number.isFinite(applied) && applied > 0) {
+      input.dataset.draftActive = '0';
+      input.dataset.draftValue = '';
+    } else {
+      input.dataset.draftActive = '1';
+      input.dataset.draftValue = raw;
+    }
+    return applied;
+  };
+
+  input.addEventListener('input', () => {
+    input.dataset.draftActive = '1';
+    input.dataset.draftValue = input.value;
+  });
+
+  apply.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    commit();
+  });
+
+  apply.addEventListener('click', e => {
+    e.preventDefault();
+    commit();
+  });
+
+  clear.addEventListener('click', () => {
+    input.value = '';
+    input.dataset.draftActive = '0';
+    input.dataset.draftValue = '';
+    clearKalshiManualTargetPrice();
+  });
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') commit();
+    if (e.key === 'Escape') {
+      input.value = '';
+      input.dataset.draftActive = '0';
+      input.dataset.draftValue = '';
+      clearKalshiManualTargetPrice();
+    }
+  });
+}
+
+function syncKalshiManualUI() {
+  const input = document.getElementById('kManualInput');
+  const meta = document.getElementById('kManualMeta');
+  const manual = Number.isFinite(marketStore.kalshiManualAbovePct) && marketStore.kalshiManualAbovePct >= 0 && marketStore.kalshiManualAbovePct <= 100;
+  if (input) {
+    const nextValue = manual ? String(Math.round(marketStore.kalshiManualAbovePct)) : '';
+    if (input.value !== nextValue) input.value = nextValue;
+  }
+  if (meta) {
+    const activeAbove = manual ? marketStore.kalshiManualAbovePct : marketStore.kalshiAbove;
+    meta.textContent = manual
+      ? `MANUAL ABOVE% ACTIVE · ${Math.round(activeAbove)} / ${Math.round(100 - activeAbove)} split`
+      : `LIVE ABOVE% · ${Math.round(activeAbove)} / ${Math.round(100 - activeAbove)} split`;
+    meta.className = `k-manual-meta ${manual ? 'manual' : ''}`;
+  }
+}
+
+function applyKalshiManual(value) {
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) {
+    return clearKalshiManual();
+  }
+
+  const nextAbove = Math.round(parsed);
+  marketStore.kalshiManualAbovePct = nextAbove;
+  marketStore.kalshiAbove = nextAbove;
+  marketStore.kalshiBelow = 100 - nextAbove;
+  marketStore.kalshiAboveSource = 'manual';
+  marketStore._kalshiLive = true;
+  syncKalshiManualUI();
+  if (typeof render === 'function') render();
+  return nextAbove;
+}
+
+function clearKalshiManual() {
+  marketStore.kalshiManualAbovePct = null;
+  marketStore.kalshiAboveSource = 'live';
+  marketStore._kalshiLive = false;
+  syncKalshiManualUI();
+  if (typeof render === 'function') render();
+  void fetchKalshiLive();
+  return null;
+}
+
+function hydrateKalshiManualAbove() {
+  marketStore.kalshiManualAbovePct = null;
+  marketStore.kalshiAboveSource = 'live';
+  syncKalshiManualUI();
+}
+
+function setupKalshiManualControls() {
+  const input = document.getElementById('kManualInput');
+  const apply = document.getElementById('kManualApply');
+  const clear = document.getElementById('kManualClear');
+  if (!input || !apply || !clear) return;
+  const commit = () => applyKalshiManual(input.value);
+  apply.addEventListener('click', commit);
+  clear.addEventListener('click', () => {
+    input.value = '';
+    clearKalshiManual();
+  });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') commit();
+    if (e.key === 'Escape') {
+      input.value = '';
+      clearKalshiManual();
+    }
+  });
+}
+
+function updateKalshiCountdownDisplay(kr) {
+  let phaseColor='var(--green)';
+  let phaseLabel='OPEN';
+  if (kr.phase==='closing') {
+    phaseColor='var(--red)';
+    phaseLabel='CLOSING';
+  } else if (kr.phase==='caution') {
+    phaseColor='var(--amber)';
+    phaseLabel='CAUTION';
+  }
+  const cdEl=document.getElementById('kCountdown');
+  if(cdEl){
+    cdEl.textContent=kr.mmss;
+    cdEl.style.color=phaseColor;
+  }
+  const phEl=document.getElementById('kPhase');
+  if(phEl){
+    phEl.textContent=phaseLabel;
+    phEl.className='k-phase '+kr.phase;
+  }
+  const arc=document.getElementById('kRingArc');
+  if(arc){
+    const circ=163.4;
+    arc.style.strokeDashoffset=String(circ*(1-kr.secsLeft/900));
+    arc.style.stroke=phaseColor;
+  }
+  const txt=document.getElementById('kRingTxt');
+  if(txt) txt.textContent=kr.mmss;
+  const eg=document.getElementById('kEntryGuidance');
+  if(eg){
+    if(kr.secsLeft<=120){eg.textContent='CLOSING - LOCK BET / WAIT NEXT';eg.className='k-entry-guidance eg-closing';}
+    else if(kr.secsLeft<=300){eg.textContent='CAUTION ZONE - LATE ENTRY';eg.className='k-entry-guidance eg-caution';}
+    else{eg.textContent='OPTIMAL ENTRY WINDOW';eg.className='k-entry-guidance eg-open';}
+  }
+  if(kr.phase==='closing') document.body.classList.add('closing-phase');
+  else document.body.classList.remove('closing-phase');
 }
 
 function showSignalAlert(verdict){
@@ -2052,6 +3092,9 @@ function checkSignalAlert(verdict){
 
 async function fetchKalshiLive(){
   try{
+    if (Number.isFinite(marketStore.kalshiManualAbovePct) && marketStore.kalshiManualAbovePct >= 0 && marketStore.kalshiManualAbovePct <= 100) {
+      return;
+    }
     const r=await fetch('/api/kalshi');
     if(!r.ok) return;
     const d=await r.json();
@@ -2069,22 +3112,14 @@ async function fetchKalshiLive(){
     const above=Math.max(0,Math.min(100,Math.round(mid*100)));
     marketStore.kalshiAbove=above;
     marketStore.kalshiBelow=100-above;
+    marketStore.kalshiAboveSource='live';
+    marketStore.kalshiBid=Number.isFinite(bid)?bid:null;
+    marketStore.kalshiAsk=Number.isFinite(ask)?ask:null;
+    if(!Array.isArray(marketStore._kalshiHistory)) marketStore._kalshiHistory=[];
+    marketStore._kalshiHistory.push(mid);
+    if(marketStore._kalshiHistory.length>8) marketStore._kalshiHistory.shift();
     marketStore._kalshiLive=true;
     marketStore._kalshiTs=Date.now();
-    // Store raw bid/ask for correct EV/Kelly calculations
-    const normBid=Number.isFinite(bid)?(bid>1.5?bid/100:bid):null;
-    const normAsk=Number.isFinite(ask)?(ask>1.5?ask/100:ask):null;
-    if(Number.isFinite(normBid)&&normBid>0&&normBid<1) marketStore.kalshiBid=normBid;
-    if(Number.isFinite(normAsk)&&normAsk>0&&normAsk<1) marketStore.kalshiAsk=normAsk;
-    // Store actual market close time for accurate countdown
-    if(d.close_time){
-      const closeTs=new Date(d.close_time).getTime();
-      if(closeTs>Date.now()) marketStore._kalshiCloseTs=closeTs;
-    }
-    // Track mid history for trend arrow
-    if(!Array.isArray(marketStore._kalshiHistory)) marketStore._kalshiHistory=[];
-    marketStore._kalshiHistory.push({mid,ts:Date.now()});
-    if(marketStore._kalshiHistory.length>10) marketStore._kalshiHistory.shift();
   }catch(e){
     console.debug('kalshi fetch skipped:', e?.message || e);
   }
@@ -2132,6 +3167,37 @@ let _sessionLastSig='—';
 var _msgCount=0;
 let _msgCountLast=0;
 let _msgTs=Date.now();
+const _latencySamples=[];
+const _msgGapSamples=[];
+
+function recordFeedSamples(state){
+  if(!state||typeof state!=='object') return;
+  const lastTs = Number.isFinite(marketStore._latencyLastMsgTs) ? marketStore._latencyLastMsgTs : 0;
+  if (Number.isFinite(state.wsLatency) && state.wsSource !== 'rest') {
+    pushBounded(_latencySamples, state.wsLatency, 300);
+  }
+  if (Number.isFinite(state.lastMsgTs) && state.lastMsgTs > lastTs) {
+    if (lastTs > 0) {
+      const gap = state.lastMsgTs - lastTs;
+      if (gap >= 0 && gap < 30000) pushBounded(_msgGapSamples, gap, 300);
+    }
+    marketStore._latencyLastMsgTs = state.lastMsgTs;
+  }
+}
+
+function sampleP(arr, p){
+  if(!Array.isArray(arr)||!arr.length) return null;
+  const sorted=[...arr].sort((a,b)=>a-b);
+  const idx=Math.min(sorted.length-1,Math.max(0,Math.floor((sorted.length-1)*p)));
+  return sorted[idx];
+}
+
+function pushBounded(arr, val, maxLen=240){
+  if(!Number.isFinite(val)) return;
+  arr.push(val);
+  if(arr.length>maxLen) arr.splice(0,arr.length-maxLen);
+}
+
 function updateSessionBar(){
   const elapsed=Date.now()-_sessionStart;
   const h=Math.floor(elapsed/3600000);
@@ -2143,6 +3209,15 @@ function updateSessionBar(){
   const now=Date.now();const dt=(now-_msgTs)/1000;
   setTxt('sbMps',dt>0?((_msgCount-_msgCountLast)/dt).toFixed(1):'0.0');
   _msgCountLast=_msgCount;_msgTs=now;
+  const lat50=sampleP(_latencySamples,0.5);
+  const lat95=sampleP(_latencySamples,0.95);
+  const gap95=sampleP(_msgGapSamples,0.95);
+  marketStore.wsLatencyP50=lat50;
+  marketStore.wsLatencyP95=lat95;
+  marketStore.wsGapP95=gap95;
+  setTxt('sbLatP50',Number.isFinite(lat50)?`${Math.round(lat50)}ms`:'—');
+  setTxt('sbLatP95',Number.isFinite(lat95)?`${Math.round(lat95)}ms`:'—');
+  setTxt('sbGapP95',Number.isFinite(gap95)?`${Math.round(gap95)}ms`:'—');
   setTxt('sbCandles',marketStore.candles?.length||0);
   setTxt('sbRv',marketStore.realizedVol?marketStore.realizedVol.toFixed(1)+'%':'—');
   setTxt('sbAdx',marketStore.adxVal?marketStore.adxVal.toFixed(1):'—');
@@ -2192,26 +3267,35 @@ function resolveSignalLog(){
   const log=marketStore.signalLog||[];
   const price=marketStore.price;
   const now=Date.now();
+  let changed=false;
   log.forEach(entry=>{
     if(entry.resolved||!price) return;
     if(now-entry.ts>=900000){
+      let actual = entry.direction || 'UP';
+      if (price > entry.price) {
+        actual = 'UP';
+      } else if (price < entry.price) {
+        actual = 'DOWN';
+      }
       entry.resolved=true;
-      entry.correct=(entry.verdict==='ABOVE'&&price>entry.price)||(entry.verdict==='BELOW'&&price<entry.price);
+      entry.actual=actual;
+      entry.correct=entry.direction===actual;
+      changed=true;
     }
   });
   while(log.length>100) log.shift();
   marketStore.signalLog=log;
   computeBrierScore(log);
-  try{
-    localStorage.setItem('qdSignalLog',JSON.stringify(log));
-  }catch(e){
-    console.debug('signal log save skipped:', e?.message || e);
-  }
+  if (changed) void syncResolvedResults();
 }
 
 function computeBrierScore(log){
   const resolved=log.filter(e=>e.resolved&&e.pAbove!=null);
-  if(!resolved.length) return;
+  if(!resolved.length){
+    marketStore.brierScore=null;
+    marketStore.signalAccuracy=null;
+    return;
+  }
   let bs=0;
   resolved.forEach(e=>{const outcome=e.correct?1:0;bs+=(e.pAbove-outcome)**2;});
   marketStore.brierScore=(bs/resolved.length).toFixed(3);
@@ -2220,23 +3304,9 @@ function computeBrierScore(log){
 }
 
 function hydrateSignalLog(){
-  try{
-    const raw=localStorage.getItem('qdSignalLog');
-    if(!raw) return;
-    const parsed=JSON.parse(raw);
-    if(!Array.isArray(parsed)) return;
-    const clean=parsed.filter(e=>
-      Number.isFinite(e?.ts)
-      && Number.isFinite(e?.price)
-      && Number.isFinite(e?.pAbove)
-      && typeof e?.verdict==='string'
-      && typeof e?.resolved==='boolean'
-    ).slice(-100);
-    marketStore.signalLog=clean;
-    computeBrierScore(clean);
-  }catch(e){
-    console.debug('signal log hydrate skipped:', e?.message || e);
-  }
+  marketStore.signalLog=[];
+  marketStore.brierScore=null;
+  marketStore.signalAccuracy=null;
 }
 
 // ─────────────────────────────────────────────
@@ -2283,25 +3353,6 @@ function renderAll(){ // NOSONAR
   else setTxt('wsLatency', '');
   updateWsSourceUI();
   updateWsFreshnessUI();
-
-  // Funding rate display
-  const fr = window._funding;
-  const frEl = document.getElementById('fundingDisplay');
-  if (frEl && fr?.rate != null) {
-    const frPct = (fr.rate*100).toFixed(4);
-    frEl.textContent = `Funding: ${fr.rate>0?'+':''}${frPct}% ${fr.signal==='LONGS_OVEREXTENDED'?'⚠ longs crowded':fr.signal==='SHORTS_OVEREXTENDED'?'⚠ shorts crowded':'neutral'}`;
-    frEl.style.color = fr.signal==='LONGS_OVEREXTENDED'?'var(--red)':fr.signal==='SHORTS_OVEREXTENDED'?'var(--green)':'var(--t3)';
-  }
-
-  // Multi-TF regime display in topbar
-  const mtf = window._multiTF;
-  if (mtf) {
-    const mtfEl = document.getElementById('wsLabel');
-    // Only update if still connected
-    if (s.wsConnected && mtfEl) {
-      mtfEl.textContent = `WS LIVE · ${mtf.r1m||'?'} ${mtf.r5m||'?'} ${mtf.r15m||'?'}`;
-    }
-  }
 
   // Tape
   let cvdTape='——';
@@ -2402,15 +3453,6 @@ function renderAll(){ // NOSONAR
   if (s.aggression > 0.1) agClass='sv-bull';
   else if (s.aggression < -0.1) agClass='sv-bear';
   sigsData.push({v:(s.aggression*100).toFixed(0)+'%',c:agClass});
-  // Signals 11-14 (new)
-  sigsData.push({v:s.stoch>50?'BULL':'BEAR',c:s.stoch>50?'sv-bull':'sv-bear'});
-  const kVelVal=s.kalmanVelocity||0;
-  sigsData.push({v:kVelVal>0?'▲'+kVelVal.toFixed(1):'▼'+Math.abs(kVelVal).toFixed(1),c:kVelVal>0?'sv-bull':'sv-bear'});
-  const frVal=s.fundingRate||0;
-  sigsData.push({v:frVal<-0.0001?'BULL':frVal>0.0001?'BEAR':'NEUT',c:frVal<-0.0001?'sv-bull':frVal>0.0001?'sv-bear':'sv-neut'});
-  const atrMomVal=s.atr&&s.candles.length>=4?s.price-s.candles[s.candles.length-4].close:0;
-  const atrMomBull=atrMomVal>(s.atr||0)*0.3,atrMomBear=atrMomVal<-(s.atr||0)*0.3;
-  sigsData.push({v:atrMomBull?'BULL':atrMomBear?'BEAR':'NEUT',c:atrMomBull?'sv-bull':atrMomBear?'sv-bear':'sv-neut'});
   sigsData.forEach((d,i)=>{const el=document.getElementById('s'+i);if(el){el.textContent=d.v;el.className='sig-v '+d.c;}});
 
   // OHLC
@@ -2486,13 +3528,50 @@ function renderAll(){ // NOSONAR
 
   // Verdict (secure decision layer)
   const quality = Number.isFinite(s.dataQuality) ? s.dataQuality : 1;
-  const directionalEdge = Math.abs((s.pAbove || 0.5) - 0.5) * 2;
+  const pDecisionAbove = Number.isFinite(s.pDecisionAbove) ? s.pDecisionAbove : s.pAbove;
+  const directionalEdge = Math.abs((pDecisionAbove || 0.5) - 0.5) * 2;
   const kRoundNow = kalshiRound();
   // In the final 90s of a round, require stronger conviction to call a direction
   const confThreshold = kRoundNow.phase === 'closing' ? 50 : 35;
   const edgeThreshold = kRoundNow.phase === 'closing' ? 0.12 : 0.08;
   const secureDecision = (s.confidence || 0) >= confThreshold && quality >= 0.65 && directionalEdge >= edgeThreshold;
-  const verdictUi = secureDecision ? s.verdict : 'STANDBY';
+  const decisionVerdict = s.verdictDecision || (pDecisionAbove >= 0.5 ? 'ABOVE' : 'BELOW');
+  const verdictUi = secureDecision ? decisionVerdict : 'STANDBY';
+  const edgePct = ((pDecisionAbove - s.kalshiAbove / 100) * 100);
+  const riskLevelUi = s.systemTruth?.riskLevel || 'MEDIUM';
+  const execAllowedUi = s.systemTruth?.executionAllowed ? 'ALLOW' : 'BLOCK';
+
+  let dcSignalText = 'WAIT';
+  if (verdictUi === 'ABOVE') dcSignalText = 'LONG / ABOVE';
+  else if (verdictUi === 'BELOW') dcSignalText = 'SHORT / BELOW';
+  setTxt('dcSignal', dcSignalText);
+  setTxt('dcConfidence', `${(s.confidence || 0).toFixed(0)}%`);
+  setTxt('dcEdge', `${edgePct >= 0 ? '+' : ''}${edgePct.toFixed(1)}%`);
+  setTxt('dcRisk', riskLevelUi);
+  setTxt('dcExecution', execAllowedUi);
+  const dcSignalEl = document.getElementById('dcSignal');
+  if (dcSignalEl) {
+    let dcSignalTone = 'neut';
+    if (verdictUi === 'ABOVE') dcSignalTone = 'up';
+    else if (verdictUi === 'BELOW') dcSignalTone = 'dn';
+    dcSignalEl.className = `dc-signal ${dcSignalTone}`;
+  }
+  const dcRiskEl = document.getElementById('dcRisk');
+  if (dcRiskEl) {
+    let riskTone = 'bad';
+    if (riskLevelUi === 'LOW' || riskLevelUi === 'MEDIUM') riskTone = 'ok';
+    else if (riskLevelUi === 'HIGH') riskTone = 'warn';
+    dcRiskEl.className = `dc-v ${riskTone}`;
+  }
+  const dcExecEl = document.getElementById('dcExecution');
+  if (dcExecEl) {
+    dcExecEl.className = 'dc-v ' + (execAllowedUi === 'ALLOW' ? 'ok' : 'bad');
+  }
+  let invalidationTxt = `Invalidates on risk veto, stale snapshot, or edge collapse below ${(edgeThreshold * 100).toFixed(0)}%.`;
+  if (secureDecision === false) {
+    invalidationTxt = `Quality ${Math.round(quality * 100)}% or directional edge ${(directionalEdge * 100).toFixed(1)}% is below threshold.`;
+  }
+  setTxt('dcInvalidation', invalidationTxt);
   const vb=document.getElementById('verdictBox');
   if(vb){
     if (verdictUi === 'ABOVE') vb.className='verdict-box verdict-above';
@@ -2512,47 +3591,97 @@ function renderAll(){ // NOSONAR
   setTxt('kAp',s.kalshiAbove+'%'); setTxt('kBp',s.kalshiBelow+'%');
   const kab=document.getElementById('kABar'),kbb=document.getElementById('kBBar');
   if(kab){kab.style.width=s.kalshiAbove+'%';} if(kbb){kbb.style.width=s.kalshiBelow+'%';}
-  setTxt('kA',s.kalshiAbove+'%'); setTxt('kM',(s.pAbove*100).toFixed(1)+'%');
-  // Use ask-based edge for display (same as Kelly calc)
-  const _dispYesAsk=Number.isFinite(s.kalshiAsk)?s.kalshiAsk:s.kalshiAbove/100;
-  const _dispIsBull=s.pAbove>=0.5;
-  const edge=_dispIsBull?s.pAbove-_dispYesAsk:s.pBelow-(1-(Number.isFinite(s.kalshiBid)?s.kalshiBid:s.kalshiAbove/100));
+  setTxt('kA',s.kalshiAbove+'%'); setTxt('kM',(pDecisionAbove*100).toFixed(1)+'%');
+  const edge=pDecisionAbove-s.kalshiAbove/100;
   const ke=document.getElementById('kE');
   if(ke){ke.textContent=(edge>=0?'+':'')+((edge*100).toFixed(1))+'%';ke.style.color=edge>0?'var(--green)':'var(--red)';}
-  setTxt('kStr',p?'$'+p.toLocaleString(undefined,{maximumFractionDigits:0}):'—');
-  // EV display
-  const kEvEl=document.getElementById('kEV');
-  if(kEvEl){const ev=s.kalshiEV||0;kEvEl.textContent=(ev>=0?'+':'')+((ev*100).toFixed(1))+'¢';kEvEl.style.color=ev>0.01?'var(--green)':ev<-0.01?'var(--red)':'var(--t2)';}
-  // YES bid/ask display
-  const kBidEl=document.getElementById('kYesBid'),kAskEl=document.getElementById('kYesAsk');
-  if(kBidEl) kBidEl.textContent=Number.isFinite(s.kalshiBid)?(s.kalshiBid*100).toFixed(0)+'¢':'—';
-  if(kAskEl) kAskEl.textContent=Number.isFinite(s.kalshiAsk)?(s.kalshiAsk*100).toFixed(0)+'¢':'—';
-  // Kalshi trend arrow (from history)
-  const kTrendEl=document.getElementById('kTrendArrow');
-  if(kTrendEl&&Array.isArray(s._kalshiHistory)&&s._kalshiHistory.length>=3){
-    const hist=s._kalshiHistory;
-    const diff=hist[hist.length-1].mid-hist[hist.length-3].mid;
-    kTrendEl.textContent=diff>0.005?'↑':diff<-0.005?'↓':'→';
-    kTrendEl.style.color=diff>0.005?'var(--green)':diff<-0.005?'var(--red)':'var(--t2)';
+  setTxt('kStr',formatKalshiTargetPrice(getActiveKalshiTargetPrice()));
+  syncKalshiTargetUI();
+  syncKalshiWhyNowUI(s);
+  const evEl=document.getElementById('kEV');
+  if(evEl){
+    const ev_=marketStore.kalshiEV??0;
+    evEl.textContent=(ev_>=0?'+':'')+(ev_*100).toFixed(1)+'¢';
+    evEl.style.color=ev_>0?'var(--green)':'var(--red)';
   }
-  // Market-model agreement badge
-  const agreeBadge=document.getElementById('kAgreeBadge');
-  if(agreeBadge){
-    const mktBull=s.kalshiAbove>50,mdlBull=s.pAbove>0.5,agrees=mktBull===mdlBull;
-    agreeBadge.textContent=agrees?'AGREE':'DIVERGE';
-    agreeBadge.className='k-agree-badge '+(agrees?'k-agree':'k-diverge');
+  const taSourceEl=document.getElementById('kTaSource');
+  if(taSourceEl){
+    const source = Number.isFinite(s.kalshiManualTargetPrice) && s.kalshiManualTargetPrice > 0 ? 'MANUAL BLEND' : 'AUTO BLEND';
+    taSourceEl.textContent = source;
+    taSourceEl.style.color = source === 'MANUAL BLEND' ? 'var(--cyan)' : 'var(--t3)';
   }
-  // Countdown handled by dedicated 250ms interval — skip redundant update here
+  const taProbEl=document.getElementById('kTaProb');
+  if(taProbEl){
+    const pAdj = Number.isFinite(s.pDecisionAbove) ? s.pDecisionAbove : s.pAbove;
+    taProbEl.textContent = (pAdj * 100).toFixed(1) + '%';
+    taProbEl.className = 'k-impact-v ' + (pAdj >= 0.5 ? 'up' : 'dn');
+  }
+  const taDistEl=document.getElementById('kTaDist');
+  if(taDistEl){
+    if (Number.isFinite(s.kalshiTargetDistance)) {
+      const dist = s.kalshiTargetDistance;
+      taDistEl.textContent = (dist >= 0 ? '+' : '') + dist.toFixed(0);
+      taDistEl.className = 'k-impact-v ' + (dist >= 0 ? 'up' : 'dn');
+    } else {
+      taDistEl.textContent = '—';
+      taDistEl.className = 'k-impact-v';
+    }
+  }
+  const taBlendEl=document.getElementById('kTaBlend');
+  if(taBlendEl){
+    if (Number.isFinite(s.kalshiTargetBlend)) {
+      taBlendEl.textContent = (s.kalshiTargetBlend * 100).toFixed(0) + '%';
+    } else {
+      taBlendEl.textContent = '—';
+    }
+    taBlendEl.className = 'k-impact-v';
+  }
+  renderKalshiTargetSparkline(s);
+  const kTrendEl=document.getElementById('kTrend');
+  const kHist=marketStore._kalshiHistory||[];
+  if(kTrendEl&&kHist.length>=3){
+    const kTrendDelta=kHist[kHist.length-1]-kHist[kHist.length-3];
+    if (kTrendDelta>0.005) {
+      kTrendEl.textContent='↑';
+      kTrendEl.style.color='var(--green)';
+    } else if (kTrendDelta<-0.005) {
+      kTrendEl.textContent='↓';
+      kTrendEl.style.color='var(--red)';
+    } else {
+      kTrendEl.textContent='→';
+      kTrendEl.style.color='var(--t2)';
+    }
+  }
+  const kw2=document.getElementById('kWin2');
+  if(kw2) kw2.textContent=new Date(Math.ceil(Date.now()/900000)*900000).toLocaleTimeString();
+  updateKalshiCountdownDisplay(kalshiRound());
+  const sbKRoundEl=document.getElementById('sbKRound');
+  if(sbKRoundEl){const kRoundSb=kalshiRound();sbKRoundEl.textContent=kRoundSb.mmss;sbKRoundEl.classList.remove('up','dn');if(kRoundSb.phase==='open')sbKRoundEl.classList.add('up');else if(kRoundSb.phase==='closing')sbKRoundEl.classList.add('dn');}
+  const sbKTargetEl=document.getElementById('sbKTarget');
+  if(sbKTargetEl){sbKTargetEl.textContent=formatKalshiTargetPrice(getActiveKalshiTargetPrice());}
   const keb=document.getElementById('kEdgeBox');
   if(keb){
-    const rawEdge=s.pAbove-s.kalshiAbove/100;
-    if (rawEdge > 0.05) keb.textContent=`▲ EDGE +${(rawEdge*100).toFixed(1)}% — BET ABOVE`;
-    else if (rawEdge < -0.05) keb.textContent=`▼ EDGE ${(rawEdge*100).toFixed(1)}% — BET BELOW`;
+    if (edge > 0.05) keb.textContent=`▲ EDGE +${(edge*100).toFixed(1)}% — BET ABOVE`;
+    else if (edge < -0.05) keb.textContent=`▼ EDGE ${(edge*100).toFixed(1)}% — BET BELOW`;
     else keb.textContent='— NO SIGNIFICANT EDGE —';
-    if (rawEdge > 0) keb.style.color='var(--green)';
-    else if (rawEdge < 0) keb.style.color='var(--red)';
+    if (edge > 0) keb.style.color='var(--green)';
+    else if (edge < 0) keb.style.color='var(--red)';
     else keb.style.color='var(--t2)';
   }
+
+  // Execution layer strip
+  const spreadTxt = spread ? `$${spread.toFixed(2)}` : '—';
+  setTxt('exSpread', spreadTxt);
+  let exLatencyTxt = '—';
+  if (s.wsSource === 'rest') exLatencyTxt = 'REST';
+  else if (s.wsLatency) exLatencyTxt = `${s.wsLatency}ms`;
+  setTxt('exLatency', exLatencyTxt);
+  setTxt('exSlippage', `${(((s.atr || 0) / Math.max(1, s.price || 1)) * 100).toFixed(2)}%`);
+  setTxt('exToxicity', `${(s.flowToxicity || 0).toFixed(1)}%`);
+  setTxt('exKelly', `${((s.kellyFull || 0) * 50 * 100).toFixed(1)}%`);
+  setTxt('exEv', `${(marketStore.kalshiEV ?? 0) >= 0 ? '+' : ''}${((marketStore.kalshiEV ?? 0) * 100).toFixed(1)}¢`);
+  setTxt('exLock', execAllowedUi === 'ALLOW' ? 'OPEN' : 'LOCKED');
+  setTxt('exPhase', String(kRoundNow.phase || 'open').toUpperCase());
 
   // Kelly
   const kf=s.kellyFull;
@@ -2582,11 +3711,11 @@ function renderAll(){ // NOSONAR
     const src={BNC:null,KRK:null,BYB:null};
     s.oracleSources.forEach(x=>{
       const ex=String(x.exchange||'').toLowerCase().replaceAll('_','-');
-      if(ex==='binance-us'||ex==='binanceus') src.BNC=x;
-      if(ex==='kraken') src.KRK=x;
-      if(ex==='bybit') src.BYB=x;
+      if(ex==='coinbase-ticker') src.BNC=x;
+      if(ex==='coinbase-book') src.KRK=x;
+      if(ex==='cryptocompare-ref') src.BYB=x;
     });
-    ['Bnc','Krk','Byb'].forEach(k=>{
+    ['BNC','KRK','BYB'].forEach(k=>{
       const x=src[k];
       const dot=document.getElementById('obDot'+k);
       const priceEl=document.getElementById('obPrice'+k);
@@ -2698,6 +3827,14 @@ function renderAll(){ // NOSONAR
     }).join('');
   }
 
+  const perf = s.performanceStats;
+  if (perf) {
+    setTxt('perfWinRate', `${(perf.winRateLast10 ?? 0).toFixed(1)}% / ${(perf.winRateLast50 ?? 0).toFixed(1)}%`);
+    setTxt('perfConfWins', `${(perf.avgConfidenceWins ?? 0).toFixed(1)}% / ${(perf.avgConfidenceLosses ?? 0).toFixed(1)}%`);
+    setTxt('perfBestRisk', perf.bestRiskLevel || 'NONE');
+    setTxt('perfWindow', `10:${perf.sampleSize ? Math.min(10, perf.sampleSize) : 0} · 50:${perf.sampleSize ?? 0}`);
+  }
+
   // Flash & alert
   checkFlash(p);
   checkSignalAlert(verdictUi);
@@ -2787,153 +3924,223 @@ function renderBetSignal(){ // NOSONAR
   if(!bet||!marketStore.price) return;
 
   setTxt('betTs','Updated '+new Date().toLocaleTimeString());
-  let col='var(--t2)', stateClass='neut';
-  if(bet.verdict==='ABOVE'){col='var(--green)';stateClass='up';}
-  else if(bet.verdict==='BELOW'){col='var(--red)';stateClass='dn';}
-
-  const totalSigs=bet.totalSignals||14;
-  const _esc=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
-
-  if(bet.active){
-    // ── LEFT: badge + conviction + mini signal grid ──
-    const bc=bet.verdict==='ABOVE'?'bb-above':'bb-below';
-    const dur=bet.signalActiveDuration;
-    const durTxt=dur!=null?(dur<60?`ACTIVE ${dur}s`:`ACTIVE ${Math.floor(dur/60)}:${String(dur%60).padStart(2,'0')}`):'NEW SIGNAL ★';
-    const onClass=bet.verdict==='ABOVE'?'bsc-bull':'bsc-bear';
-    let cells='';
-    for(let i=0;i<totalSigs;i++) cells+=`<div class="bet-sig-cell ${i<(bet.bullSigs||0)?onClass:''}"></div>`;
-    leftEl.innerHTML=`<div class="bet-badge ${bc}">${bet.verdict}</div>
-      <div class="conv-bar-wrap"><div class="conv-bar" id="betConvBar"></div></div>
-      <div class="conv-meta-row"><span class="conv-meta-label">CONVICTION</span><span class="conv-meta-value ${stateClass}">${bet.conviction}%</span></div>
-      <div class="bet-active-dur">${durTxt}</div>
-      <div class="bet-sig-count">${bet.bullSigs||0}/${totalSigs} SIGNALS</div>
-      <div class="bet-sig-mini-grid">${cells}</div>`;
-    const bar=leftEl.querySelector('#betConvBar');
-    if(bar){bar.style.width=bet.conviction+'%';bar.style.background=col;}
-
-    // ── CENTER: reasons ──
-    const reasonsHtml=(bet.reasons||[]).map(r=>`<div class="reason r-${r.t}"><div class="rdot"></div><div class="rtxt">${_esc(r.txt)}</div></div>`).join('');
-    centerEl.innerHTML=`<div class="signal-title ${stateClass}">⚡ SIGNAL ACTIVE — ${bet.verdict}</div>
-      <div class="reason-list">${reasonsHtml}</div>
-      <div class="signal-detail ${stateClass}">
-        <span class="signal-label">CROSS: </span><span class="signal-strong ${stateClass}">${(bet.crossType||'').replace('_',' ')}</span>
-        <span class="signal-label-spread">SPREAD: </span><span class="signal-strong txt-cyan">${Math.abs(bet.emaSpread||0).toFixed(1)} bps</span>
-      </div>`;
-
-    // ── EV + Timing display ──
-    const evCents=((bet.ev||0)*100).toFixed(1);
-    const evClass=bet.ev>0.01?'bet-ev-pos':bet.ev<-0.01?'bet-ev-neg':'bet-ev-neut';
-    const evTxt=bet.ev>0.01?`EV: +${evCents}¢ / $1 — positive edge`:bet.ev<-0.01?`EV: ${evCents}¢ / $1 — negative edge`:`EV: ~0¢ — no edge`;
-    const phase=bet.roundPhase||'open';
-    let timingTxt,timingClass;
-    if(phase==='closing'){timingTxt='CLOSING — LOCK BET';timingClass='bet-timing-closing';}
-    else if(phase==='caution'){timingTxt='CAUTION — LATE ENTRY';timingClass='bet-timing-caution';}
-    else{timingTxt='OPTIMAL ENTRY';timingClass='bet-timing-open';}
-
-    const rightEl2=document.getElementById('betRight');
-    if(rightEl2){
-      rightEl2.innerHTML=`<div class="section-kicker">CONVICTION METRICS</div>
-        <div class="bet-ev-row ${evClass}">${evTxt}</div>
-        <div class="bet-timing-row ${timingClass}">${timingTxt}</div>
-        <div class="mr"><span class="ml">SIGNAL ALIGN</span><span class="mv num" id="bm0">—</span></div>
-        <div class="mr"><span class="ml">EMA9/21 SPREAD</span><span class="mv num" id="bm1">—</span></div>
-        <div class="mr"><span class="ml">TRAJ SLOPE</span><span class="mv num" id="bm2">—</span></div>
-        <div class="mr"><span class="ml">REGIME</span><span class="mv num" id="bm3">—</span></div>
-        <div class="mr"><span class="ml">KALSHI EDGE</span><span class="mv num" id="bm4">—</span></div>
-        <div class="mr mr-no-border"><span class="ml">REC SIZE</span><span class="mv num txt-amber" id="bm5">—</span></div>`;
-    }
-  } else {
-    // ── MONITORING state ──
-    const alignPct=Math.round((bet.alignment||0)*100);
-    const alignCol=(bet.alignment||0)>=.5?'var(--green)':'var(--red)';
-    const needed=Math.ceil(totalSigs*0.65);
-    const needMore=Math.max(0,needed-(bet.bullSigs||0));
-    let cells2='';
-    for(let i=0;i<totalSigs;i++) cells2+=`<div class="bet-sig-cell ${i<(bet.bullSigs||0)?'bsc-neut':''}"></div>`;
-    leftEl.innerHTML=`<div class="bet-badge bb-wait">MONITORING</div>
-      <div class="conv-bar-wrap conv-bar-wrap-top"><div class="conv-bar" id="betAlignBar"></div></div>
-      <div class="bet-wait-note">${bet.bullSigs||0}/${totalSigs} signals · waiting</div>
-      <div class="bet-nearest-row">NEED ${needed}/${totalSigs}${needMore>0?` — ${needMore} more`:' ✓'}</div>
-      <div class="bet-sig-mini-grid">${cells2}</div>`;
-    const aBar=leftEl.querySelector('#betAlignBar');
-    if(aBar){aBar.style.width=alignPct+'%';aBar.style.background=alignCol;}
-
-    const closes=marketStore.candles.map(c=>c.close);
-    const e9a=computeEMA(closes,9),e21a=computeEMA(closes,21);
-    const slopeE9=trajectorySlope(e9a,6),slopeE21=trajectorySlope(e21a,6);
-    const slopeP=marketStore.trajectorySlope;
-    const e9=e9a[e9a.length-1]||0,e21=e21a[e21a.length-1]||0;
-    let spreadClass='dn';
-    if(Math.abs(marketStore.emaSpread)<1) spreadClass='txt-amber';
-    else if(e9>e21) spreadClass='up';
-    // Missing signals (top 3 needed for bull direction)
-    const ms=marketStore;
-    const lastC=closes[closes.length-1]||0,prev4=closes.length>=4?closes[closes.length-4]:lastC;
-    const lm=lastC-prev4;
-    const sigNames=['Price>VWAP','RSI 50-75','MACD Bull','EMA9>EMA21','CVD+','EMA9 Slope▲','EMA21 Slope▲','Price Slope▲','Regime OK','OB Imbal','Stoch>50','Kalman▲','Fund Align','ATR Mom'];
-    const sigVals=[ms.price>ms.vwap,ms.rsi>50&&ms.rsi<75,ms.macd>ms.macdSig,e9>e21,ms.cvd>0,slopeE9>0,slopeE21>0,slopeP>0,(ms.regime==='TRENDING'||ms.regime==='VOL_EXPANSION')&&ms.pAbove>=0.5,ms.imbalance>0,ms.stoch>50,(ms.kalmanVelocity||0)>0,(ms.fundingRate||0)<-0.0001,lm>0&&Math.abs(lm)>(ms.atr||0)*0.3];
-    const missing=sigNames.filter((_,i)=>!sigVals[i]).slice(0,3);
-    const missingHtml=missing.length?`<div class="bet-missing-sigs">Missing: ${missing.join(' · ')}</div>`:'';
-    centerEl.innerHTML=`<div class="traj-title">TRAJECTORY ANALYSIS</div>
-      <div class="traj-row"><div class="traj-ico">${slopeE9>0?'📈':'📉'}</div><div><div class="traj-lbl">EMA9 TRAJECTORY</div><div class="traj-val ${slopeE9>0?'up':'dn'}">${slopeE9>0?'▲':'▼'} ${Math.abs(slopeE9).toFixed(2)}/bar · $${e9.toFixed(0)}</div></div></div>
-      <div class="traj-row"><div class="traj-ico">${slopeE21>0?'📈':'📉'}</div><div><div class="traj-lbl">EMA21 TRAJECTORY</div><div class="traj-val ${slopeE21>0?'up':'dn'}">${slopeE21>0?'▲':'▼'} ${Math.abs(slopeE21).toFixed(2)}/bar · $${e21.toFixed(0)}</div></div></div>
-      <div class="traj-row"><div class="traj-ico">🎯</div><div><div class="traj-lbl">PRICE TRAJECTORY</div><div class="traj-val ${slopeP>0?'up':'dn'}">${slopeP>0?'▲':'▼'} ${Math.abs(slopeP).toFixed(2)}/bar</div></div></div>
-      <div class="traj-row"><div class="traj-ico">⚡</div><div><div class="traj-lbl">EMA SPREAD</div><div class="traj-val ${spreadClass}">${Math.abs(marketStore.emaSpread)<1?'CONVERGING — cross imminent':Math.abs(marketStore.emaSpread).toFixed(1)+' bps '+marketStore.emaCross.replace('_',' ')}</div></div></div>
-      ${missingHtml}`;
-
-    const rightEl2=document.getElementById('betRight');
-    if(rightEl2){
-      rightEl2.innerHTML=`<div class="section-kicker">CONVICTION METRICS</div>
-        <div class="bet-nearest-row">NEAREST: ${bet.bullSigs||0}/${totalSigs} — need ${needed}</div>
-        <div class="mr"><span class="ml">SIGNAL ALIGN</span><span class="mv num" id="bm0">—</span></div>
-        <div class="mr"><span class="ml">EMA9/21 SPREAD</span><span class="mv num" id="bm1">—</span></div>
-        <div class="mr"><span class="ml">TRAJ SLOPE</span><span class="mv num" id="bm2">—</span></div>
-        <div class="mr"><span class="ml">REGIME</span><span class="mv num" id="bm3">—</span></div>
-        <div class="mr"><span class="ml">KALSHI EDGE</span><span class="mv num" id="bm4">—</span></div>
-        <div class="mr mr-no-border"><span class="ml">REC SIZE</span><span class="mv num txt-amber" id="bm5">—</span></div>`;
-    }
+  let col='var(--t2)';
+  let stateClass='neut';
+  if (bet.verdict==='ABOVE') {
+    col='var(--green)';
+    stateClass='up';
+  } else if (bet.verdict==='BELOW') {
+    col='var(--red)';
+    stateClass='dn';
   }
 
-  // ── Right metrics (bm0-bm5) ──
-  setTxt('bm0',`${Math.round((bet.alignment||0)*100)}% (${bet.bullSigs||0}/${totalSigs})`);
+  if(bet.active){
+    const bc=bet.verdict==='ABOVE'?'bb-above':'bb-below';
+    leftEl.innerHTML=`<div class="bet-badge ${bc}">${bet.verdict}</div>
+    <div class="conv-bar-wrap"><div class="conv-bar" id="betConvBar"></div></div>
+    <div class="conv-meta-row"><span class="conv-meta-label">CONVICTION</span><span class="conv-meta-value ${stateClass}">${bet.conviction}%</span></div>
+    <div class="conv-note">HIGH CONVICTION</div>`;
+    const betConvBar=leftEl.querySelector('#betConvBar');
+    if(betConvBar){betConvBar.style.width=bet.conviction+'%';betConvBar.style.background=col;}
+
+    const _esc=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+    const reasonsHtml=(bet.reasons||[]).map(r=>`<div class="reason r-${r.t}"><div class="rdot"></div><div class="rtxt">${_esc(r.txt)}</div></div>`).join('');
+    centerEl.innerHTML=`<div class="signal-title ${stateClass}">⚡ SIGNAL ACTIVE — ${bet.verdict}</div><div class="reason-list">${reasonsHtml}</div><div class="signal-detail ${stateClass}"><span class="signal-label">CROSS: </span><span class="signal-strong ${stateClass}">${(bet.crossType||'').replace('_',' ')}</span><span class="signal-label-spread">SPREAD: </span><span class="signal-strong txt-cyan">${Math.abs(bet.emaSpread||0).toFixed(1)} bps</span></div>`;
+  } else {
+    const alignPct=Math.round((bet.alignment||0)*100);
+    const alignCol=(bet.alignment||0)>=.5?'var(--green)':'var(--red)';
+    leftEl.innerHTML=`<div class="bet-badge bb-wait">MONITORING</div>
+    <div class="conv-bar-wrap conv-bar-wrap-top"><div class="conv-bar" id="betAlignBar"></div></div>
+    <div class="bet-wait-note">${bet.bullSigs||0}/14 signals · waiting</div>`;
+    const betAlignBar=leftEl.querySelector('#betAlignBar');
+    if(betAlignBar){betAlignBar.style.width=alignPct+'%';betAlignBar.style.background=alignCol;}
+
+    const closes=marketStore.candles.map(c=>c.close);
+    const e9a=computeEMA(closes,9), e21a=computeEMA(closes,21);
+    const slopeE9=trajectorySlope(e9a,6), slopeE21=trajectorySlope(e21a,6);
+    const slopeP=marketStore.trajectorySlope;
+    const e9=e9a[e9a.length-1]||0, e21=e21a[e21a.length-1]||0;
+    let spreadClass='dn';
+    if (Math.abs(marketStore.emaSpread)<1) spreadClass='txt-amber';
+    else if (e9>e21) spreadClass='up';
+    centerEl.innerHTML=`<div class="traj-title">TRAJECTORY ANALYSIS</div>
+    <div class="traj-row"><div class="traj-ico">${slopeE9>0?'📈':'📉'}</div><div><div class="traj-lbl">EMA9 TRAJECTORY</div><div class="traj-val ${slopeE9>0?'up':'dn'}">${slopeE9>0?'▲':'▼'} ${Math.abs(slopeE9).toFixed(2)}/bar · $${e9.toFixed(0)}</div></div></div>
+    <div class="traj-row"><div class="traj-ico">${slopeE21>0?'📈':'📉'}</div><div><div class="traj-lbl">EMA21 TRAJECTORY</div><div class="traj-val ${slopeE21>0?'up':'dn'}">${slopeE21>0?'▲':'▼'} ${Math.abs(slopeE21).toFixed(2)}/bar · $${e21.toFixed(0)}</div></div></div>
+    <div class="traj-row"><div class="traj-ico">🎯</div><div><div class="traj-lbl">PRICE TRAJECTORY</div><div class="traj-val ${slopeP>0?'up':'dn'}">${slopeP>0?'▲':'▼'} ${Math.abs(slopeP).toFixed(2)}/bar</div></div></div>
+    <div class="traj-row"><div class="traj-ico">⚡</div><div><div class="traj-lbl">EMA SPREAD</div><div class="traj-val ${spreadClass}">${Math.abs(marketStore.emaSpread)<1?'CONVERGING — cross imminent':Math.abs(marketStore.emaSpread).toFixed(1)+' bps '+marketStore.emaCross.replace('_',' ')}</div></div></div>`;
+  }
+
+  // Right metrics
+  setTxt('bm0',`${Math.round((bet.alignment||0)*100)}% (${bet.bullSigs||0}/14)`);
   const bm0=document.getElementById('bm0');
-  if(bm0){if((bet.alignment||0)>=0.6)bm0.style.color='var(--green)';else if((bet.alignment||0)<0.4)bm0.style.color='var(--red)';else bm0.style.color='var(--amber)';}
+  if(bm0){
+    if((bet.alignment||0)>=0.6) bm0.style.color='var(--green)';
+    else if((bet.alignment||0)<0.4) bm0.style.color='var(--red)';
+    else bm0.style.color='var(--amber)';
+  }
   const bm1=document.getElementById('bm1');
   if(bm1){bm1.textContent=(marketStore.emaSpread>=0?'+':'')+marketStore.emaSpread.toFixed(1)+' bps';bm1.style.color=marketStore.emaSpread>0?'var(--green)':'var(--red)';}
   const bm2=document.getElementById('bm2');
   if(bm2){bm2.textContent=(marketStore.trajectorySlope>0?'▲ +':'▼ ')+Math.abs(marketStore.trajectorySlope).toFixed(2)+'/bar';bm2.style.color=marketStore.trajectorySlope>0?'var(--green)':'var(--red)';}
   const bm3=document.getElementById('bm3');
-  if(bm3){bm3.textContent=marketStore.regime;bm3.style.color=marketStore.regime==='TRENDING'?'var(--green)':marketStore.regime==='MEAN_REVERTING'?'var(--red)':'var(--amber)';}
+  if(bm3){
+    bm3.textContent=marketStore.regime;
+    if (marketStore.regime==='BULL_TREND') bm3.style.color='var(--green)';
+    else if (marketStore.regime==='BEAR_TREND') bm3.style.color='var(--red)';
+    else bm3.style.color='var(--amber)';
+  }
   const bm4=document.getElementById('bm4');
-  const ke3=bet.kEdge||0;
-  if(bm4){let eb='— LOW';if(ke3>=0.08)eb='★ STRONG';else if(ke3>=0.04)eb='▲ MOD';bm4.textContent=(ke3*100).toFixed(1)+'% '+eb;bm4.style.color=ke3>=0.08?'var(--green)':ke3>=0.04?'var(--amber)':'var(--t3)';}
+  const pDecision = Number.isFinite(marketStore.pDecisionAbove) ? marketStore.pDecisionAbove : marketStore.pAbove;
+  const ke3=Math.abs(pDecision-marketStore.kalshiAbove/100);
+  if(bm4){
+    let edgeBand='— LOW';
+    if (ke3>=0.08) edgeBand='★ STRONG';
+    else if (ke3>=0.04) edgeBand='▲ MOD';
+    bm4.textContent=(ke3*100).toFixed(1)+'% '+edgeBand;
+    if (ke3>=0.08) bm4.style.color='var(--green)';
+    else if (ke3>=0.04) bm4.style.color='var(--amber)';
+    else bm4.style.color='var(--t3)';
+  }
   const bm5=document.getElementById('bm5');
   if(bm5){bm5.textContent=bet.active?`${(marketStore.kellyFull*50*100).toFixed(0)}% BAL / ${(marketStore.kellyFull*25*100).toFixed(0)}% SAFE`:'HOLD';bm5.style.color=bet.active?'var(--amber)':'var(--t3)';}
+  const bm6=document.getElementById('bm6');
+  if(bm6){
+    const ev=bet.ev??0;
+    if (bet.active) {
+      const sign = ev>=0?'+':'';
+      bm6.textContent=sign+(ev*100).toFixed(1)+'¢';
+    } else {
+      bm6.textContent='—';
+    }
+    if (ev>0) bm6.style.color='var(--green)';
+    else if (ev<0) bm6.style.color='var(--red)';
+    else bm6.style.color='var(--t3)';
+  }
+  const bm7=document.getElementById('bm7');
+  if(bm7){
+    bm7.textContent=bet.active?(bet.timingLabel||'—'):'—';
+    bm7.className='mv num '+(bet.active?(bet.timingClass||''):'');
+  }
+  const bm8=document.getElementById('bm8');
+  if(bm8){
+    if(bet.active&&bet.activeDuration>0){
+      const m_=Math.floor(bet.activeDuration/60);
+      const s2=bet.activeDuration%60;
+      bm8.textContent=`ACTIVE ${m_}:${String(s2).padStart(2,'0')}`;
+      bm8.style.color='var(--amber)';
+    }else if(bet.active){
+      bm8.textContent='NEW *';
+      bm8.style.color='var(--green)';
+    }else{
+      bm8.textContent='—';
+      bm8.style.color='var(--t3)';
+    }
+  }
 }
 
 // ─────────────────────────────────────────────
 // AI ANALYST
 // ─────────────────────────────────────────────
 let _aiCooldownTs = 0;
+
+function buildTrajectoryForecast(s = marketStore) {
+  const px = Number.isFinite(s.price) && s.price > 0 ? s.price : null;
+  if (!px) {
+    return {
+      slopeBpsPerMin: 0,
+      confidence: 'LOW',
+      p1: null,
+      p3: null,
+      p5: null,
+      b1: null,
+      b3: null,
+      b5: null,
+    };
+  }
+
+  const slopePerBar = Number.isFinite(s.trajectorySlope) ? s.trajectorySlope : 0;
+  const slopePerMin = slopePerBar / 15;
+  const kalmanVel = Number.isFinite(s.kalmanVelocity) ? s.kalmanVelocity : 0;
+  const blendedSlopePerMin = (slopePerMin * 0.78) + (kalmanVel * 0.22);
+  const slopeBpsPerMin = (blendedSlopePerMin / px) * 10000;
+
+  const quality = clamp(Number.isFinite(s.dataQuality) ? s.dataQuality : 0.7, 0.35, 1);
+  const adxNorm = clamp((Number.isFinite(s.adxVal) ? s.adxVal : 18) / 35, 0.3, 1);
+  const confScore = quality * adxNorm;
+  let confidence = 'LOW';
+  if (confScore >= 0.75) confidence = 'HIGH';
+  else if (confScore >= 0.55) confidence = 'MED';
+
+  const atr = Number.isFinite(s.atr) && s.atr > 0 ? s.atr : Math.max(px * 0.0018, 35);
+  const ku = Number.isFinite(s.kalmanUncertainty) && s.kalmanUncertainty > 0 ? s.kalmanUncertainty : atr * 0.4;
+
+  const project = mins => {
+    const proj = px + blendedSlopePerMin * mins;
+    const band = Math.max(atr * (mins / 15) * 0.65, ku * 0.35 * Math.sqrt(mins));
+    return { price: proj, band };
+  };
+
+  const t1 = project(1);
+  const t3 = project(3);
+  const t5 = project(5);
+  return {
+    slopeBpsPerMin,
+    confidence,
+    p1: t1.price,
+    p3: t3.price,
+    p5: t5.price,
+    b1: t1.band,
+    b3: t3.band,
+    b5: t5.band,
+  };
+}
+
+function buildLocalAnalystFallback(s = marketStore, trajFc = buildTrajectoryForecast(s)) {
+  const pDecision = Number.isFinite(s.pDecisionAbove) ? s.pDecisionAbove : s.pAbove;
+  const edge = Number.isFinite(s.kalshiAbove) ? (pDecision - s.kalshiAbove / 100) : 0;
+  const verdict = pDecision >= 0.5 ? 'ABOVE' : 'BELOW';
+  const conviction = Math.round(clamp(Math.abs(pDecision - 0.5) * 200 * clamp(Number.isFinite(s.dataQuality) ? s.dataQuality : 0.7, 0.35, 1), 8, 96));
+  const slope = Number.isFinite(trajFc.slopeBpsPerMin) ? trajFc.slopeBpsPerMin : 0;
+  const slopeDir = slope >= 0 ? 'upward' : 'downward';
+  const flowTilt = (s.tradeDeltaBuy || 0) - (s.tradeDeltaSell || 0);
+  const flowLabel = flowTilt >= 0 ? 'buy-pressure' : 'sell-pressure';
+  const risk = Math.max(
+    Number.isFinite(s.flowToxicity) ? s.flowToxicity / 100 : 0,
+    Number.isFinite(s.realizedVol) ? clamp(s.realizedVol / 120, 0, 1) : 0
+  );
+  let riskLabel = 'CONTROLLED';
+  if (risk > 0.72) riskLabel = 'ELEVATED';
+  else if (risk > 0.48) riskLabel = 'MODERATE';
+  const targetDistance = Number.isFinite(s.kalshiTargetDistance) ? s.kalshiTargetDistance : 0;
+  const targetStr = `${targetDistance >= 0 ? '+' : ''}${targetDistance.toFixed(0)}`;
+
+  return [
+    `STRUCTURE: EMA9 ${s.ema9 > s.ema21 ? 'above' : 'below'} EMA21, spread ${Math.abs(s.emaSpread || 0).toFixed(1)} bps; oracle deviation ${(Number.isFinite(s.oracleDeviation) ? s.oracleDeviation.toFixed(3) : '0.000')}%.`,
+    `TRAJECTORY: ${slopeDir} slope ${Math.abs(slope).toFixed(2)} bps/min, Kalman velocity ${(s.kalmanVelocity || 0).toFixed(2)}/tick; 5m path $${Number.isFinite(trajFc.p5) ? trajFc.p5.toFixed(0) : '—'} +/- $${Number.isFinite(trajFc.b5) ? trajFc.b5.toFixed(0) : '—'} (${trajFc.confidence}).`,
+    `ORDERFLOW: ${flowLabel}, CVD ${(s.cvd || 0).toFixed(2)}, aggression ${((s.aggression || 0) * 100).toFixed(1)}%, toxicity ${(s.flowToxicity || 0).toFixed(0)}%.`,
+    `REGIME: ${s.regime || 'TRANSITIONAL'} with ADX ${(s.adxVal || 0).toFixed(1)} and RV ${(s.realizedVol || 0).toFixed(1)}%.`,
+    `ADAPTIVE CALIBRATION: ${Number.isFinite(s.adaptiveScoutSampleN) ? s.adaptiveScoutSampleN : 0} resolved samples; weights trend ${(Number(s.adaptiveScoutWeights?.trend || 0)).toFixed(2)}, meanRev ${(Number(s.adaptiveScoutWeights?.meanRev || 0)).toFixed(2)}, flow ${(Number(s.adaptiveScoutWeights?.flow || 0)).toFixed(2)}.`,
+    `KALSHI EDGE: market ${s.kalshiAbove || 50}% vs adjusted ${(pDecision * 100).toFixed(1)}% (edge ${(edge * 100).toFixed(1)}%, target distance ${targetStr}).`,
+    `VERDICT: ${verdict} (${conviction}% conviction). RISK: ${riskLabel}.`
+  ].join('\n');
+}
+
 async function runAI(){ // NOSONAR
   if(_aiCooldownTs>0 && Date.now()-_aiCooldownTs<8000) return;
   _aiCooldownTs = Date.now();
   const btn=document.getElementById('aiBtn');
   const out=document.getElementById('aiOut');
   btn.disabled=true; btn.textContent='⟳ ANALYZING…';
-  out.innerHTML='<span class="ai-status-loading">Generating institutional analysis</span><span class="ai-cursor"></span>';
+  out.innerHTML='<span class="ai-status-loading">Generating report</span><span class="ai-cursor"></span>';
+  setStaleWarning('');
 
   const s=marketStore;
   const pch=s.price&&s.open24?((s.price-s.open24)/s.open24*100).toFixed(2):0;
   const sc=s.scoutScores||{};
-  const window15=window._kalshiWindow||{};
-  const multiTF=window._multiTF||{};
-  const funding=window._funding||{};
-  const intel=window._intel||{};
   let bollingerState='INSIDE';
-  if (s.price>s.bb?.upper) bollingerState='ABOVE UPPER BAND';
-  else if (s.price<s.bb?.lower) bollingerState='BELOW LOWER BAND';
-  let kalmanVelocityTxt='—';
+  if (s.price>s.bb?.upper) bollingerState='ABOVE UPPER';
+  else if (s.price<s.bb?.lower) bollingerState='BELOW LOWER';
+  let kalmanVelocityTxt=' —';
   if (s.kalmanVelocity != null) {
     kalmanVelocityTxt=(s.kalmanVelocity>=0?'+':'')+s.kalmanVelocity.toFixed(2);
   }
@@ -2948,113 +4155,182 @@ async function runAI(){ // NOSONAR
   const hasOracleDeviation=Number.isFinite(s.oracleDeviation);
   const hasOpenInterest=Number.isFinite(s.openInterest);
 
-  // ── Build the richest possible context for the AI ──
-  const prompt = `QUANT//DESK LIVE MARKET BRIEF — ${new Date().toISOString()}
+  const targetPrice = getActiveKalshiTargetPrice();
+  const targetProb = Number.isFinite(s.pDecisionAbove) ? s.pDecisionAbove : s.pAbove;
+  const trajFc = buildTrajectoryForecast(s);
+  let targetDistanceTxt = '—';
+  if (Number.isFinite(s.kalshiTargetDistance)) {
+    const targetDistanceSign = s.kalshiTargetDistance >= 0 ? '+' : '';
+    targetDistanceTxt = targetDistanceSign + s.kalshiTargetDistance.toFixed(0);
+  }
+  const prompt=`BTC LIVE DATA — ${new Date().toISOString()}
 
-═══ PRICE ═══
-BTC/USD: $${s.price?.toLocaleString()} | Change: ${pch>=0?'+':''}${pch}% (24H)
-High: $${s.high24?.toLocaleString()} | Low: $${s.low24?.toLocaleString()}
-Bid: $${s.bestBid?.toFixed(2)} | Ask: $${s.bestAsk?.toFixed(2)} | Spread: $${s.spread?.toFixed(2)}
+PRICE: $${s.price?.toLocaleString()} (${pch>=0?'+':''}${pch}% 24H)
+HIGH24: $${s.high24?.toLocaleString()} | LOW24: $${s.low24?.toLocaleString()}
+SPREAD: $${s.bestAsk&&s.bestBid?(s.bestAsk-s.bestBid).toFixed(2):'—'} | IMBALANCE: ${(s.imbalance*100).toFixed(1)}%
 
 MULTI-SOURCE ORACLE:
 - Oracle price: $${s.oraclePrice?.toLocaleString()||'—'} | Deviation: ${hasOracleDeviation?s.oracleDeviation.toFixed(3)+'%':'—'} | Confidence: ${s.oracleConf||'—'}/100
 - Sources: ${(s.oracleSources||[]).map(x=>x.exchange+(x.outlier?' [OUTLIER]':' ✓')).join(', ')||'—'}
 
-═══ EMA STRUCTURE (9/21) ═══
-EMA9: $${s.ema9?.toFixed(0)} | EMA21: $${s.ema21?.toFixed(0)}
-Cross: ${s.emaCross} | Spread: ${s.emaSpread?.toFixed(1)} bps | Slope: ${s.trajectorySlope?.toFixed(2)}/bar
-EMA Velocity: ${intel.vel?.velocity?.toFixed(3)||'—'}/bar | Accelerating: ${intel.vel?.accelerating||false}
-Price vs EMA9: ${s.price>s.ema9?'ABOVE':'BELOW'} | vs EMA21: ${s.price>s.ema21?'ABOVE':'BELOW'}
+EMA STRUCTURE:
+- EMA9: $${s.ema9?.toFixed(0)} | EMA21: $${s.ema21?.toFixed(0)}
+- Cross: ${s.emaCross} | Spread: ${s.emaSpread?.toFixed(1)} bps
+- Price vs EMA9: ${s.price>s.ema9?'ABOVE':'BELOW'} | vs EMA21: ${s.price>s.ema21?'ABOVE':'BELOW'}
+- Trajectory slope (6-bar): ${s.trajectorySlope?.toFixed(2)}/bar
 
-═══ MULTI-TIMEFRAME REGIME ═══
-1m: ${multiTF.r1m||'—'} | 5m: ${multiTF.r5m||'—'} | 15m: ${multiTF.r15m||'—'}
-Alignment: ${multiTF.aligned?'✓ ALL TIMEFRAMES ALIGNED':'MIXED'} | Bull: ${multiTF.bullCount||0}/3 Bear: ${multiTF.bearCount||0}/3
+SIGNALS:
+- RSI: ${s.rsi?.toFixed(1)} | MACD: ${s.macd>s.macdSig?'BULL':'BEAR'} | VWAP: ${s.price>s.vwap?'ABOVE':'BELOW'}
+- Bollinger: ${bollingerState} | ATR: $${s.atr?.toFixed(0)}
+- Stochastic: ${s.stoch?.toFixed(1)} | Momentum: ${s.momentum?.toFixed(0)}
 
-═══ TECHNICAL SIGNALS ═══
-RSI(14): ${s.rsi?.toFixed(1)} | MACD: ${s.macd>s.macdSig?'BULL CROSS':'BEAR CROSS'} | VWAP: ${s.price>s.vwap?'ABOVE':'BELOW'}
-Bollinger: ${bollingerState} (σ spread: $${((s.bb?.upper||0)-(s.bb?.lower||0)).toFixed(0)})
-VWAP Bands: Upper $${intel.vwapBands?.upper1?.toFixed(0)||'—'} | Lower $${intel.vwapBands?.lower1?.toFixed(0)||'—'}
-Stochastic: ${s.stoch?.toFixed(1)} | ATR: $${s.atr?.toFixed(0)} | Momentum: ${s.momentum?.toFixed(0)}
-Volume POC: $${intel.poc?.toFixed(0)||'—'} | RSI Divergence: ${intel.divergence?intel.divergence.type+' ('+intel.divergence.strength?.toFixed(2)+')':'NONE'}
-Candle Pattern: ${intel.pattern?intel.pattern.type+' → '+intel.pattern.bias:'NONE'}
+ORDERFLOW (LIVE WS):
+- CVD: ${s.cvd?.toFixed(2)} (${s.cvd>0?'BUY DOM':'SELL DOM'})
+- Trade delta: Buy ${s.tradeDeltaBuy?.toFixed(3)} / Sell ${s.tradeDeltaSell?.toFixed(3)}
+- Bid/Ask imbalance: ${(s.imbalance*100)?.toFixed(1)}%
+- Aggression: ${(s.aggression*100)?.toFixed(1)}% | Flow toxicity: ${s.flowToxicity?.toFixed(1)||'—'}%
+- Anomaly: ${s.anomalies[0]?.type||'NONE'} | Sweeps: ${s.sweeps?.length} | FVGs: ${s.fvgs?.length}
+
+REGIME INTELLIGENCE:
+- Regime: ${s.regime} (conf: ${s.regimeConf?.toFixed(0)||'—'}%) | ADX: ${s.adxVal?.toFixed(1)||'—'} | Realized Vol: ${s.realizedVol?.toFixed(1)||'—'}%
+- Ensemble P(ABOVE): ${(s.pAbove*100)?.toFixed(1)}%
+
+TRAJECTORY FORECAST:
+- Slope: ${Number.isFinite(trajFc.slopeBpsPerMin)?trajFc.slopeBpsPerMin.toFixed(2):'—'} bps/min | Confidence: ${trajFc.confidence}
+- 1m: $${Number.isFinite(trajFc.p1)?trajFc.p1.toFixed(0):'—'} ± $${Number.isFinite(trajFc.b1)?trajFc.b1.toFixed(0):'—'}
+- 3m: $${Number.isFinite(trajFc.p3)?trajFc.p3.toFixed(0):'—'} ± $${Number.isFinite(trajFc.b3)?trajFc.b3.toFixed(0):'—'}
+- 5m: $${Number.isFinite(trajFc.p5)?trajFc.p5.toFixed(0):'—'} ± $${Number.isFinite(trajFc.b5)?trajFc.b5.toFixed(0):'—'}
 
 ENSEMBLE SCOUTS:
-- Trend: ${sc.trend?.toFixed(2)||'—'} | MeanRev: ${sc.meanRev?.toFixed(2)||'—'} | Vol: ${sc.volatility?.toFixed(2)||'—'} | Flow: ${sc.flow?.toFixed(2)||'—'}
+- Trend: ${sc.trend?.toFixed(2)||'—'} | MeanRev: ${sc.meanRev?.toFixed(2)||'—'} | Volatility: ${sc.volatility?.toFixed(2)||'—'} | Flow: ${sc.flow?.toFixed(2)||'—'}
 
-4-SCENARIO: Bull Drift ${((s.pBullDrift||0)*100).toFixed(1)}% | Range ${((s.pRangeBound||0)*100).toFixed(1)}% | Vol Exp ${((s.pVolExpansion||0)*100).toFixed(1)}% | Tail ${((s.pTailRisk||0)*100).toFixed(1)}%
+ADAPTIVE CALIBRATION:
+- Resolved samples: ${Number.isFinite(s.adaptiveScoutSampleN) ? s.adaptiveScoutSampleN : 0}
+- Trend weight: ${Number(s.adaptiveScoutWeights?.trend || 0).toFixed(2)} | MeanRev weight: ${Number(s.adaptiveScoutWeights?.meanRev || 0).toFixed(2)} | Flow weight: ${Number(s.adaptiveScoutWeights?.flow || 0).toFixed(2)}
+- Calibration trust: ${(Number.isFinite(s.adaptiveScoutSampleN) ? Math.min(100, (s.adaptiveScoutSampleN / 40) * 100) : 0).toFixed(0)}% sample confidence
 
-═══ ORDERFLOW (LIVE WS) ═══
-CVD: ${s.cvd>=0?'+':''}${s.cvd?.toFixed(3)} | Buy ${s.tradeDeltaBuy?.toFixed(3)} / Sell ${s.tradeDeltaSell?.toFixed(3)}
-Bid/Ask Imbalance: ${(s.imbalance*100)?.toFixed(1)}% | Aggression: ${(s.aggression*100)?.toFixed(1)}% | Flow toxicity: ${s.flowToxicity?.toFixed(1)||'—'}%
-Absorption: ${s.absorption?s.absorption.type+' @ $'+s.absorption.price?.toFixed(0):'NONE'} | Spoof Levels: ${s.spoofLevels?.length||0}
-Liquidity Sweeps: ${s.sweeps?.length||0} | FVGs: ${s.fvgs?.length||0} | Walls: ${s.liquidityWalls?.length||0}
+4-SCENARIO PROBABILITIES:
+- Bull Drift: ${((s.pBullDrift||0)*100).toFixed(1)}% | Range-Bound: ${((s.pRangeBound||0)*100).toFixed(1)}% | Vol Expansion: ${((s.pVolExpansion||0)*100).toFixed(1)}% | Tail Risk: ${((s.pTailRisk||0)*100).toFixed(1)}%
 
 KALMAN FILTER:
 - Price: $${s.kalmanPrice?.toFixed(0)||'—'} | Velocity: ${kalmanVelocityTxt}/tick | Uncertainty: ±$${s.kalmanUncertainty?.toFixed(0)||'—'}
 
 DERIVATIVES:
-- Funding: ${fundingRateTxt} (${annualizedTxt}) | OI: ${hasOpenInterest?(s.openInterest/1e9).toFixed(2)+'B':'—'} | OI signal: ${s.oiPriceDiv||'NEUTRAL'}
+- Funding rate: ${fundingRateTxt} (${annualizedTxt}) | Next: ${s.fundingCountdown||'—'}
+- Open interest: ${hasOpenInterest?(s.openInterest/1e9).toFixed(2)+'B':'—'} | OI vs price: ${s.oiPriceDiv||'NEUTRAL'}
+- Mark: $${s.markPrice?.toFixed(0)||'—'} | Index: $${s.indexPrice?.toFixed(0)||'—'}
 
-KALSHI: Market ${s.kalshiAbove}% | Model ${(s.pAbove*100)?.toFixed(1)}% | Edge ${((s.pAbove-s.kalshiAbove/100)*100)?.toFixed(1)}% | EV ${((s.kalshiEV||0)*100).toFixed(1)}¢/$1
-BET ENGINE: ${s.betData?.active?`ACTIVE — ${s.betData.verdict} (${s.betData.conviction}% conviction)`:'MONITORING'} | Kelly safe: ${(s.kellyFull*25*100).toFixed(1)}%
+KALSHI: Market ${s.kalshiAbove}% | Model ${(s.pAbove*100)?.toFixed(1)}% | Edge ${((s.pAbove-s.kalshiAbove/100)*100)?.toFixed(1)}%
+KALSHI TARGET: ${formatKalshiTargetPrice(targetPrice)} (${Number.isFinite(s.kalshiManualTargetPrice) && s.kalshiManualTargetPrice > 0 ? 'MANUAL' : 'AUTO'})
+KALSHI TARGET-ADJUSTED: ${(targetProb*100).toFixed(1)}% ABOVE | Distance ${targetDistanceTxt}
+KALSHI TARGET EDGE (ADJ): ${((targetProb-s.kalshiAbove/100)*100).toFixed(1)}%
+BET ENGINE: ${s.betData?.active?`ACTIVE — ${s.betData.verdict} (${s.betData.conviction}% conviction)`:'MONITORING'}
 SIGNAL ACCURACY: ${s.signalAccuracy||'—'}% | BRIER: ${s.brierScore||'—'}`;
 
-═══ DERIVATIVES / MACRO ═══
-Funding Rate: ${funding.rate!=null?(funding.rate*100).toFixed(4)+'%':'unavailable'} | Signal: ${funding.signal||'NEUTRAL'}
-Funding Interpretation: ${funding.signal==='LONGS_OVEREXTENDED'?'Longs crowded — squeeze risk bearish':funding.signal==='SHORTS_OVEREXTENDED'?'Shorts crowded — squeeze risk bullish':'Balanced positioning'}
+  const system=`You are the world's most elite BTC quant analyst. 20 years institutional experience.
+DECISIVE. CONFIDENT. Data-driven. No disclaimers.
 
-═══ REGIME + PROBABILITY ═══
-Regime: ${s.regime} | ADX: ${s.adxVal?.toFixed(1)||'—'} | Realized Vol: ${s.realizedVol?.toFixed(1)||'—'}%
-Bayesian P(ABOVE): ${(s.pAbove*100)?.toFixed(1)}% | P(BELOW): ${(s.pBelow*100)?.toFixed(1)}%
-Intel Score: ${intel.score>=0?'+':''}${intel.score?.toFixed(3)||'—'} | Conviction: ${intel.isHighConviction?'HIGH':'MONITORING'}
-Regime Weights: EMA=${((intel.weights?.ema||0)*100).toFixed(0)}% RSI=${((intel.weights?.rsi||0)*100).toFixed(0)}% CVD=${((intel.weights?.cvd||0)*100).toFixed(0)}% VWAP=${((intel.weights?.vwap||0)*100).toFixed(0)}%`;
+You have access to: multi-source oracle consensus, ensemble scout scores (Trend/MeanRev/Vol/Flow, range -1 to +1 where positive=bullish), 4-scenario probability distribution, Kalman filter price/velocity/uncertainty, derivatives (funding rate, open interest), and live signal accuracy tracking.
 
-  const system = `You are a senior quantitative trader with 20 years on an institutional crypto desk. You specialize in short-duration prediction markets.
+Interpret data as follows:
+- Scout scores near ±1 = strong signal, near 0 = neutral/conflicted
+- ADX >25 = established trend (trust trend-following scouts); ADX <20 = range-bound (trust mean-rev)
+- Kalman velocity confirms or contradicts price direction — divergence is early warning
+- Funding rate >0.05% = leveraged longs; <-0.02% = leveraged shorts dominant
+- Dominant scenario (highest %) drives the trade thesis
 
-Your job: Analyze the live market data and give a DECISIVE ABOVE or BELOW verdict for the Kalshi 15-minute BTC contract.
+FORMAT (plain text, no markdown):
+STRUCTURE: [EMA9/21 + Kalman alignment, oracle vs WS price delta if notable]
+TRAJECTORY: [slope, Kalman velocity, ensemble direction, where price is heading next 15min]
+TRAJECTORY FORECAST: [1m/3m/5m projected path with uncertainty bands and confidence tier]
+ORDERFLOW: [CVD, toxicity, delta, bid/ask pressure, whale activity, OI signal]
+REGIME: [regime state, ADX, realized vol, dominant scenario probability]
+SIGNALS: [scout scores synthesis, key confluences]
+KALSHI EDGE: [edge size, bet direction if warranted]
+VERDICT: ABOVE or BELOW — with conviction % and single key risk factor
 
-REASONING FRAMEWORK (use this order):
-1. MACRO STRUCTURE — Dominant regime? Multi-timeframe aligned?
-2. MOMENTUM — EMA9/21 accelerating or decelerating? Slope confirming?
-3. ORDERFLOW — CVD + delta + bid/ask imbalance agree with price direction?
-4. DIVERGENCES — RSI divergence or absorption contradicting momentum?
-5. DERIVATIVES — Funding rate signaling overcrowded positioning?
-6. TIMING — Where are we in the 15-min window? Right moment to bet?
-7. EDGE — Sufficient Kalshi mispricing to justify the trade?
-
-OUTPUT FORMAT (plain text, no markdown):
-REGIME: [1 sentence — what mode the market is in]
-STRUCTURE: [EMA9/21, Kalman, key levels vs anchors]
-TRAJECTORY: [where price heading and why — direction and force]
-ORDERFLOW: [CVD, delta, absorption, manipulation signals]
-KALSHI EDGE: [edge size, EV, Kelly sizing, bet direction]
-VERDICT: [ABOVE or BELOW] — [conviction %] — [single key reason]
-
-Rules: Be decisive. If signals mixed, say so. Never exceed 260 words. No disclaimers. Pure institutional signal.`;
+Under 250 words. Pure institutional signal.`;
 
   try {
-    const resp = await fetch('/api/analyze', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ prompt, system }),
-    });
-    if(!resp.ok){const e=await resp.json().catch(()=>({error:resp.statusText}));throw new Error(e.error||`HTTP ${resp.status}`);}
-    const data=await resp.json();
-    const text=data.content?.[0]?.text||'No response.';
-    const modelInfo=data.model||'';
     const aiModelEl=document.getElementById('aiModel');
-    if(aiModelEl) aiModelEl.textContent='OpenRouter · '+(modelInfo.split('/')[1]||modelInfo).split(':')[0];
-    // Sanitize AI text before HTML injection — escape tags, then re-apply safe spans
-    const safe=text.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
-    const fmt=safe
-      .replace(/(ABOVE|BULL(?:ISH)?|BUY[\s-]SIDE|LONG|ASCENDING|ACCELERAT\w+)/gi,m=>`<span class="bull">${m}</span>`)
-      .replace(/(BELOW|BEAR(?:ISH)?|SELL[\s-]SIDE|SHORT|DESCEND\w+|DECELERAT\w+)/gi,m=>`<span class="bear">${m}</span>`)
-      .replace(/(CAUTION|RISK|WARN\w+|MIXED|DIVERGEN\w+|ABSORB\w+|SPOOF\w*)/gi,m=>`<span class="warn">${m}</span>`)
-      .replace(/(CVD|VWAP|FVG|KALSHI|BAYESIAN|EDGE|FUNDING|POC|REGIME|KALMAN|SCOUT|ORACLE)/gi,m=>`<span class="cyan">${m}</span>`);
-    out.innerHTML=fmt;
+    const retryHelper = getSystemTruthClient();
+
+    async function requestAttempt(attempt = 0) {
+      const truth = await publishSystemTruth(true);
+      const snapshotId = truth?.snapshotId || marketStore.systemTruth?.snapshotId || createClientSnapshotId();
+      const snapshotTimestamp = truth?.lastUpdated || marketStore.systemTruth?.lastUpdated || Date.now();
+
+      const resp = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(6500),
+        body: JSON.stringify({
+          prompt,
+          system,
+          snapshotId,
+          snapshotTimestamp,
+        }),
+      });
+      if (!resp.ok) {
+        const errorPayload = await resp.json().catch(() => ({ error: resp.statusText }));
+        throw new Error(errorPayload.error || `HTTP ${resp.status}`);
+      }
+
+      const data = await resp.json();
+
+      if (data.blocked) {
+        marketStore.systemTruth.executionAllowed = false;
+        marketStore.systemTruth.riskLevel = data.riskLevel || marketStore.systemTruth.riskLevel || 'HIGH';
+        marketStore.systemTruth.snapshotId = data.snapshotId || marketStore.systemTruth.snapshotId || '';
+        marketStore.systemTruth.lastUpdated = Date.now();
+        marketStore.systemTruthReady = true;
+        marketStore.executionLockReason = data.reason || 'EXECUTION_LOCKED: Execution disabled by system truth';
+        updateSystemStatusBanners();
+        if (aiModelEl) aiModelEl.textContent = 'System Truth Gate · Locked';
+        out.innerHTML = '<span class="ai-status-error">Execution locked by system truth. AI call skipped.</span>';
+        return null;
+      }
+
+      if (retryHelper.shouldRetryStale(data, attempt)) {
+        setStaleWarning(data.reason || 'Snapshot too old — market state has changed');
+        await forceMarketRefresh();
+        return requestAttempt(attempt + 1);
+      }
+
+      if (data.stale) {
+        setStaleWarning(data.reason || 'Snapshot too old — market state has changed');
+        if (aiModelEl) aiModelEl.textContent = 'System Truth Gate · Stale';
+        out.innerHTML = '<span class="ai-status-error">Snapshot stale after refresh. Pulling fresh market state is required.</span>';
+        return null;
+      }
+
+      setStaleWarning('');
+      const text=data.content?.[0]?.text||buildLocalAnalystFallback(s, trajFc);
+      const modelInfo=data.model||'';
+      if(aiModelEl) aiModelEl.textContent='OpenRouter · '+(modelInfo.split('/')[1]||modelInfo).split(':')[0];
+      const safe=text.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+      const fmt=safe
+        .replaceAll(/BULLISH|BUY[\s-]SIDE|ABOVE|LONG|EXPANSION/gi,m=>`<span class="bull">${m}</span>`)
+        .replaceAll(/BEARISH|SELL[\s-]SIDE|BELOW|SHORT|CONTRACTION/gi,m=>`<span class="bear">${m}</span>`)
+        .replaceAll(/WARNING|RISK|CAUTION|ALERT|CASCADE/gi,m=>`<span class="warn">${m}</span>`)
+        .replaceAll(/EDGE|KALSHI|BAYESIAN|CVD|VWAP|FVG|KALMAN|SCOUT|ORACLE|REGIME/gi,m=>`<span class="cyan">${m}</span>`);
+      out.innerHTML=fmt;
+      return data;
+    }
+
+    await requestAttempt(0);
   } catch(e){
-    const safeMsg=String(e.message).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
-    out.innerHTML=`<span class="ai-status-error">API error: ${safeMsg}</span>`;
+    console.debug('[runAI] remote analysis fallback:', e?.message || e);
+    const aiModelEl=document.getElementById('aiModel');
+    if(aiModelEl) aiModelEl.textContent='Local Quant Fallback · Deterministic';
+    const fallbackText = buildLocalAnalystFallback(s, trajFc);
+    const safe=fallbackText.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+    const fmt=safe
+      .replaceAll(/ABOVE|LONG|BULLISH/gi,m=>`<span class="bull">${m}</span>`)
+      .replaceAll(/BELOW|SHORT|BEARISH/gi,m=>`<span class="bear">${m}</span>`)
+      .replaceAll(/RISK|ELEVATED|MODERATE/gi,m=>`<span class="warn">${m}</span>`)
+      .replaceAll(/EDGE|KALSHI|CVD|KALMAN|REGIME|TRAJECTORY/gi,m=>`<span class="cyan">${m}</span>`);
+    out.innerHTML=fmt;
   }
   btn.disabled=false; btn.textContent='⟳ GENERATE ANALYSIS';
 }
@@ -3081,6 +4357,7 @@ function renderLoop(ts){
     } catch(e) {
       console.error('[renderLoop] renderAll:', e);
     }
+    scheduleSystemTruthPublish();
   }
   requestAnimationFrame(renderLoop);
 }
@@ -3096,7 +4373,8 @@ setInterval(()=>{computeIndicators();},30000);
 setInterval(()=>{
   const cl=document.getElementById('clock');
   if(cl) cl.textContent=new Date().toLocaleTimeString();
-
+  const kw=document.getElementById('kWin2');
+  if(kw) kw.textContent=new Date(Math.ceil(Date.now()/900000)*900000).toLocaleTimeString();
 },1000);
 
 // ─────────────────────────────────────────────
@@ -3106,6 +4384,10 @@ async function init(){
   resizeChart();
   setWsStatus('connecting');
   hydrateSignalLog();
+  hydrateKalshiTargetPrice();
+  setupKalshiTargetControls();
+  hydrateKalshiManualAbove();
+  setupKalshiManualControls();
   await bootstrapCandles();   // REST candle bootstrap from REST API
   resizeChart();              // re-measure after layout settles
   setupCrosshair();
@@ -3113,7 +4395,17 @@ async function init(){
   pollOracle(); setInterval(pollOracle, 8000);
   pollDerivatives(); setInterval(pollDerivatives, 15000);
   fetchKalshiLive(); setInterval(fetchKalshiLive, 10000);
+  setInterval(() => {
+    const kr = kalshiRound();
+    enforceKalshiManualTargetRoundScope(kr);
+    updateKalshiCountdownDisplay(kr);
+  }, 250);
   setInterval(bootstrapCandles, 1800000); // refresh candle history every 30 min
+  await publishSystemTruth(true);
+  await refreshPerformancePanel();
+  setInterval(() => { void refreshPerformancePanel(); }, 30000);
+  setInterval(() => { void syncResolvedResults(); }, 5000);
+  updateSystemStatusBanners();
   // WS engine started by module script — see bottom of <body>
   requestAnimationFrame(renderLoop);
 }
@@ -3126,9 +4418,11 @@ async function init(){
   /* eslint-disable sonarjs/cognitive-complexity */
   import { marketStore } from './lib/marketStore.js';
   import { CoinbaseWS } from './lib/coinbaseWebsocket.js';
+  import { deriveSystemTruth, shouldRetryStale } from './lib/systemTruthClient.js';
 
   // Expose to non-module script
   globalThis._mStore = marketStore;
+  globalThis._systemTruthClient = { deriveSystemTruth, shouldRetryStale };
 
   // WS engine
   const ws = new CoinbaseWS();
@@ -3174,6 +4468,8 @@ async function init(){
     ms.absorption   = state.absorption  || null;
     ms.spoofLevels  = state.spoofLevels || [];
 
+    if (typeof globalThis.recordFeedSamples === 'function') globalThis.recordFeedSamples(state);
+
     // Sync OB lists for renderOB()
     if (state.orderbook?.bids?.length) {
       ms.bidsList = state.orderbook.bids.slice(0,20).map(([p,s]) => ({price:+p, size:+s}));
@@ -3208,69 +4504,11 @@ async function init(){
     }
   });
 
-  import { computeWeightedVerdict, detectCandlePattern, computePOC,
-           computeVWAPBands, emaVelocity, getMultiTFRegime } from '/lib/intelligence.js';
-  import { fetchAllTimeframes, fetchFundingRate, getKalshiWindow } from '/lib/dataFeeds.js';
-
-  // Multi-TF candles + funding — refresh every 60s
-  let candles1m=[], candles5m=[], candles1h=[];
-  async function refreshExtraData() {
-    try {
-      const tf = await fetchAllTimeframes();
-      candles1m = tf.candles1m; candles5m = tf.candles5m; candles1h = tf.candles1h;
-      window._multiTF = getMultiTFRegime(candles1m, candles5m, marketStore.state.candles);
-    } catch(e) { console.warn('TF refresh:', e.message); }
-    try {
-      const fr = await fetchFundingRate();
-      window._funding = fr || {};
-    } catch(e) { window._funding = {}; }
-  }
-  refreshExtraData();
-  setInterval(refreshExtraData, 60000);
-
-  // Intelligence engine — run on every store update
-  marketStore.subscribe(state => {
-    // Update Kalshi window timing
-    window._kalshiWindow = getKalshiWindow();
-
-    // Run weighted verdict if we have candles
-    if (state.candles?.length > 22) {
-      const mtf = window._multiTF || {};
-      const fr  = window._funding?.rate ?? null;
-      const intel = computeWeightedVerdict(state, mtf, fr);
-      if (intel) {
-        window._intel = intel;
-        // Push back to both stores
-        if (window._mStore) {
-          window._mStore.setState({
-            pAbove:     intel.pAbove,
-            pBelow:     intel.pBelow,
-            verdict:    intel.verdict,
-            confidence: intel.confidence,
-          });
-        }
-        if (window.marketStore) {
-          window.marketStore.pAbove     = intel.pAbove;
-          window.marketStore.pBelow     = intel.pBelow;
-          window.marketStore.verdict    = intel.verdict;
-          window.marketStore.confidence = intel.confidence;
-        }
-      }
-    }
-
-    // Sync candle-dependent fields
-    if (state.candles?.length > 22) {
-      const closes = state.candles.map(c=>c.close);
-      if (window.marketStore) {
-        window.marketStore.candles = state.candles;
-      }
-    }
-  });
-
   // Wait for inline script to set up, then start
   function startWhenReady() {
-    if (typeof init === 'function') {
-      window.marketStore = window.marketStore || {};
+    if (typeof init === 'function' && globalThis.marketStore !== undefined) {
+      // Sync inline marketStore reference
+      globalThis.marketStore = globalThis.marketStore || {};
       init();
       ws.connect();
     } else {

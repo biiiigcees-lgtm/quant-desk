@@ -1,5 +1,7 @@
-import { describe, it, beforeEach } from 'node:test';
-import assert from 'node:assert/strict';
+// @ts-nocheck
+// @ts-nocheck
+const { describe, it, beforeEach } = await import('node:test');
+const { default: assert } = await import('node:assert/strict');
 import { MarketStore } from '../lib/marketStore.js';
 
 describe('MarketStore — reactive state', () => {
@@ -49,7 +51,7 @@ describe('MarketStore — reactive state', () => {
     const calls = [];
     store.subscribe(s => calls.push(s.price));
     store.setState({ price: 1 });
-    assert.equal(calls[calls.length - 1], 1);
+    assert.equal(calls.at(-1), 1);
   });
 });
 

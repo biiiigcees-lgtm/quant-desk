@@ -1,0 +1,19 @@
+{
+  "name": "quant-system",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "start": "node --enable-source-maps dist/main.js",
+    "start:live": "node --enable-source-maps dist/cli/start-live.js",
+    "backtest": "node --enable-source-maps dist/cli/backtest.js",
+    "dev:replay": "node --enable-source-maps dist/cli/dev-replay.js",
+    "dev": "npm run build && npm run start"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}
