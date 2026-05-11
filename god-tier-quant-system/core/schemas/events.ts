@@ -408,26 +408,65 @@ export interface SnapshotSourceMeta {
   required: boolean;
 }
 
-export interface CanonicalDecisionSnapshot {
+export type MarketState = MarketDataEvent;
+
+export interface OrderbookState {
+  yesPrice: number;
+  noPrice: number;
+  spread: number;
+  bidLevels: Array<[number, number]>;
+  askLevels: Array<[number, number]>;
+  volume: number;
+}
+
+export type IndicatorState = FeatureEvent;
+
+export interface AIState {
+  probability: ProbabilityEvent;
+  calibration: CalibrationEvent;
+  drift: DriftEvent;
+  anomaly: AnomalyEvent | null;
+}
+
+export interface RiskState {
+  executionPermission: boolean;
+  safetyMode: ExecutionMode;
+  reason: string;
+  riskLevel: number;
+}
+
+export type ExecutionState = ExecutionPlan | null;
+
+export interface EpistemicState {
+  uncertaintyScore: number;
+  calibrationError: number;
+  driftSeverity: DriftSeverity;
+  anomalySeverity: AnomalyEvent['severity'] | 'none';
+  truthScore: number;
+}
+
+export interface Snapshot {
   snapshotId: string;
+  timestamp: number;
+  market: MarketState;
+  orderbook: OrderbookState;
+  indicators: IndicatorState;
+  ai: AIState;
+  risk: RiskState;
+  execution: ExecutionState;
+  epistemic: EpistemicState;
+}
+
+export interface CanonicalDecisionSnapshot extends Snapshot {
   contractId: string;
   sequence: number;
-  timestamp: number;
   hash: string;
-  market: MarketDataEvent;
+  sourceMeta: SnapshotSourceMeta[];
   microstructure: MicrostructureEvent;
-  indicators: FeatureEvent;
-  aiContext: {
-    probability: ProbabilityEvent;
-    calibration: CalibrationEvent;
-    drift: DriftEvent;
-    anomaly: AnomalyEvent | null;
-  };
-  executionState: ExecutionPlan | null;
-  riskState: {
-    safetyMode: ExecutionMode;
-    reason: string;
-  } | null;
+  // Compatibility aliases retained while services migrate to Snapshot fields.
+  aiContext: AIState;
+  executionState: ExecutionState;
+  riskState: RiskState;
 }
 
 export interface DecisionSnapshotEvent {
@@ -448,7 +487,7 @@ export interface DecisionSnapshotEvent {
     anomaly: AnomalyEvent | null;
     executionPlan: ExecutionPlan | null;
   };
-  canonical?: CanonicalDecisionSnapshot;
+  canonical: CanonicalDecisionSnapshot;
 }
 
 export interface DecisionSnapshotInvalidEvent {
@@ -568,6 +607,16 @@ export interface ExecutionRecommendationIntelligence {
   expectedSlippage: number;
   fillProbability: number;
   confidence: number;
+}
+
+export interface CanonicalAIOutput {
+  bias: 'LONG' | 'SHORT' | 'WAIT';
+  confidence: number;
+  uncertainty: number;
+  riskLevel: number;
+  reasoning: string[];
+  invalidation: string[];
+  executionRecommendation: 'EXECUTE' | 'WAIT' | 'BLOCK';
 }
 
 export interface AnomalyFlagIntelligence {
