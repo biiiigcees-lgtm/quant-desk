@@ -16,13 +16,13 @@
   --white:  #eeeef5;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;overflow:hidden}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;overflow-x:hidden;overflow-y:auto}
 ::-webkit-scrollbar{width:3px;height:3px}
 ::-webkit-scrollbar-track{background:var(--bg1)}
 ::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
 
 /* ── TOPBAR ── */
-#topbar{display:flex;align-items:center;gap:0;height:36px;background:var(--bg1);border-bottom:1px solid var(--border);padding:0 12px;position:sticky;top:0;z-index:100;gap:16px}
+#topbar{display:flex;align-items:center;height:36px;background:var(--bg1);border-bottom:1px solid var(--border);padding:0 12px;position:sticky;top:0;z-index:100;gap:16px}
 .tb-logo{font-size:12px;font-weight:700;color:var(--white);letter-spacing:2px;flex-shrink:0}
 .tb-logo span{color:var(--cyan)}
 .tb-sep{color:var(--border);font-size:14px}
@@ -38,6 +38,16 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Pl
 .ws-dot.error{background:var(--red)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 .ws-label{font-size:9px;color:var(--t2)}
+.ws-source{font-size:8px;color:var(--t3);letter-spacing:.6px;text-transform:uppercase}
+.ws-source.coinbase{color:var(--cyan)}
+.ws-source.kraken{color:var(--amber)}
+.ws-source.rest{color:var(--t2)}
+.ws-toggle{background:var(--bg2);border:1px solid var(--border);color:var(--t3);font-size:7px;letter-spacing:.6px;padding:2px 6px;border-radius:2px;cursor:pointer}
+.ws-toggle:hover{color:var(--amber);border-color:rgba(255,171,0,.3)}
+.ws-toggle.active{color:var(--amber);border-color:rgba(255,171,0,.5)}
+.ws-toggle.rest-active{color:var(--cyan);border-color:rgba(0,229,255,.5)}
+.ws-toggle.rest-active:hover{color:var(--cyan);border-color:rgba(0,229,255,.5)}
+.ws-toggle:disabled{opacity:.45;cursor:not-allowed}
 .up{color:var(--green)!important}.dn{color:var(--red)!important}.neut{color:var(--t2)!important}
 .num{font-variant-numeric:tabular-nums}
 
@@ -45,10 +55,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Pl
 #tape{height:20px;background:var(--bg1);border-bottom:1px solid var(--border);overflow:hidden;display:flex;align-items:center}
 #tape-track{display:flex;gap:24px;animation:tape 40s linear infinite;white-space:nowrap;padding:0 12px}
 @keyframes tape{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-.ti{font-size:9px;color:var(--t2)}.ti b{color:var(--white);font-weight:600}
+.ti{font-size:9px;color:var(--text)}.ti b{color:var(--white);font-weight:600}
 
 /* ── MAIN GRID ── */
-#app{display:grid;grid-template-columns:220px 1fr 240px;height:calc(100vh - 56px);gap:1px;background:var(--border)}
+#app{display:grid;grid-template-columns:220px 1fr 240px;min-height:calc(100vh - 128px);height:auto;gap:1px;background:var(--border)}
 
 /* ── PANELS ── */
 .col{display:flex;flex-direction:column;gap:1px;background:var(--border)}
@@ -58,7 +68,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Pl
 .badge{font-size:8px;padding:1px 5px;border-radius:2px;font-weight:700}
 .badge-live{background:var(--g3);color:var(--green);border:1px solid rgba(0,230,118,.3)}
 .badge-ws{background:rgba(0,229,255,.1);color:var(--cyan);border:1px solid rgba(0,229,255,.3)}
-.badge-ai{background:rgba(170,0,255,.12);color:#cc66ff;border:1px solid rgba(170,0,255,.3)}
+.badge-ai{background:rgba(88,0,134,.78);color:#ffffff;border:1px solid rgba(212,154,255,.68)}
 .badge-warn{background:rgba(255,171,0,.1);color:var(--amber);border:1px solid rgba(255,171,0,.3)}
 .pb{padding:8px 10px;flex:1;overflow-y:auto}
 
@@ -78,7 +88,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Pl
 
 /* ── CHART ── */
 #chart-wrap{background:var(--bg1);position:relative}
-#chart-hdr{padding:6px 10px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0}
+#chart-hdr{padding:6px 10px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;min-width:0;overflow:hidden}
 #canvasWrap{position:relative;height:280px}
 canvas{width:100%;height:100%;display:block}
 #heatmap-canvas{position:absolute;top:0;left:0;pointer-events:none;opacity:.45}
@@ -91,14 +101,14 @@ canvas{width:100%;height:100%;display:block}
 .cross-neut{background:rgba(122,122,136,.1);color:var(--t2);border:1px solid var(--border)}
 
 /* ── SIGNALS STRIP ── */
-#sigs{background:var(--bg1);display:grid;grid-template-columns:repeat(10,1fr);gap:1px;background:var(--border);flex-shrink:0}
+#sigs{display:grid;grid-template-columns:repeat(10,1fr);gap:1px;background:var(--border);flex-shrink:0}
 .sig{background:var(--bg2);padding:5px 2px;text-align:center}
 .sig-n{font-size:7px;color:var(--t3);letter-spacing:.3px;margin-bottom:2px}
 .sig-v{font-size:10px;font-weight:700}
 .sv-bull{color:var(--green)}.sv-bear{color:var(--red)}.sv-neut{color:var(--t2)}
 
 /* ── ORDERFLOW ROW ── */
-#of-row{background:var(--bg1);display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:1px;background:var(--border);flex-shrink:0}
+#of-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:1px;background:var(--border);flex-shrink:0}
 .of-card{background:var(--bg2);padding:7px 9px}
 .of-label{font-size:8px;color:var(--t3);letter-spacing:.8px;margin-bottom:3px}
 .of-val{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
@@ -125,6 +135,7 @@ canvas{width:100%;height:100%;display:block}
 .verdict-box{padding:9px;border-radius:3px;text-align:center;margin-top:8px}
 .verdict-above{background:var(--g3);border:1px solid rgba(0,230,118,.4)}
 .verdict-below{background:var(--r3);border:1px solid rgba(255,23,68,.4)}
+.verdict-standby{background:rgba(122,122,136,.08);border:1px solid var(--border)}
 .verdict-lbl{font-size:8px;color:var(--t2);letter-spacing:1px;margin-bottom:3px}
 .verdict-val{font-size:15px;font-weight:700}
 .verdict-conf{font-size:9px;color:var(--t2);margin-top:2px}
@@ -134,6 +145,84 @@ canvas{width:100%;height:100%;display:block}
 .k-above{background:var(--g2);transition:width .4s}
 .k-below{background:var(--r2);transition:width .4s}
 .k-edge{text-align:center;font-size:11px;font-weight:700;padding:4px 0}
+.k-phase{font-size:7px;font-weight:700;letter-spacing:.8px;padding:1px 5px;border-radius:2px}
+.k-phase.open{background:var(--g3);color:var(--green);border:1px solid rgba(0,230,118,.3)}
+.k-phase.caution{background:rgba(255,171,0,.12);color:var(--amber);border:1px solid rgba(255,171,0,.3)}
+.k-phase.closing{background:var(--r3);color:var(--red);border:1px solid rgba(255,23,68,.3);animation:pulse .6s infinite}
+.k-countdown-wrap{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
+.k-ring{width:60px;height:60px;flex-shrink:0}
+.k-ring-bg{fill:none;stroke:var(--bg3);stroke-width:4}
+.k-ring-arc{fill:none;stroke:var(--green);stroke-width:4;stroke-linecap:round;stroke-dasharray:163.4;stroke-dashoffset:0;transform:rotate(-90deg);transform-origin:30px 30px;transition:stroke-dashoffset .25s linear,stroke .5s}
+.k-ring-txt{font-size:9px;font-weight:700;fill:var(--t2);text-anchor:middle;font-variant-numeric:tabular-nums}
+.k-countdown-info{flex:1;display:flex;flex-direction:column;gap:2px}
+.k-countdown-val{font-size:20px;font-weight:700;letter-spacing:1px;font-variant-numeric:tabular-nums;line-height:1}
+.k-close-time{font-size:8px;color:var(--t3)}
+.k-entry-guidance{font-size:8px;font-weight:700;letter-spacing:.5px;padding:2px 5px;border-radius:2px;text-align:center;margin-top:2px}
+.k-entry-guidance.eg-open{color:var(--green);background:var(--g3);border:1px solid rgba(0,230,118,.3)}
+.k-entry-guidance.eg-caution{color:var(--amber);background:rgba(255,171,0,.1);border:1px solid rgba(255,171,0,.3)}
+.k-entry-guidance.eg-closing{color:var(--red);background:var(--r3);border:1px solid rgba(255,23,68,.4);animation:pulse .6s infinite}
+.k-trend-arrow{font-size:11px;margin-left:4px;font-weight:700}
+.k-target-box{margin-top:6px;padding:8px;border-top:1px solid var(--border);border-radius:3px;background:linear-gradient(180deg,rgba(0,229,255,.06),rgba(0,0,0,0) 42%)}
+.k-target-label{display:inline-flex;align-items:center;gap:6px;margin-bottom:6px;padding:2px 6px;border-radius:2px;background:rgba(0,229,255,.12);border:1px solid rgba(0,229,255,.28);color:var(--cyan);font-size:8px;font-weight:700;letter-spacing:.8px;line-height:1.2}
+.k-target-label::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px rgba(0,229,255,.55)}
+.k-target-row{display:flex;gap:6px;align-items:center;margin-top:0;padding:6px;border:1px solid rgba(0,229,255,.18);border-radius:3px;background:rgba(0,229,255,.04)}
+.k-target-input{flex:1;min-width:0;background:var(--bg1);border:1px solid rgba(0,229,255,.28);border-radius:2px;color:var(--white);font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;padding:6px 8px;outline:none;box-shadow:0 0 0 1px rgba(0,229,255,.06) inset}
+.k-target-input::placeholder{color:rgba(255,255,255,.45)}
+.k-target-input:focus{border-color:rgba(0,229,255,.65);box-shadow:0 0 0 1px rgba(0,229,255,.2),0 0 14px rgba(0,229,255,.12)}
+.k-target-btn{background:var(--bg2);border:1px solid rgba(0,229,255,.3);color:var(--white);font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.7px;padding:5px 8px;border-radius:2px;cursor:pointer;white-space:nowrap}
+.k-target-btn:hover{color:var(--cyan);border-color:rgba(0,229,255,.5)}
+.k-target-btn.clear{border-color:rgba(255,171,0,.3)}
+.k-target-btn.clear:hover{color:var(--amber);border-color:rgba(255,171,0,.5)}
+.k-target-hero{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 0 10px;border-bottom:1px solid var(--border);margin-bottom:6px}
+.k-target-hero-val{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700;line-height:1;color:var(--white);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.k-target-hero-val.manual{color:var(--cyan);text-shadow:0 0 8px rgba(0,229,255,.22)}
+.k-target-hero-pill{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.7px;line-height:1;padding:2px 7px;border-radius:2px;border:1px solid var(--border);background:var(--bg3);color:var(--t2)}
+.k-target-hero-pill.pill-manual{color:var(--cyan);border-color:rgba(0,229,255,.35)}
+.k-target-hero-pill.pill-auto{color:var(--green);border-color:rgba(0,230,118,.32)}
+.k-target-meta{margin-top:4px;font-size:8px;color:var(--t3);letter-spacing:.5px;line-height:1.4}
+.k-target-meta.manual{color:var(--cyan)}
+.k-manual-box{margin-top:6px;padding:8px;border-top:1px solid var(--border);border-radius:3px;background:linear-gradient(180deg,rgba(255,171,0,.06),rgba(0,0,0,0) 42%)}
+.k-manual-label{display:inline-flex;align-items:center;gap:6px;margin-bottom:6px;padding:2px 6px;border-radius:2px;background:rgba(255,171,0,.12);border:1px solid rgba(255,171,0,.28);color:var(--amber);font-size:8px;font-weight:700;letter-spacing:.8px;line-height:1.2}
+.k-manual-label::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--amber);box-shadow:0 0 10px rgba(255,171,0,.55)}
+.k-manual-meta{margin-top:4px;font-size:8px;color:var(--t3);letter-spacing:.5px;line-height:1.4}
+.k-manual-meta.manual{color:var(--amber)}
+.k-target-impact{margin-top:8px;padding:7px 8px;border:1px solid rgba(0,230,118,.2);border-radius:3px;background:linear-gradient(180deg,rgba(0,230,118,.05),rgba(0,0,0,0) 60%)}
+.k-target-impact-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px}
+.k-target-impact-title{font-size:8px;font-weight:700;letter-spacing:.8px;color:var(--green)}
+.k-target-impact-sub{font-size:8px;color:var(--t3);letter-spacing:.4px}
+.k-target-impact-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
+.k-impact-card{display:flex;flex-direction:column;gap:2px;padding:5px 6px;border-radius:2px;border:1px solid rgba(122,122,136,.2);background:rgba(255,255,255,.02)}
+.k-impact-k{font-size:7px;color:var(--t3);letter-spacing:.6px}
+.k-impact-v{font-size:10px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text)}
+.k-impact-v.up{color:var(--green)}
+.k-impact-v.dn{color:var(--red)}
+.k-target-spark-wrap{margin-top:6px;padding:5px 6px;border-radius:2px;border:1px solid rgba(122,122,136,.18);background:rgba(255,255,255,.02)}
+.k-target-spark-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px}
+.k-target-spark-label{font-size:7px;color:var(--t3);letter-spacing:.6px}
+.k-target-spark-meta{font-size:7px;color:var(--t3);letter-spacing:.5px}
+.k-target-spark-svg{width:100%;height:26px;display:block}
+.k-target-spark-mid{stroke:rgba(122,122,136,.35);stroke-width:1;stroke-dasharray:2 2}
+.k-target-spark-q{stroke:rgba(122,122,136,.22);stroke-width:1;stroke-dasharray:1.5 2.5}
+.k-target-spark-path{fill:none;stroke:var(--green);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.k-target-spark-dot{fill:var(--green)}
+.k-target-spark-scale{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:2px;padding:0 1px}
+.k-target-spark-scale span{font-size:7px;color:var(--t3);letter-spacing:.4px;line-height:1;text-align:center;opacity:.72}
+.k-why-strip{margin-top:8px;padding:7px 8px;border:1px solid rgba(0,229,255,.18);border-radius:3px;background:linear-gradient(180deg,rgba(0,229,255,.04),rgba(0,0,0,0) 60%)}
+.k-why-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px}
+.k-why-title{font-size:8px;font-weight:700;letter-spacing:.8px;color:var(--cyan)}
+.k-why-sub{font-size:8px;color:var(--t3);letter-spacing:.4px}
+.k-why-pills{display:flex;flex-wrap:wrap;gap:5px}
+.k-why-pill{display:inline-flex;align-items:center;gap:4px;max-width:100%;padding:3px 6px;border-radius:2px;border:1px solid rgba(122,122,136,.18);background:rgba(255,255,255,.03);font-size:8px;line-height:1.35;color:var(--text)}
+.k-why-pill .why-k{color:var(--t3);text-transform:uppercase;letter-spacing:.6px;flex-shrink:0}
+.k-why-pill .why-v{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.k-why-pill.why-bull{border-color:rgba(0,230,118,.25);color:var(--green)}
+.k-why-pill.why-bear{border-color:rgba(255,23,68,.25);color:var(--red)}
+.k-why-pill.why-warn{border-color:rgba(255,171,0,.25);color:var(--amber)}
+.tl-open{color:var(--green)}
+.tl-caution{color:var(--amber)}
+.tl-closing{color:var(--red);animation:pulse .8s infinite}
+body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinite}
+@keyframes countdown-pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
 /* ── BET SIGNAL ── */
 #bet-wrap{background:var(--bg1);border-top:1px solid var(--border);flex-shrink:0}
@@ -158,8 +247,8 @@ canvas{width:100%;height:100%;display:block}
 .ai-out{background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:9px;font-size:9px;line-height:1.8;min-height:60px;max-height:220px;overflow-y:auto}
 .ai-out .bull{color:var(--green);font-weight:700}.ai-out .bear{color:var(--red);font-weight:700}
 .ai-out .warn{color:var(--amber);font-weight:700}.ai-out .cyan{color:var(--cyan);font-weight:700}
-.ai-btn{margin-top:6px;width:100%;padding:5px;background:rgba(170,0,255,.1);border:1px solid rgba(170,0,255,.3);border-radius:3px;color:#cc66ff;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;transition:all .2s}
-.ai-btn:hover{background:rgba(170,0,255,.22)}.ai-btn:disabled{opacity:.35;cursor:not-allowed}
+.ai-btn{margin-top:6px;width:100%;padding:5px;background:rgba(88,0,134,.82);border:1px solid rgba(212,154,255,.68);border-radius:3px;color:#ffffff;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;transition:all .2s}
+.ai-btn:hover{background:rgba(88,0,134,.94)}.ai-btn:disabled{opacity:.35;cursor:not-allowed}
 .ai-cursor{display:inline-block;width:5px;height:9px;background:var(--purple);animation:blink .7s infinite;vertical-align:middle;margin-left:2px}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
 
@@ -185,6 +274,38 @@ canvas{width:100%;height:100%;display:block}
 .traj-val{font-size:9px;font-weight:500}
 
 @media(max-width:900px){#app{grid-template-columns:1fr}#left-col,#right-col{display:none}}
+@media (max-width:640px){
+  html,body{overflow-x:hidden;overflow-y:auto}
+  #topbar,#oracleBar,#sessionBar{flex-wrap:wrap;height:auto;gap:4px 8px;padding:6px 8px}
+  #topbar{align-items:flex-start}
+  #oracleBar{align-items:flex-start}
+  #sessionBar{align-items:flex-start}
+  #kTopTargetBar{position:relative;top:auto;padding:6px 8px}
+  #app{height:auto;min-height:calc(100dvh - 128px);grid-template-columns:1fr}
+  #chart-hdr{flex-wrap:wrap;gap:4px;padding:6px 8px}
+  #canvasWrap{height:220px}
+  #rsiWrap{height:48px}
+  .k-top-target-input{min-width:0;max-width:none;width:100%}
+  #sigs{grid-template-columns:repeat(5,1fr)}
+  #of-row{grid-template-columns:repeat(2,1fr)}
+  #bet-inner{grid-template-columns:1fr}
+  .pb{padding:6px 8px}
+}
+@media (max-width:480px){
+  #topbar{padding:4px 6px;gap:4px}
+  .tb-logo{font-size:11px;letter-spacing:1px}
+  .tb-price{font-size:16px}
+  .tb-stat,.tb-sep,.ws-latency,.clock-text{display:none}
+  #oracleBar,#sessionBar{padding:4px 6px;gap:4px}
+  #oracleBar{height:auto}
+  #sessionBar{height:auto}
+  #kTopTargetBar{padding:5px 6px}
+  #chart-hdr .ema-legend,#chart-hdr .ema-legend-tight{display:none}
+  #canvasWrap{height:180px}
+  #sigs{grid-template-columns:repeat(2,1fr)}
+  #of-row{grid-template-columns:1fr}
+  #signalAlert{top:64px}
+}
 
 /* ── PRICE FLASH ── */
 @keyframes pflash-up{0%{color:var(--white)}20%{color:#00ff88;text-shadow:0 0 16px rgba(0,255,136,.9)}100%{color:var(--white)}}
@@ -210,6 +331,26 @@ canvas{width:100%;height:100%;display:block}
 .sb-val.up{color:var(--green)!important}.sb-val.dn{color:var(--red)!important}
 .sb-sep{color:var(--border)}
 #kbHint{font-size:7px;color:var(--t3);background:var(--bg2);border:1px solid var(--border);padding:1px 5px;border-radius:2px;letter-spacing:.5px;cursor:default}
+
+/* ── TOP KALSHI TARGET BAR ── */
+#kTopTargetBar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:34px;padding:6px 12px;background:linear-gradient(90deg,rgba(0,229,255,.08),rgba(255,171,0,.05) 46%,rgba(0,0,0,0));border-bottom:1px solid rgba(0,229,255,.14);position:sticky;top:74px;z-index:95;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.k-top-target-title{font-size:8px;font-weight:700;letter-spacing:1px;color:var(--cyan);white-space:nowrap;padding:2px 6px;border-radius:2px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.2)}
+.k-top-target-hero{display:flex;align-items:center;gap:6px;flex-shrink:0;min-width:0}
+.k-top-target-pill{font-size:8px;letter-spacing:.7px;line-height:1;padding:2px 7px;border-radius:2px;border:1px solid var(--border);background:var(--bg3);color:var(--t2)}
+.k-top-target-pill.pill-manual{color:var(--cyan);border-color:rgba(0,229,255,.35)}
+.k-top-target-pill.pill-auto{color:var(--green);border-color:rgba(0,230,118,.32)}
+.k-top-target-val{font-size:16px;font-weight:700;line-height:1;color:var(--white);font-variant-numeric:tabular-nums;letter-spacing:-.02em;white-space:nowrap}
+.k-top-target-val.manual{color:var(--cyan);text-shadow:0 0 8px rgba(0,229,255,.22)}
+.k-top-target-controls{display:flex;align-items:center;gap:6px;flex:1;min-width:0;flex-wrap:wrap}
+.k-top-target-input{flex:1;min-width:180px;max-width:280px;background:var(--bg1);border:1px solid rgba(0,229,255,.28);border-radius:2px;color:var(--white);font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;padding:6px 8px;outline:none;box-shadow:0 0 0 1px rgba(0,229,255,.06) inset}
+.k-top-target-input::placeholder{color:rgba(255,255,255,.45)}
+.k-top-target-input:focus{border-color:rgba(0,229,255,.65);box-shadow:0 0 0 1px rgba(0,229,255,.2),0 0 14px rgba(0,229,255,.12)}
+.k-top-target-btn{background:var(--bg2);border:1px solid rgba(0,229,255,.3);color:var(--white);font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.7px;padding:5px 8px;border-radius:2px;cursor:pointer;white-space:nowrap}
+.k-top-target-btn:hover{color:var(--cyan);border-color:rgba(0,229,255,.5)}
+.k-top-target-btn.clear{border-color:rgba(255,171,0,.3)}
+.k-top-target-btn.clear:hover{color:var(--amber);border-color:rgba(255,171,0,.5)}
+.k-top-target-meta{font-size:8px;color:var(--t3);letter-spacing:.5px;line-height:1.4;white-space:nowrap;flex-shrink:0}
+.k-top-target-meta.manual{color:var(--cyan)}
 /* ── RSI STRIP ── */
 #rsiWrap{height:58px;position:relative;border-top:1px solid var(--border);flex-shrink:0;background:var(--bg)}
 #rsiCanvas{display:block}
@@ -229,7 +370,6 @@ canvas{width:100%;height:100%;display:block}
 #vpCanvas{position:absolute;right:0;top:0;pointer-events:none;opacity:.75}
 /* ── TOPBAR SCANLINE ── */
 #topbar::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 1px,rgba(0,0,0,.04) 1px,rgba(0,0,0,.04) 2px);pointer-events:none;z-index:101}
-#topbar{position:relative}
 .bb-legend-dot{width:18px;height:1px;border-top:1px dashed;display:inline-block;vertical-align:middle}
 /* ── DERIVATIVES PANEL ── */
 .drv-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--border)}
@@ -257,6 +397,98 @@ canvas{width:100%;height:100%;display:block}
 .acc-dots{display:flex;gap:3px;margin-top:4px}
 .acc-dot{width:8px;height:8px;border-radius:50%}
 .acc-dot.ok{background:var(--green)}.acc-dot.ng{background:var(--red)}.acc-dot.pending{background:var(--t3)}
+.ws-latency{color:var(--t3);font-size:9px;margin-left:4px}
+.ws-stale-age{font-size:8px;color:var(--t3);margin-left:4px;min-width:24px;text-align:right}
+.ws-stale-age.fresh{color:var(--green)}
+.ws-stale-age.warn{color:var(--amber)}
+.ws-stale-age.stale{color:var(--red)}
+.clock-text{color:var(--t2);font-size:9px;margin-left:8px}
+.ob-src-label{color:var(--t3)}
+.ob-src-price{font-size:8px;color:var(--t2)}
+.ob-src-oracle{color:var(--white);font-weight:600;font-size:9px}
+.ob-src-oracle-price{color:var(--cyan)}
+.ob-src-dev{font-size:8px;color:var(--t2)}
+.ob-src-dev-val{color:var(--amber)}
+.flex-fill{flex:1}
+.panel-fixed{flex:0 0 auto}
+.panel-grow{flex:1}
+.chart-title{font-size:10px;font-weight:700;color:var(--white);white-space:nowrap;flex-shrink:0}
+#crossTag{white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis;flex-shrink:1}
+.ema-dot-9{background:#ff9800}
+.ema-dot-21{background:#2979ff}
+.ema-dot-vwap{background:rgba(0,229,255,.6);border-top:1px dashed rgba(0,229,255,.6);height:0}
+.ema-label-9{color:#ff9800}
+.ema-label-21{color:#2979ff}
+.ema-label-vwap{color:rgba(0,229,255,.7)}
+.ema-legend-tight{gap:6px}
+.bb-legend-bb{border-color:rgba(255,171,0,.5)}
+.bb-legend-ema50{border-color:rgba(170,0,255,.5)}
+.ema-label-bb{color:rgba(255,171,0,.7)}
+.ema-label-ema50{color:rgba(170,0,255,.7)}
+.ohlc-text{font-size:8px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px;flex-shrink:1}
+
+@media (max-width:1180px){
+  #chart-hdr{gap:6px;padding:6px 8px}
+  #chart-hdr .ema-legend-tight{display:none}
+  .ohlc-text{max-width:190px}
+}
+
+@media (max-width:980px){
+  #chart-hdr .ema-legend{display:none}
+  #crossTag{max-width:120px}
+  .ohlc-text{max-width:170px}
+}
+.of-bar-init{width:50%;background:var(--green)}
+.bet-ts{font-size:8px;color:var(--t3)}
+.bet-loading{color:var(--t3);font-size:9px}
+.section-kicker{font-size:8px;color:var(--t2);letter-spacing:.8px;margin-bottom:6px}
+.mr-no-border{border:none}
+.scen-wrap{margin-top:8px}
+.scen-title{font-size:8px;color:var(--t3);letter-spacing:.8px;margin-bottom:4px}
+.scen-flex{flex:1}
+.kalman-sign{font-size:8px;color:var(--t3)}
+.kalman-band-muted{color:var(--t3)}
+.scout-wrap{margin-top:6px}
+.scout-title{font-size:8px;color:var(--t3);letter-spacing:.8px;margin-bottom:4px}
+.tox-wrap{margin-top:6px}
+.tox-title{font-size:8px;color:var(--t3);letter-spacing:.8px}
+.tox-zero{width:0%}
+.tox-scale{display:flex;justify-content:space-between;font-size:8px;color:var(--t3);margin-top:1px}
+.k-summary{display:flex;justify-content:space-between;margin-bottom:2px}
+.k-summary-above{font-size:8px;color:var(--green)}
+.k-summary-below{font-size:8px;color:var(--red)}
+.k-half{width:50%}
+.ai-header{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.ai-icon{width:24px;height:24px;border-radius:50%;background:rgba(170,0,255,.2);border:1px solid rgba(170,0,255,.4);display:flex;align-items:center;justify-content:center;font-size:11px}
+.ai-name{font-size:10px;font-weight:600;color:var(--white)}
+.ai-model{font-size:8px;color:var(--t2)}
+.ai-awaiting{color:var(--t3);font-style:italic}
+.txt-amber{color:var(--amber)}
+.txt-cyan{color:var(--cyan)}
+.kelly-metrics{margin-top:6px}
+.ob-bar-ask{background:rgba(255,23,68,.2)}
+.ob-walls-wrap{margin-top:5px;padding-top:4px;border-top:1px solid var(--border)}
+.ob-walls-title{font-size:7px;color:var(--t3);letter-spacing:.8px;margin-bottom:2px}
+.ob-wall-row{display:flex;justify-content:space-between;font-size:9px;padding:1px 0}
+.ob-wall-size{color:var(--amber);font-weight:700}
+.sweep-time{color:var(--t3);font-size:8px}
+.conv-meta-row{display:flex;justify-content:space-between;margin-top:2px}
+.conv-meta-label{font-size:8px;color:var(--t2)}
+.conv-meta-value{font-size:9px;font-weight:700}
+.conv-note{font-size:8px;color:var(--t2);text-align:center;margin-top:3px;letter-spacing:.5px}
+.signal-title{font-size:8px;font-weight:700;letter-spacing:.8px;margin-bottom:5px}
+.signal-detail{margin-top:5px;padding:4px 6px;background:var(--bg2);border-radius:2px;font-size:8px;border:1px solid var(--border)}
+.signal-detail.up{border-color:rgba(0,230,118,.22)}
+.signal-detail.dn{border-color:rgba(255,23,68,.22)}
+.signal-detail.neut{border-color:rgba(122,122,136,.22)}
+.signal-label{color:var(--t2)}
+.signal-label-spread{color:var(--t2);margin-left:8px}
+.signal-strong{font-weight:700}
+.conv-bar-wrap-top{margin-top:6px}
+.bet-wait-note{font-size:8px;color:var(--t3);text-align:center;margin-top:3px}
+.traj-title{font-size:8px;color:var(--t3);letter-spacing:.8px;margin-bottom:6px}
+.ai-status-loading{color:var(--t3);font-style:italic}
+.ai-status-error{color:var(--red)}
 </style>
 </head>
 <body>
@@ -275,18 +507,20 @@ canvas{width:100%;height:100%;display:block}
   <div class="tb-spacer"></div>
   <div class="ws-dot" id="wsDot"></div>
   <div class="ws-label" id="wsLabel">connecting…</div>
-  <span style="color:var(--t3);font-size:9px;margin-left:4px" id="wsLatency"></span>
-  <span style="color:var(--t2);font-size:9px;margin-left:8px" id="clock">——</span>
+  <span class="ws-source" id="wsSource">—</span>
+  <span class="ws-latency" id="wsLatency"></span>
+  <span class="ws-stale-age" id="wsStaleAge">—</span>
+  <span class="clock-text" id="clock">——</span>
 </div>
 
 <div id="signalAlert"><div class="sa-inner sa-above" id="saInner">&#x26A1; SIGNAL ACTIVE</div></div>
 <div id="oracleBar">
-  <div class="ob-src"><div class="ob-dot wait" id="obDotBnc"></div><span style="color:var(--t3)">BNC</span><span id="obPriceBnc" style="font-size:8px;color:var(--t2)">—</span></div>
-  <div class="ob-src"><div class="ob-dot wait" id="obDotKrk"></div><span style="color:var(--t3)">KRK</span><span id="obPriceKrk" style="font-size:8px;color:var(--t2)">—</span></div>
-  <div class="ob-src"><div class="ob-dot wait" id="obDotByb"></div><span style="color:var(--t3)">BYB</span><span id="obPriceByb" style="font-size:8px;color:var(--t2)">—</span></div>
+  <div class="ob-src"><div class="ob-dot wait" id="obDotBnc"></div><span class="ob-src-label">BNC</span><span id="obPriceBnc" class="ob-src-price">—</span></div>
+  <div class="ob-src"><div class="ob-dot wait" id="obDotKrk"></div><span class="ob-src-label">KRK</span><span id="obPriceKrk" class="ob-src-price">—</span></div>
+  <div class="ob-src"><div class="ob-dot wait" id="obDotByb"></div><span class="ob-src-label">BYB</span><span id="obPriceByb" class="ob-src-price">—</span></div>
   <span class="ob-sep">│</span>
-  <div class="ob-src" style="color:var(--white);font-weight:600;font-size:9px">ORACLE <span id="oraclePrice" style="color:var(--cyan)">—</span></div>
-  <div class="ob-src" style="font-size:8px;color:var(--t2)">DEV <span id="oracleDev" style="color:var(--amber)">—</span></div>
+  <div class="ob-src ob-src-oracle">ORACLE <span id="oraclePrice" class="ob-src-oracle-price">—</span></div>
+  <div class="ob-src ob-src-dev">DEV <span id="oracleDev" class="ob-src-dev-val">—</span></div>
   <div class="ob-conf">ORQ: <span id="oracleConf">—</span></div>
 </div>
 <div id="sessionBar">
@@ -296,12 +530,33 @@ canvas{width:100%;height:100%;display:block}
   <div class="sb-item">LAST <span class="sb-val" id="sbLast">-</span></div>
   <span class="sb-sep">|</span>
   <div class="sb-item">MSG/S <span class="sb-val" id="sbMps">0</span></div>
+  <div class="sb-item">LAT P50 <span class="sb-val" id="sbLatP50">—</span></div>
+  <div class="sb-item">LAT P95 <span class="sb-val" id="sbLatP95">—</span></div>
+  <div class="sb-item">GAP P95 <span class="sb-val" id="sbGapP95">—</span></div>
   <div class="sb-item">CANDLES <span class="sb-val" id="sbCandles">0</span></div>
   <span class="sb-sep">|</span>
   <div class="sb-item">RV <span class="sb-val" id="sbRv">—</span></div>
   <div class="sb-item">ADX <span class="sb-val" id="sbAdx">—</span></div>
-  <div style="flex:1"></div>
-  <span id="kbHint" title="A=AI  S=Sound  F=Fullscreen">A · S · F</span>
+  <span class="sb-sep">|</span>
+  <div class="sb-item">K ROUND <span class="sb-val" id="sbKRound">—:——</span></div>
+  <div class="sb-item">K TARGET <span class="sb-val" id="sbKTarget">$——</span></div>
+  <div class="flex-fill"></div>
+  <button class="ws-toggle" id="wsToggle" onclick="toggleWsFallback()" title="Force Kraken websocket feed">KRAKEN OFF</button>
+  <button class="ws-toggle" id="wsRestToggle" onclick="toggleWsRest()" title="Force Coinbase REST polling mode">REST OFF</button>
+  <span id="kbHint" title="A=AI  S=Sound  F=Fullscreen  K=Kraken  R=REST">A · S · F · K · R</span>
+</div>
+<div id="kTopTargetBar">
+  <div class="k-top-target-title">KALSHI ROUND TARGET</div>
+  <div class="k-top-target-hero">
+    <div class="k-top-target-val" id="kTargetHeroVal">—</div>
+    <div class="k-top-target-pill" id="kTargetHeroPill">AUTO</div>
+  </div>
+  <div class="k-top-target-controls">
+    <input class="k-top-target-input" id="kTargetInput" type="number" min="0" step="1" placeholder="Manual round target" aria-label="Manual Kalshi round target price" />
+    <button class="k-top-target-btn" id="kTargetApply" type="button">APPLY</button>
+    <button class="k-top-target-btn clear" id="kTargetClear" type="button">CLEAR</button>
+  </div>
+  <div class="k-top-target-meta" id="kTargetMeta">AUTO TARGET · follows live BTC price</div>
 </div>
 <!-- TICKER TAPE -->
 <div id="tape"><div id="tape-track">
@@ -333,38 +588,38 @@ canvas{width:100%;height:100%;display:block}
 
 <!-- LEFT -->
 <div id="left-col" class="col">
-  <div class="panel" style="flex:0 0 auto">
+  <div class="panel panel-fixed">
     <div class="ph"><span class="ph-title">ORDER BOOK</span><span class="badge badge-ws">WS LIVE</span></div>
     <div class="pb" id="obPanel">—</div>
   </div>
-  <div class="panel" style="flex:0 0 auto">
+  <div class="panel panel-fixed">
     <div class="ph"><span class="ph-title">LIVE TRADES</span><span class="badge badge-ws">STREAM</span></div>
     <div class="pb" id="tradesPanel">—</div>
   </div>
-  <div class="panel" style="flex:1">
+  <div class="panel panel-grow">
     <div class="ph"><span class="ph-title">LIQUIDITY SWEEPS</span><span class="badge badge-live">LIVE</span></div>
     <div class="pb" id="sweepPanel">—</div>
   </div>
 </div>
 
 <!-- CENTER -->
-<div class="col" style="background:var(--border)">
+<div class="col">
   <!-- Chart -->
   <div id="chart-wrap" class="panel">
     <div id="chart-hdr">
-      <span style="font-size:10px;font-weight:700;color:var(--white)">BTC/USD · 15M</span>
+      <span class="chart-title">BTC/USD · 15M</span>
       <span class="cross-tag cross-neut" id="crossTag">EMA —</span>
       <div class="ema-legend">
-        <span class="ema-dot" style="background:#ff9800"></span><span class="ema-label" style="color:#ff9800">EMA9</span>
-        <span class="ema-dot" style="background:#2979ff"></span><span class="ema-label" style="color:#2979ff">EMA21</span>
-        <span class="ema-dot" style="background:rgba(0,229,255,.6);border-top:1px dashed rgba(0,229,255,.6);height:0"></span><span class="ema-label" style="color:rgba(0,229,255,.7)">VWAP</span>
+        <span class="ema-dot ema-dot-9"></span><span class="ema-label ema-label-9">EMA9</span>
+        <span class="ema-dot ema-dot-21"></span><span class="ema-label ema-label-21">EMA21</span>
+        <span class="ema-dot ema-dot-vwap"></span><span class="ema-label ema-label-vwap">VWAP</span>
       </div>
-      <div class="ema-legend" style="gap:6px">
-        <span class="bb-legend-dot" style="border-color:rgba(255,171,0,.5)"></span><span class="ema-label" style="color:rgba(255,171,0,.7)">BB</span>
-        <span class="bb-legend-dot" style="border-color:rgba(170,0,255,.5)"></span><span class="ema-label" style="color:rgba(170,0,255,.7)">EMA50</span>
+      <div class="ema-legend ema-legend-tight">
+        <span class="bb-legend-dot bb-legend-bb"></span><span class="ema-label ema-label-bb">BB</span>
+        <span class="bb-legend-dot bb-legend-ema50"></span><span class="ema-label ema-label-ema50">EMA50</span>
       </div>
-      <div style="flex:1"></div>
-      <span style="font-size:8px;color:var(--t2)" id="ohlc">O:— H:— L:— C:—</span>
+      <div class="flex-fill"></div>
+      <span class="ohlc-text" id="ohlc">O:— H:— L:— C:—</span>
     </div>
     <div id="canvasWrap">
       <canvas id="chartCanvas"></canvas>
@@ -392,7 +647,7 @@ canvas{width:100%;height:100%;display:block}
     <div class="of-card">
       <div class="of-label">CVD DELTA</div>
       <div class="of-val up num" id="ofCvd">——</div>
-      <div class="of-bar-wrap"><div class="of-bar" id="cvdBar" style="width:50%;background:var(--green)"></div></div>
+      <div class="of-bar-wrap"><div class="of-bar of-bar-init" id="cvdBar"></div></div>
       <div class="of-sub" id="ofCvdSub">—</div>
     </div>
     <div class="of-card">
@@ -413,28 +668,31 @@ canvas{width:100%;height:100%;display:block}
   </div>
   <!-- Bet Signal -->
   <div id="bet-wrap">
-    <div class="ph" style="background:var(--bg2)">
+    <div class="ph">
       <span class="ph-title">⚡ BET SIGNAL ENGINE</span>
       <span class="badge badge-ai">TRAJECTORY</span>
-      <div style="flex:1"></div>
-      <span style="font-size:8px;color:var(--t3)" id="betTs">—</span>
+      <div class="flex-fill"></div>
+      <span class="bet-ts" id="betTs">—</span>
     </div>
     <div id="bet-inner">
       <div class="bsp" id="betLeft"><div class="bb-wait bet-badge">MONITORING</div></div>
-      <div class="bsp" id="betCenter"><div style="color:var(--t3);font-size:9px">Loading market structure…</div></div>
+      <div class="bsp" id="betCenter"><div class="bet-loading">Loading market structure…</div></div>
       <div class="bsp" id="betRight">
-        <div style="font-size:8px;color:var(--t2);letter-spacing:.8px;margin-bottom:6px">CONVICTION METRICS</div>
+        <div class="section-kicker">CONVICTION METRICS</div>
         <div class="mr"><span class="ml">SIGNAL ALIGN</span><span class="mv num" id="bm0">—</span></div>
         <div class="mr"><span class="ml">EMA9/21 SPREAD</span><span class="mv num" id="bm1">—</span></div>
         <div class="mr"><span class="ml">TRAJ SLOPE</span><span class="mv num" id="bm2">—</span></div>
         <div class="mr"><span class="ml">REGIME</span><span class="mv num" id="bm3">—</span></div>
         <div class="mr"><span class="ml">KALSHI EDGE</span><span class="mv num" id="bm4">—</span></div>
-        <div class="mr" style="border:none"><span class="ml">REC SIZE</span><span class="mv num" id="bm5" style="color:var(--amber)">—</span></div>
+        <div class="mr"><span class="ml">REC SIZE</span><span class="mv num txt-amber" id="bm5">—</span></div>
+        <div class="mr"><span class="ml">EV / $1 BET</span><span class="mv num" id="bm6">—</span></div>
+        <div class="mr"><span class="ml">ENTRY TIMING</span><span class="mv num" id="bm7">—</span></div>
+        <div class="mr mr-no-border"><span class="ml">SIGNAL AGE</span><span class="mv num" id="bm8">—</span></div>
       </div>
     </div>
   </div>
   <!-- FVG -->
-  <div class="panel" style="flex:0 0 auto">
+  <div class="panel panel-fixed">
     <div class="ph"><span class="ph-title">FAIR VALUE GAPS</span><span class="badge badge-warn">SMC</span></div>
     <div class="pb" id="fvgPanel">—</div>
   </div>
@@ -443,7 +701,7 @@ canvas{width:100%;height:100%;display:block}
 <!-- RIGHT -->
 <div id="right-col" class="col">
   <!-- Regime -->
-  <div class="panel" style="flex:0 0 auto">
+  <div class="panel panel-fixed">
     <div class="ph"><span class="ph-title">REGIME + PROBABILITY</span><span class="badge badge-live">LIVE</span></div>
     <div class="pb">
       <div class="regime-box regime-neut" id="regimeBox">
@@ -462,27 +720,27 @@ canvas{width:100%;height:100%;display:block}
         <div class="verdict-conf" id="verdictConf">—</div>
       </div>
       <!-- 4-Scenario panel -->
-      <div style="margin-top:8px">
-        <div style="font-size:8px;color:var(--t3);letter-spacing:.8px;margin-bottom:4px">SCENARIO PROBABILITIES</div>
+      <div class="scen-wrap">
+        <div class="scen-title">SCENARIO PROBABILITIES</div>
         <div class="scen-labels">
           <span>BULL DRIFT</span><span>RANGE</span><span>VOL↑</span><span>TAIL</span>
         </div>
         <div class="scen-bar-wrap" id="scenBars">
-          <div class="scen-seg scen-bull" id="scenBull" style="flex:1">—</div>
-          <div class="scen-seg scen-range" id="scenRange" style="flex:1">—</div>
-          <div class="scen-seg scen-vol" id="scenVol" style="flex:1">—</div>
-          <div class="scen-seg scen-tail" id="scenTail" style="flex:1">—</div>
+          <div class="scen-seg scen-bull scen-flex" id="scenBull">—</div>
+          <div class="scen-seg scen-range scen-flex" id="scenRange">—</div>
+          <div class="scen-seg scen-vol scen-flex" id="scenVol">—</div>
+          <div class="scen-seg scen-tail scen-flex" id="scenTail">—</div>
         </div>
         <div class="kalman-row">
           <span class="kalman-lbl">KALMAN</span>
           <span class="kalman-val" id="kalmanDir">—</span>
-          <span style="font-size:8px;color:var(--t3)">±</span>
-          <span class="kalman-val" id="kalmanBand" style="color:var(--t3)">—</span>
+          <span class="kalman-sign">±</span>
+          <span class="kalman-val kalman-band-muted" id="kalmanBand">—</span>
         </div>
       </div>
       <!-- Scout scores -->
-      <div style="margin-top:6px">
-        <div style="font-size:8px;color:var(--t3);letter-spacing:.8px;margin-bottom:4px">SCOUT AGENTS</div>
+      <div class="scout-wrap">
+        <div class="scout-title">SCOUT AGENTS</div>
         <div class="scout-grid">
           <div class="scout-card"><div class="scout-lbl">TREND</div><div class="scout-val" id="scTrend">—</div></div>
           <div class="scout-card"><div class="scout-lbl">MEAN REV</div><div class="scout-val" id="scMrev">—</div></div>
@@ -493,7 +751,7 @@ canvas{width:100%;height:100%;display:block}
     </div>
   </div>
   <!-- Derivatives -->
-  <div class="panel" style="flex:0 0 auto">
+  <div class="panel panel-fixed">
     <div class="ph"><span class="ph-title">DERIVATIVES &amp; FLOW</span><span class="badge badge-warn">BYBIT</span></div>
     <div class="pb">
       <div class="drv-row"><span class="drv-lbl">FUNDING RATE</span><span class="drv-val" id="dFund">—</span><span class="drv-sub" id="dFundAnn">—</span></div>
@@ -501,63 +759,135 @@ canvas{width:100%;height:100%;display:block}
       <div class="drv-row"><span class="drv-lbl">OPEN INTEREST</span><span class="drv-val" id="dOI">—</span></div>
       <div class="drv-row"><span class="drv-lbl">OI vs PRICE</span><span class="drv-val" id="dOIDiv">—</span></div>
       <div class="drv-row"><span class="drv-lbl">MARK / INDEX</span><span class="drv-val" id="dMark">—</span></div>
-      <div style="margin-top:6px"><div style="font-size:8px;color:var(--t3);letter-spacing:.8px">FLOW TOXICITY</div>
-        <div class="tox-bar-wrap"><div class="tox-bar" id="toxBar" style="width:0%"></div></div>
-        <div style="display:flex;justify-content:space-between;font-size:8px;color:var(--t3);margin-top:1px"><span>LOW</span><span id="toxVal">—</span><span>HIGH</span></div>
+      <div class="tox-wrap"><div class="tox-title">FLOW TOXICITY</div>
+        <div class="tox-bar-wrap"><div class="tox-bar tox-zero" id="toxBar"></div></div>
+        <div class="tox-scale"><span>LOW</span><span id="toxVal">—</span><span>HIGH</span></div>
       </div>
     </div>
   </div>
   <!-- Accuracy -->
-  <div class="panel" style="flex:0 0 auto">
+  <div class="panel panel-fixed">
     <div class="ph"><span class="ph-title">SIGNAL ACCURACY</span><span class="badge badge-live">LIVE</span></div>
     <div class="pb">
       <div class="mr"><span class="ml">ACCURACY</span><span class="mv num" id="accPct">—</span></div>
       <div class="mr"><span class="ml">BRIER SCORE</span><span class="mv num" id="accBrier">—</span></div>
-      <div class="mr" style="border:none"><span class="ml">LAST 5</span><div class="acc-dots" id="accDots"></div></div>
+      <div class="mr mr-no-border"><span class="ml">LAST 5</span><div class="acc-dots" id="accDots"></div></div>
     </div>
   </div>
   <!-- Kalshi -->
-  <div class="panel" style="flex:0 0 auto">
+  <div class="panel panel-fixed">
     <div class="ph"><span class="ph-title">KALSHI DIVERGENCE</span><span class="badge badge-live">15MIN</span></div>
     <div class="pb">
-      <div style="display:flex;justify-content:space-between;margin-bottom:2px">
-        <span style="font-size:8px;color:var(--green)">ABOVE <span class="num" id="kAp">—</span></span>
-        <span style="font-size:8px;color:var(--red)">BELOW <span class="num" id="kBp">—</span></span>
+      <div class="k-summary">
+        <span class="k-summary-above">ABOVE <span class="num" id="kAp">—</span></span>
+        <span class="k-summary-below">BELOW <span class="num" id="kBp">—</span></span>
       </div>
-      <div class="k-bar-wrap"><div class="k-above" id="kABar" style="width:50%"></div><div class="k-below" id="kBBar" style="width:50%"></div></div>
-      <div class="mr"><span class="ml">KALSHI ABOVE</span><span class="mv num" id="kA">—</span></div>
+      <div class="k-bar-wrap"><div class="k-above k-half" id="kABar"></div><div class="k-below k-half" id="kBBar"></div></div>
+      <div class="mr"><span class="ml">KALSHI ABOVE</span><span class="mv num" id="kA">—</span><span class="k-trend-arrow" id="kTrend">→</span></div>
       <div class="mr"><span class="ml">MODEL ABOVE</span><span class="mv num" id="kM">—</span></div>
       <div class="mr"><span class="ml">EDGE</span><span class="mv num" id="kE">—</span></div>
-      <div class="mr"><span class="ml">STRIKE</span><span class="mv num" id="kStr">—</span></div>
-      <div class="mr"><span class="ml">WINDOW CLOSE</span><span class="mv num" id="kWin">—</span></div>
+      <div class="mr"><span class="ml">EV / $1 BET</span><span class="mv num" id="kEV">—</span></div>
+      <div class="mr"><span class="ml">ROUND TARGET</span><span class="mv num" id="kStr">—</span></div>
+      <div class="k-manual-box">
+        <div class="k-manual-label">MANUAL ABOVE%</div>
+        <div class="k-target-row">
+          <input class="k-target-input" id="kManualInput" type="number" min="0" max="100" step="1" placeholder="Override Kalshi ABOVE %" aria-label="Manual Kalshi ABOVE percent" />
+          <button class="k-target-btn" id="kManualApply" type="button">APPLY</button>
+          <button class="k-target-btn clear" id="kManualClear" type="button">CLEAR</button>
+        </div>
+        <div class="k-manual-meta" id="kManualMeta">LIVE ABOVE% · follows Kalshi feed</div>
+      </div>
+      <div class="k-target-impact">
+        <div class="k-target-impact-head">
+          <div class="k-target-impact-title">TARGET IMPACT</div>
+          <div class="k-target-impact-sub" id="kTaSource">AUTO BLEND</div>
+        </div>
+        <div class="k-target-impact-grid">
+          <div class="k-impact-card">
+            <span class="k-impact-k">ADJ ABOVE</span>
+            <span class="k-impact-v" id="kTaProb">—</span>
+          </div>
+          <div class="k-impact-card">
+            <span class="k-impact-k">DISTANCE</span>
+            <span class="k-impact-v" id="kTaDist">—</span>
+          </div>
+          <div class="k-impact-card">
+            <span class="k-impact-k">BLEND</span>
+            <span class="k-impact-v" id="kTaBlend">—</span>
+          </div>
+        </div>
+        <div class="k-target-spark-wrap">
+          <div class="k-target-spark-head">
+            <span class="k-target-spark-label">ROUND TREND</span>
+            <span class="k-target-spark-meta" id="kTaSparkMeta">0 pts</span>
+          </div>
+          <svg class="k-target-spark-svg" id="kTaSparkSvg" viewBox="0 0 120 26" preserveAspectRatio="none" aria-label="Target-adjusted probability trend">
+            <path class="k-target-spark-q" d="M30 2 L30 24"></path>
+            <path class="k-target-spark-q" d="M60 2 L60 24"></path>
+            <path class="k-target-spark-q" d="M90 2 L90 24"></path>
+            <path class="k-target-spark-mid" d="M0 13 L120 13"></path>
+            <path class="k-target-spark-path" id="kTaSparkPath" d="M2 13 L118 13"></path>
+            <circle class="k-target-spark-dot" id="kTaSparkDot" cx="118" cy="13" r="1.8"></circle>
+          </svg>
+          <div class="k-target-spark-scale" aria-hidden="true">
+            <span>25%</span>
+            <span>50%</span>
+            <span>75%</span>
+          </div>
+        </div>
+      </div>
+      <div class="k-why-strip">
+        <div class="k-why-head">
+          <div class="k-why-title">WHY NOW</div>
+          <div class="k-why-sub" id="kWhySub">READING LIVE FLOW</div>
+        </div>
+        <div class="k-why-pills">
+          <div class="k-why-pill" id="kWhy1"><span class="why-k">REGIME</span><span class="why-v">—</span></div>
+          <div class="k-why-pill" id="kWhy2"><span class="why-k">EDGE</span><span class="why-v">—</span></div>
+          <div class="k-why-pill" id="kWhy3"><span class="why-k">TIMING</span><span class="why-v">—</span></div>
+        </div>
+      </div>
+      <div class="k-countdown-wrap">
+        <svg class="k-ring" viewBox="0 0 60 60" id="kRingSvg">
+          <circle class="k-ring-bg" cx="30" cy="30" r="26"/>
+          <circle class="k-ring-arc" cx="30" cy="30" r="26" id="kRingArc"/>
+          <text class="k-ring-txt" x="30" y="34" id="kRingTxt">—:——</text>
+        </svg>
+        <div class="k-countdown-info">
+          <div class="k-countdown-val" id="kCountdown">—:——</div>
+          <div class="k-phase open" id="kPhase">OPEN</div>
+          <div class="k-close-time">CLOSES <span id="kWin2">——</span></div>
+          <div class="k-entry-guidance eg-open" id="kEntryGuidance">LOADING…</div>
+        </div>
+      </div>
       <div class="k-edge num" id="kEdgeBox">—</div>
     </div>
   </div>
   <!-- AI Analyst -->
-  <div class="panel" style="flex:1">
+  <div class="panel panel-grow">
     <div class="ph"><span class="ph-title">AI ANALYST</span><span class="badge badge-ai">OPENROUTER</span></div>
     <div class="pb">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
-        <div style="width:24px;height:24px;border-radius:50%;background:rgba(170,0,255,.2);border:1px solid rgba(170,0,255,.4);display:flex;align-items:center;justify-content:center;font-size:11px">🧠</div>
-        <div><div style="font-size:10px;font-weight:600;color:var(--white)">Autonomous Analyst</div><div style="font-size:8px;color:var(--t2)" id="aiModel">OpenRouter · Llama 3.3 70B</div></div>
+      <div class="ai-header">
+        <div class="ai-icon">🧠</div>
+        <div><div class="ai-name">Autonomous Analyst</div><div class="ai-model" id="aiModel">OpenRouter · Llama 3.3 70B</div></div>
       </div>
-      <div class="ai-out" id="aiOut"><span style="color:var(--t3);font-style:italic">Awaiting live data…</span></div>
+      <div class="ai-out" id="aiOut"><span class="ai-awaiting">Awaiting live data…</span></div>
       <button class="ai-btn" id="aiBtn" onclick="runAI()">⟳ GENERATE ANALYSIS</button>
     </div>
   </div>
   <!-- Kelly -->
-  <div class="panel" style="flex:0 0 auto">
+  <div class="panel panel-fixed">
     <div class="ph"><span class="ph-title">KELLY CRITERION</span><span class="badge badge-warn">SIZING</span></div>
     <div class="pb">
       <div class="kelly-grid">
         <div class="kelly-card"><div class="kelly-tier">SAFE</div><div class="kelly-pct up num" id="kSafe">—</div></div>
-        <div class="kelly-card"><div class="kelly-tier">BALANCED</div><div class="kelly-pct" style="color:var(--amber)" id="kBal">—</div></div>
+        <div class="kelly-card"><div class="kelly-tier">BALANCED</div><div class="kelly-pct txt-amber" id="kBal">—</div></div>
         <div class="kelly-card"><div class="kelly-tier">AGGRESSIVE</div><div class="kelly-pct dn num" id="kAgg">—</div></div>
       </div>
-      <div style="margin-top:6px">
+      <div class="kelly-metrics">
         <div class="mr"><span class="ml">WIN RATE</span><span class="mv num" id="kWR">—</span></div>
         <div class="mr"><span class="ml">EDGE</span><span class="mv num" id="kEdge2">—</span></div>
-        <div class="mr" style="border:none"><span class="ml">SIGNAL</span><span class="mv num" id="kSig">—</span></div>
+        <div class="mr mr-no-border"><span class="ml">SIGNAL</span><span class="mv num" id="kSig">—</span></div>
       </div>
     </div>
   </div>
@@ -566,6 +896,7 @@ canvas{width:100%;height:100%;display:block}
 </div><!-- #app -->
 
 <script>
+/* eslint-disable sonarjs/cognitive-complexity */
 // ╔══════════════════════════════════════════════════════════════╗
 // ║  QUANT//DESK — REAL-TIME MARKET ENGINE                      ║
 // ║  WebSocket: wss://ws-feed.exchange.coinbase.com             ║
@@ -608,16 +939,44 @@ var marketStore = {
 
   // Probabilities
   regime: 'NEUTRAL', pAbove: 0.5, pBelow: 0.5,
+  pDecisionAbove: 0.5, pDecisionBelow: 0.5,
+  verdictDecision: 'ABOVE',
   verdict: 'ABOVE', confidence: 70,
   kalshiAbove: 50, kalshiBelow: 50,
   kellyFull: 0, kellyEdge: 0, kellyWR: 0,
+  dataQuality: 1,
+  calibrationBias: 0,
+  kalshiManualAbovePct: null,
+  kalshiAboveSource: 'live',
+  kalshiManualTargetPrice: null,
+  kalshiManualTargetRoundTs: null,
+  kalshiTargetSource: 'auto',
+  kalshiTargetExpiryNotice: '',
+  kalshiTargetDistance: 0,
+  kalshiTargetDistancePct: 0,
+  kalshiTargetBlend: 0,
+  kalshiTargetOnlyAbove: 0.5,
+  kalshiTargetSpark: [],
+  kalshiTargetSparkRoundTs: null,
+  kalshiTargetSparkLastTs: 0,
 
   // Bet signal
   betData: null,
+  signalLog: [],
+  signalAccuracy: null,
+  brierScore: null,
 
   // WS meta
   wsConnected: false, wsLatency: 0, lastMsgTs: 0,
+  wsSource: 'coinbase', manualFallback: false, manualRest: false,
   msgCount: 0, reconnectCount: 0,
+
+  // Adaptive calibration + feed quality metrics
+  adaptiveScoutWeights: null,
+  adaptiveScoutSampleN: 0,
+  wsLatencyP50: null,
+  wsLatencyP95: null,
+  wsGapP95: null,
 };
 
 // ─────────────────────────────────────────────
@@ -628,8 +987,109 @@ function setWsStatus(status) {
   const lbl = document.getElementById('wsLabel');
   if (!dot || !lbl) return;
   dot.className = 'ws-dot ' + status;
-  lbl.textContent = status === 'connected' ? 'WS LIVE' : status === 'connecting' ? 'connecting…' : 'RECONNECTING';
-  lbl.style.color = status === 'connected' ? 'var(--green)' : status === 'connecting' ? 'var(--amber)' : 'var(--red)';
+  let nextLabel = 'RECONNECTING';
+  let nextColor = 'var(--red)';
+  if (status === 'connected') {
+    nextLabel = 'WS LIVE';
+    nextColor = 'var(--green)';
+  } else if (status === 'connecting') {
+    nextLabel = 'connecting…';
+    nextColor = 'var(--amber)';
+  } else if (status === 'rest') {
+    nextLabel = 'REST LIVE';
+    nextColor = 'var(--cyan)';
+  }
+  lbl.textContent = nextLabel;
+  lbl.style.color = nextColor;
+  if (typeof updateWsSourceUI === 'function') updateWsSourceUI();
+}
+
+function updateWsSourceUI() {
+  const srcEl = document.getElementById('wsSource');
+  const toggle = document.getElementById('wsToggle');
+  const restToggle = document.getElementById('wsRestToggle');
+  const src = marketStore.wsSource || '—';
+  const sourceHelp = {
+    coinbase: 'Primary Coinbase websocket feed',
+    kraken: 'Fallback Kraken websocket feed',
+    rest: 'REST polling fallback feed',
+    '—': 'Waiting for first market update',
+  };
+  if (srcEl) {
+    srcEl.textContent = src === '—' ? '—' : src.toUpperCase();
+    srcEl.className = 'ws-source ' + (src || '');
+    srcEl.title = sourceHelp[src] || sourceHelp['—'];
+  }
+
+  const fallbackEnabled = !!marketStore.manualFallback;
+  const restEnabled = !!marketStore.manualRest;
+
+  if (toggle) {
+    toggle.classList.toggle('active', fallbackEnabled);
+    toggle.textContent = fallbackEnabled ? 'KRAKEN ON' : 'KRAKEN OFF';
+    toggle.title = fallbackEnabled ? 'Disable Kraken override (return to auto)' : 'Force Kraken websocket feed';
+    toggle.disabled = restEnabled;
+  }
+
+  if (restToggle) {
+    restToggle.classList.toggle('rest-active', restEnabled);
+    restToggle.textContent = restEnabled ? 'REST ON' : 'REST OFF';
+    restToggle.title = restEnabled ? 'Disable REST override (return to auto)' : 'Force Coinbase REST polling mode';
+    restToggle.disabled = fallbackEnabled;
+  }
+
+  if (typeof updateWsFreshnessUI === 'function') updateWsFreshnessUI();
+}
+
+function updateWsFreshnessUI() {
+  const ageEl = document.getElementById('wsStaleAge');
+  if (!ageEl) return;
+
+  const ts = Number.isFinite(marketStore.lastMsgTs) ? marketStore.lastMsgTs : 0;
+  if (!ts) {
+    ageEl.textContent = '—';
+    ageEl.className = 'ws-stale-age';
+    ageEl.title = 'Waiting for first market update';
+    return;
+  }
+
+  const ageMs = Math.max(0, Date.now() - ts);
+  const ageSec = ageMs / 1000;
+  const ageText = ageSec < 10 ? `${ageSec.toFixed(1)}s` : `${Math.floor(ageSec)}s`;
+  let level = 'fresh';
+  if (ageSec >= 20) level = 'stale';
+  else if (ageSec >= 10) level = 'warn';
+
+  ageEl.textContent = ageText;
+  ageEl.className = `ws-stale-age ${level}`;
+  const source = (marketStore.wsSource || 'feed').toUpperCase();
+  ageEl.title = `${source} updated ${ageText} ago`;
+}
+
+function setWsControlMode(mode) {
+  const nextMode = ['auto', 'fallback', 'rest'].includes(mode) ? mode : 'auto';
+  marketStore.manualFallback = nextMode === 'fallback';
+  marketStore.manualRest = nextMode === 'rest';
+
+  const ws = globalThis._wsEngine;
+  if (ws) {
+    if (typeof ws.setManualMode === 'function') {
+      ws.setManualMode(nextMode);
+    } else {
+      if (typeof ws.setManualFallback === 'function') ws.setManualFallback(nextMode === 'fallback');
+      if (typeof ws.setForceRest === 'function') ws.setForceRest(nextMode === 'rest');
+    }
+  }
+
+  updateWsSourceUI();
+}
+
+function toggleWsFallback() {
+  setWsControlMode(marketStore.manualFallback ? 'auto' : 'fallback');
+}
+
+function toggleWsRest() {
+  setWsControlMode(marketStore.manualRest ? 'auto' : 'rest');
 }
 
 // ─────────────────────────────────────────────
@@ -642,12 +1102,33 @@ async function bootstrapCandles() {
     );
     const d = await r.json();
     if (!Array.isArray(d)) throw new Error('bad candles');
-    // [time, low, high, open, close, vol] newest first → reverse
-    const candles = d.reverse().map(c => ({
-      time: c[0], low: c[1], high: c[2], open: c[3], close: c[4], volume: c[5]
-    })).filter(c => c.close > 0);
+    const normalized = d.map(c => ({
+      time: Number(c?.[0]),
+      low: Number(c?.[1]),
+      high: Number(c?.[2]),
+      open: Number(c?.[3]),
+      close: Number(c?.[4]),
+      volume: Number(c?.[5]),
+    })).filter(c =>
+      Number.isFinite(c.time)
+      && Number.isFinite(c.low)
+      && Number.isFinite(c.high)
+      && Number.isFinite(c.open)
+      && Number.isFinite(c.close)
+      && Number.isFinite(c.volume)
+      && c.low > 0
+      && c.high > 0
+      && c.open > 0
+      && c.close > 0
+      && c.high >= c.low
+      && c.volume >= 0
+    ).sort((a,b)=>a.time-b.time);
+
+    const candles = normalized.filter((c, i) => i === 0 || c.time > normalized[i-1].time);
+    if (candles.length < 50) throw new Error('insufficient valid candles');
+
     marketStore.candles = candles;
-    if (window._mStore) window._mStore.setState({ candles });
+    if (globalThis._mStore) globalThis._mStore.setState({ candles });
     computeIndicators();
     requestAnimationFrame(()=>{ resizeChart(); renderAll(); });
   } catch(e) {
@@ -669,13 +1150,35 @@ function computeEMA(arr, p) {
 function computeRSI(arr, p=14) {
   if (arr.length < p+1) return 50;
   let g=0, l=0;
-  for (let i=1; i<=p; i++) { const d=arr[i]-arr[i-1]; d>0?g+=d:l-=d; }
+  for (let i=1; i<=p; i++) {
+    const d=arr[i]-arr[i-1];
+    if (d > 0) g += d;
+    else l -= d;
+  }
   let ag=g/p, al=l/p;
   for (let i=p+1; i<arr.length; i++) {
     const d=arr[i]-arr[i-1];
     ag=(ag*(p-1)+Math.max(d,0))/p; al=(al*(p-1)+Math.max(-d,0))/p;
   }
   return al===0?100:100-100/(1+ag/al);
+}
+function computeRSISeries(arr, p=14) {
+  const res = new Array(arr.length).fill(null);
+  if (arr.length < p+1) return res;
+  let g=0, l=0;
+  for (let i=1; i<=p; i++) {
+    const d=arr[i]-arr[i-1];
+    if (d > 0) g += d;
+    else l -= d;
+  }
+  let ag=g/p, al=l/p;
+  res[p] = al===0?100:100-100/(1+ag/al);
+  for (let i=p+1; i<arr.length; i++) {
+    const d=arr[i]-arr[i-1];
+    ag=(ag*(p-1)+Math.max(d,0))/p; al=(al*(p-1)+Math.max(-d,0))/p;
+    res[i] = al===0?100:100-100/(1+ag/al);
+  }
+  return res;
 }
 function computeMACD(arr) {
   const e12=computeEMA(arr,12), e26=computeEMA(arr,26);
@@ -781,9 +1284,127 @@ function kalmanUpdate(price) {
   return { price:_kX[0], velocity:_kX[1], uncertainty:Math.sqrt(Math.max(0,_kP[0][0]))*2 };
 }
 
+function clamp(v,min,max){
+  if(!Number.isFinite(v)) return min;
+  return Math.min(max,Math.max(min,v));
+}
+
+function getDataQualityScore(s,p){
+  const now=Date.now();
+  const ageSec=s.lastMsgTs?Math.max(0,(now-s.lastMsgTs)/1000):999;
+  let staleFactor=1;
+  if(ageSec>=20) staleFactor=0.45;
+  else if(ageSec>=10) staleFactor=0.7;
+  const spreadBps=s.bestAsk&&s.bestBid&&p>0?((s.bestAsk-s.bestBid)/p)*10000:0;
+  let spreadFactor=1;
+  if(spreadBps>12) spreadFactor=0.55;
+  else if(spreadBps>8) spreadFactor=0.72;
+  else if(spreadBps>5) spreadFactor=0.85;
+  const oracleConf=Number.isFinite(s.oracleConf)?s.oracleConf:100;
+  const oracleFactor=clamp(oracleConf/100,0.65,1);
+  const wsFactor=s.wsConnected||s.wsSource==='rest'?1:0.8;
+  return clamp(staleFactor*spreadFactor*oracleFactor*wsFactor,0.35,1);
+}
+
+function getCalibrationStats(log){
+  if(!Array.isArray(log)||!log.length) return null;
+  const resolved=log.filter(e=>
+    e?.resolved===true
+    && Number.isFinite(e?.pAbove)
+    && typeof e?.correct==='boolean'
+  );
+  if(!resolved.length) return null;
+  const n=resolved.length;
+  const meanP=resolved.reduce((a,e)=>a+e.pAbove,0)/n;
+  const hitRate=resolved.reduce((a,e)=>a+(e.correct?1:0),0)/n;
+  const bias=meanP-hitRate;
+  const brier=resolved.reduce((a,e)=>{
+    const y=e.correct?1:0;
+    return a+((e.pAbove-y)**2);
+  },0)/n;
+  return {n,meanP,hitRate,bias,brier};
+}
+
+function getRegimeScoutCalibration(log, regime){
+  if(!Array.isArray(log)||!log.length||!regime) return null;
+  const resolved=log.filter(e=>
+    e?.resolved===true
+    && e?.regime===regime
+    && typeof e?.correct==='boolean'
+    && Number.isFinite(e?.trendP)
+    && Number.isFinite(e?.meanRevP)
+    && Number.isFinite(e?.flowP)
+  );
+  if(!resolved.length) return null;
+  const n=resolved.length;
+  const brier=(key)=>resolved.reduce((a,e)=>{
+    const y=e.correct?1:0;
+    return a+((e[key]-y)**2);
+  },0)/n;
+  return {
+    n,
+    trend: brier('trendP'),
+    meanRev: brier('meanRevP'),
+    flow: brier('flowP'),
+  };
+}
+
+function getAdaptiveRegimeWeights(baseWeights, regime, log){
+  const base=baseWeights[regime]||baseWeights.TRANSITIONAL;
+  const stats=getRegimeScoutCalibration(log, regime);
+  if(!stats||stats.n<8){
+    return {
+      trend: base.trend,
+      meanRev: base.meanRev,
+      volatility: base.volatility,
+      flow: base.flow,
+      sampleN: stats?.n||0,
+    };
+  }
+  const reliability=Math.min(1,stats.n/40);
+  const factor=(b)=>{
+    const raw=1+((0.25-b)*2.2);
+    const clamped=clamp(raw,0.65,1.45);
+    return 1+((clamped-1)*reliability);
+  };
+  const adj={
+    trend: base.trend*factor(stats.trend),
+    meanRev: base.meanRev*factor(stats.meanRev),
+    volatility: base.volatility,
+    flow: base.flow*factor(stats.flow),
+    sampleN: stats.n,
+  };
+  return adj;
+}
+
+function calibrateProbability(baseP,s,p){
+  let out=clamp(baseP,0.05,0.95);
+  const stats=getCalibrationStats(s.signalLog);
+  if(stats&&stats.n>=12){
+    // Correct systematic probability bias from observed outcomes.
+    const biasWeight=clamp(stats.n/120,0.08,0.35);
+    out=clamp(out-(stats.bias*biasWeight),0.05,0.95);
+
+    // Reduce overconfidence when historical calibration worsens.
+    const sharpness=clamp(1-Math.max(0,stats.brier-0.2)*1.8,0.55,1);
+    out=0.5+((out-0.5)*sharpness);
+    s.calibrationBias=Number((stats.bias*100).toFixed(2));
+  } else {
+    s.calibrationBias=0;
+  }
+
+  const q=getDataQualityScore(s,p);
+  out=0.5+((out-0.5)*q);
+  s.dataQuality=q;
+  return clamp(out,0.05,0.95);
+}
+
+// eslint-disable-next-line sonarjs/cognitive-complexity
 function computeIndicators() {
   const C = marketStore.candles;
   if (C.length < 22) return;
+  const p=marketStore.price;
+  enforceKalshiManualTargetRoundScope();
   const closes = C.map(c=>c.close);
 
   const e9a=computeEMA(closes,9), e21a=computeEMA(closes,21);
@@ -793,7 +1414,14 @@ function computeIndicators() {
   marketStore.ema9=e9||0; marketStore.ema21=e21||0;
   marketStore.ema9prev=e9p||0; marketStore.ema21prev=e21p||0;
   marketStore.emaSpread=e9&&e21&&p?(e9-e21)/p*1000:0;
-  marketStore.emaCross=e9p&&e21p?(e9p<=e21p&&e9>e21?'GOLDEN_CROSS':e9p>=e21p&&e9<e21?'DEATH_CROSS':e9>e21?'BULL_ALIGNED':'BEAR_ALIGNED'):'NONE';
+  if (e9p && e21p) {
+    if (e9p <= e21p && e9 > e21) marketStore.emaCross = 'GOLDEN_CROSS';
+    else if (e9p >= e21p && e9 < e21) marketStore.emaCross = 'DEATH_CROSS';
+    else if (e9 > e21) marketStore.emaCross = 'BULL_ALIGNED';
+    else marketStore.emaCross = 'BEAR_ALIGNED';
+  } else {
+    marketStore.emaCross = 'NONE';
+  }
 
   marketStore.rsi=computeRSI(closes);
   const m=computeMACD(closes); marketStore.macd=m.macd; marketStore.macdSig=m.signal;
@@ -812,8 +1440,6 @@ function computeIndicators() {
   if(anom&&(!marketStore.anomalies.length||marketStore.anomalies[0].type!==anom))
     marketStore.anomalies.unshift({type:anom,price:marketStore.price,ts:Date.now()});
   if(marketStore.anomalies.length>6) marketStore.anomalies.pop();
-
-  const p=marketStore.price;
 
   // ── Realized Volatility (annualized) ──
   if (closes.length >= 21) {
@@ -858,8 +1484,6 @@ function computeIndicators() {
   marketStore.kalmanUncertainty = kal.uncertainty;
 
   // ── 4 Scout Agents ──
-  const slopeE9  = trajectorySlope(e9a, 6);
-  const slopeE21 = trajectorySlope(e21a, 6);
   const slopeP   = marketStore.trajectorySlope;
 
   // TrendScout: EMA alignment + momentum + ADX
@@ -879,15 +1503,18 @@ function computeIndicators() {
   // VolatilityScout: BB width trend + ATR spike + funding extremes
   const bbWidths = closes.length >= 25 ? [0,1,2,3,4].map(i=>{ const sl2=closes.slice(-20-i,-i||undefined); const mid2=sl2.reduce((a,b)=>a+b,0)/sl2.length; const std2=Math.sqrt(sl2.map(v=>(v-mid2)**2).reduce((a,b)=>a+b,0)/sl2.length); return 4*std2/mid2*100; }) : [1,1,1,1,1];
   const bbWidthSlope = bbWidths[0] - bbWidths[4]; // positive = expanding
-  const atrNormal = marketStore.atr > 0 && marketStore.volAvg > 0 ? marketStore.atr / p * 100 / (rv / 100 + 0.001) : 1;
   const fundingExt = Math.abs(marketStore.fundingRate) > 0.0005 ? Math.min(1, Math.abs(marketStore.fundingRate) / 0.001) : 0;
   const volExpansionProb = Math.min(1, Math.max(0, (bbWidthSlope > 0 ? bbWidthSlope * 5 : 0) + (rv > 50 ? 0.3 : 0) + fundingExt * 0.2));
 
   // FlowScout: CVD trend + OB imbalance + OI divergence + absorption
   const cvdSlope = trajectorySlope(C.slice(-15).map((_,i)=>{ const t=marketStore.trades.slice(i*3,(i+1)*3); return t.reduce((a,tt)=>a+(tt.side==='buy'?tt.size:-tt.size),0); }),6);
   const imbalFactor = marketStore.imbalance; // [-1,+1]
-  const oiDiv = marketStore.oiPriceDiv === 'CONVERGE' ? 0.15 : marketStore.oiPriceDiv === 'DIVERGE' ? -0.15 : 0;
-  const absorbFactor = marketStore.absorption?.type === 'SELL_ABSORBED' ? 0.2 : marketStore.absorption?.type === 'BUY_ABSORBED' ? -0.2 : 0;
+  let oiDiv = 0;
+  if (marketStore.oiPriceDiv === 'CONVERGE') oiDiv = 0.15;
+  else if (marketStore.oiPriceDiv === 'DIVERGE') oiDiv = -0.15;
+  let absorbFactor = 0;
+  if (marketStore.absorption?.type === 'SELL_ABSORBED') absorbFactor = 0.2;
+  else if (marketStore.absorption?.type === 'BUY_ABSORBED') absorbFactor = -0.2;
   const flowScore = Math.max(-1, Math.min(1, (cvdSlope / 5) * 0.4 + imbalFactor * 0.3 + oiDiv + absorbFactor));
 
   marketStore.scoutScores = {
@@ -900,29 +1527,35 @@ function computeIndicators() {
   // ── Meta-weighting (regime-adaptive) ──
   const weights = {
     TRENDING:       { trend:1.4, meanRev:0.5, volatility:0.7, flow:1.2 },
-    RANGING:        { trend:0.4, meanRev:1.6, volatility:0.7, flow:1.0 },
+    RANGING:        { trend:0.4, meanRev:1.6, volatility:0.7, flow:1 },
     VOL_EXPANSION:  { trend:0.5, meanRev:0.3, volatility:1.8, flow:1.3 },
-    MEAN_REVERTING: { trend:0.6, meanRev:1.5, volatility:0.7, flow:1.0 },
+    MEAN_REVERTING: { trend:0.6, meanRev:1.5, volatility:0.7, flow:1 },
     LOW_LIQUIDITY:  { trend:0.5, meanRev:0.8, volatility:0.9, flow:1.5 },
-    TRANSITIONAL:   { trend:0.8, meanRev:0.8, volatility:0.9, flow:1.0 },
+    TRANSITIONAL:   { trend:0.8, meanRev:0.8, volatility:0.9, flow:1 },
   };
-  const w = weights[regime] || weights.TRANSITIONAL;
+  const w = getAdaptiveRegimeWeights(weights, regime, marketStore.signalLog);
+  marketStore.adaptiveScoutWeights = w;
+  marketStore.adaptiveScoutSampleN = w.sampleN || 0;
   const sc = marketStore.scoutScores;
   const directionalScore = sc.trend*w.trend + sc.meanRev*w.meanRev + sc.flow*w.flow;
   const totalW = w.trend + w.meanRev + w.flow;
   const weightedScore = directionalScore / totalW;
 
-  // ── pAbove from ensemble ──
-  marketStore.pAbove = Math.max(0.05, Math.min(0.95, (weightedScore + 1) / 2));
+  // ── pAbove from ensemble + calibration + data quality gating ──
+  const rawP = clamp((weightedScore + 1) / 2, 0.05, 0.95);
+  marketStore.pAbove = calibrateProbability(rawP, marketStore, p);
   marketStore.pBelow = 1 - marketStore.pAbove;
   marketStore.verdict = marketStore.pAbove >= 0.5 ? 'ABOVE' : 'BELOW';
-  marketStore.confidence = Math.round(Math.max(marketStore.pAbove, marketStore.pBelow) * (regimeConf / 100) * 100);
+  const probEdge = Math.abs(marketStore.pAbove - 0.5) * 2;
+  const confRaw = probEdge * (regimeConf / 100) * (marketStore.dataQuality || 1) * 100;
+  marketStore.confidence = Math.round(clamp(confRaw, 5, 99));
+  updateKalshiTargetDecisionMetrics(marketStore);
 
   // ── 4-Scenario probabilities ──
   const pa = marketStore.pAbove;
-  marketStore.pBullDrift    = regime !== 'VOL_EXPANSION' ? pa * (regimeConf / 100) : pa * 0.3;
+  marketStore.pBullDrift    = regime === 'VOL_EXPANSION' ? pa * 0.3 : pa * (regimeConf / 100);
   marketStore.pRangeBound   = regime === 'RANGING' ? 1 - Math.abs(weightedScore) : Math.max(0, 0.3 - Math.abs(weightedScore) * 0.3);
-  marketStore.pVolExpansion = Math.min(0.95, volExpansionProb * (regime === 'VOL_EXPANSION' ? 1.3 : 1.0));
+  marketStore.pVolExpansion = Math.min(0.95, volExpansionProb * (regime === 'VOL_EXPANSION' ? 1.3 : 1));
   marketStore.pTailRisk     = Math.min(0.5, (fundingExt * 0.3) + (rv > 80 ? 0.2 : 0) + (marketStore.oiPriceDiv === 'DIVERGE' ? 0.15 : 0));
 
   // Normalize to sum ~1
@@ -941,14 +1574,14 @@ function computeIndicators() {
     const longBias  = 1 + Math.min(0.4, Math.max(-0.4, fr / 0.001 * 0.2));
     const shortBias = 1 - Math.min(0.4, Math.max(-0.4, fr / 0.001 * 0.2));
     marketStore.liquidationZones = [
-      { price: p * 1.012, strength: Math.min(1, 0.90 * longBias),  side: 'long',  leverage: '10x' },
+      { price: p * 1.012, strength: Math.min(1, 0.9 * longBias),   side: 'long',  leverage: '10x' },
       { price: p * 0.988, strength: Math.min(1, 0.85 * shortBias), side: 'short', leverage: '10x' },
       { price: p * 1.025, strength: Math.min(1, 0.65 * longBias),  side: 'long',  leverage: '5x'  },
-      { price: p * 0.975, strength: Math.min(1, 0.70 * shortBias), side: 'short', leverage: '5x'  },
-      { price: p * 1.050, strength: Math.min(1, 0.40 * longBias),  side: 'long',  leverage: '3x'  },
-      { price: p * 0.950, strength: Math.min(1, 0.45 * shortBias), side: 'short', leverage: '3x'  },
-      { price: p * 1.100, strength: Math.min(1, 0.25 * longBias),  side: 'long',  leverage: '2x'  },
-      { price: p * 0.900, strength: Math.min(1, 0.30 * shortBias), side: 'short', leverage: '2x'  },
+      { price: p * 0.975, strength: Math.min(1, 0.7 * shortBias),  side: 'short', leverage: '5x'  },
+      { price: p * 1.05,  strength: Math.min(1, 0.4 * longBias),   side: 'long',  leverage: '3x'  },
+      { price: p * 0.95,  strength: Math.min(1, 0.45 * shortBias), side: 'short', leverage: '3x'  },
+      { price: p * 1.1,   strength: Math.min(1, 0.25 * longBias),  side: 'long',  leverage: '2x'  },
+      { price: p * 0.9,   strength: Math.min(1, 0.3 * shortBias),  side: 'short', leverage: '2x'  },
     ];
   }
 
@@ -965,23 +1598,49 @@ function computeIndicators() {
   // Only override if no live Kalshi data
   if (!marketStore._kalshiLive) { marketStore.kalshiAbove = ka; marketStore.kalshiBelow = 100 - ka; }
 
-  // ── Kelly ──
-  const edge = marketStore.pAbove - marketStore.kalshiAbove / 100;
-  const kf = Math.max(0, Math.min((marketStore.pAbove - (1 - marketStore.pAbove)) / 1, 0.25));
-  marketStore.kellyFull = kf; marketStore.kellyEdge = edge; marketStore.kellyWR = marketStore.pAbove;
+  // ── Kelly (corrected formula using bid/ask) ──
+  const yesAsk = marketStore.kalshiAsk || marketStore.kalshiAbove / 100;
+  const yesBid = marketStore.kalshiBid || marketStore.kalshiAbove / 100;
+  const pDecisionAbove = Number.isFinite(marketStore.pDecisionAbove) ? marketStore.pDecisionAbove : marketStore.pAbove;
+  const pDecisionBelow = Number.isFinite(marketStore.pDecisionBelow) ? marketStore.pDecisionBelow : marketStore.pBelow;
+  const evAbove = pDecisionAbove - yesAsk;
+  const evBelow = pDecisionBelow - (1 - yesBid);
+  const kfAbove = evAbove > 0 ? Math.min(0.25, evAbove / (1 - yesAsk)) : 0;
+  const kfBelow = evBelow > 0 ? Math.min(0.25, evBelow / yesBid) : 0;
+  const kf = Math.max(kfAbove, kfBelow);
+  const edge = pDecisionAbove >= 0.5 ? evAbove : evBelow;
+  marketStore.kellyFull = kf;
+  marketStore.kellyEdge = edge;
+  marketStore.kellyWR = pDecisionAbove;
+  marketStore.kalshiEV = edge;
+
+  // ── Bet signal (current cycle) ──
+  marketStore.betData = computeBetSignal();
 
   // ── Trust layer: resolve past signals ──
   resolveSignalLog();
 
-  // ── Log current signal ──
-  if (marketStore.betData?.active) {
+  // ── Log current signal for calibration ──
+  const shouldLogSample =
+    ((marketStore.betData?.active === true) || (marketStore.confidence || 0) >= 65)
+    && (marketStore.dataQuality || 1) >= 0.55;
+  if (shouldLogSample) {
     const log = marketStore.signalLog || [];
     const last = log[log.length - 1];
     if (!last || Date.now() - last.ts > 60000) {
       log.push({ ts: Date.now(), verdict: marketStore.verdict, price: p, pAbove: marketStore.pAbove, conf: marketStore.confidence, resolved: false });
+      const entry = log[log.length - 1];
+      entry.regime = marketStore.regime;
+      entry.trendP = clamp((marketStore.scoutScores?.trend + 1) / 2, 0.01, 0.99);
+      entry.meanRevP = clamp((marketStore.scoutScores?.meanRev + 1) / 2, 0.01, 0.99);
+      entry.flowP = clamp((marketStore.scoutScores?.flow + 1) / 2, 0.01, 0.99);
       if (log.length > 100) log.shift();
       marketStore.signalLog = log;
-      try { localStorage.setItem('qdSignalLog', JSON.stringify(log)); } catch(e) {}
+      try {
+        localStorage.setItem('qdSignalLog', JSON.stringify(log));
+      } catch(e) {
+        console.debug('qdSignalLog persist skipped:', e?.message || e);
+      }
     }
   }
 
@@ -992,15 +1651,15 @@ function computeIndicators() {
   if(marketStore.absorption) _ftox=Math.min(100,_ftox*1.25);
   if(marketStore.spoofLevels?.length>0) _ftox=Math.min(100,_ftox*1.15);
   marketStore.flowToxicity=Math.round(_ftox);
-
-  // ── Bet signal ──
-  marketStore.betData = computeBetSignal();
 }
 
-function computeBetSignal() {
+function computeBetSignal() { // NOSONAR
   const s=marketStore;
+  const pDecisionAbove = Number.isFinite(s.pDecisionAbove) ? s.pDecisionAbove : s.pAbove;
+  const pDecisionBelow = Number.isFinite(s.pDecisionBelow) ? s.pDecisionBelow : s.pBelow;
   const _emptyBet={active:false,alignment:0,bullSigs:0,verdict:'WAIT',conviction:0,
-    reasons:[],crossType:'NONE',emaSpread:s.emaSpread||0,slopeP:0,kEdge:0};
+    reasons:[],crossType:'NONE',emaSpread:s.emaSpread||0,slopeP:0,kEdge:0,
+    ev:0,timingLabel:'—',timingClass:'',activeDuration:0,roundPhase:'open'};
   if(!s.candles.length||!s.price) return _emptyBet;
   const closes=s.candles.map(c=>c.close);
   const e9a=computeEMA(closes,9), e21a=computeEMA(closes,21);
@@ -1011,43 +1670,111 @@ function computeBetSignal() {
   const slopeE9=trajectorySlope(e9a,6), slopeE21=trajectorySlope(e21a,6);
   const slopeP=s.trajectorySlope;
   const crossedBull=e9p<=e21p&&e9>e21, crossedBear=e9p>=e21p&&e9<e21;
-  const crossType=crossedBull?'GOLDEN_CROSS':crossedBear?'DEATH_CROSS':e9>e21?'BULL_ALIGNED':'BEAR_ALIGNED';
+  let crossType='BEAR_ALIGNED';
+  if (crossedBull) crossType='GOLDEN_CROSS';
+  else if (crossedBear) crossType='DEATH_CROSS';
+  else if (e9>e21) crossType='BULL_ALIGNED';
 
-  const bsigs=[
+  const base10=[
     s.price>s.vwap, s.rsi>50&&s.rsi<75,
     s.macd>s.macdSig, e9>e21, s.cvd>0,
     slopeE9>0, slopeE21>0, slopeP>0,
     (s.regime==='TRENDING'||s.regime==='VOL_EXPANSION')&&s.pAbove>=0.5, s.imbalance>0,
-  ].filter(Boolean).length;
-  const align=bsigs/10;
+  ];
+  const roughBull=base10.filter(Boolean).length>=5;
+  const closes_=closes;
+  const lastClose=closes_[closes_.length-1]||0;
+  const prevClose=closes_[closes_.length-2]||lastClose;
+  const lastMove=lastClose-prevClose;
+  const sig11=roughBull?s.stoch>50:s.stoch<50;
+  const sig12=roughBull?(s.kalmanVelocity||0)>0:(s.kalmanVelocity||0)<0;
+  const sig13=roughBull?(s.fundingRate||0)<-0.0001:(s.fundingRate||0)>0.0001;
+  const sig14=roughBull
+    ?(lastMove>0&&Math.abs(lastMove)>(s.atr||0)*0.3)
+    :(lastMove<0&&Math.abs(lastMove)>(s.atr||0)*0.3);
+  const allSigs=[...base10,sig11,sig12,sig13,sig14];
+  const bsigs=allSigs.filter(Boolean).length;
+  const align=bsigs/14;
 
   const trajBull=slopeP>0&&slopeE9>0&&slopeE21>0;
   const trajBear=slopeP<0&&slopeE9<0&&slopeE21<0;
-  const kEdge=Math.abs(s.pAbove-s.kalshiAbove/100);
+  const kEdge=Math.abs(pDecisionAbove-s.kalshiAbove/100);
+  const quality=Number.isFinite(s.dataQuality)?s.dataQuality:1;
+  const confGate=clamp((s.confidence||0)/100,0.4,1);
+  const probGate=0.63+((1-quality)*0.07);
+  const alignBullGate=0.65+((1-quality)*0.06);
+  const alignBearGate=0.35-((1-quality)*0.06);
 
-  const isBull=align>=0.7&&trajBull&&e9>e21&&slopeE9>0&&s.pAbove>=0.65;
-  const isBear=align<=0.3&&trajBear&&e9<e21&&slopeE9<0&&s.pBelow>=0.65;
-  const active=(isBull||isBear)&&kEdge>=0.04;
-  const verdict=isBull?'ABOVE':isBear?'BELOW':'WAIT';
-  const conviction=active?Math.round(Math.max(align,1-align)*100):0;
+  const isBull=align>=alignBullGate&&trajBull&&e9>e21&&slopeE9>0&&pDecisionAbove>=probGate;
+  const isBear=align<=alignBearGate&&trajBear&&e9<e21&&slopeE9<0&&pDecisionBelow>=probGate;
+  const edgeGate=0.04+((1-quality)*0.02);
+  const active=(isBull||isBear)&&kEdge>=edgeGate&&quality>=0.55&&confGate>=0.5;
+  let verdict='WAIT';
+  if (isBull) verdict='ABOVE';
+  else if (isBear) verdict='BELOW';
+
+  const roundStart=Math.floor(Date.now()/900000)*900000;
+  if(_signalLockRoundTs!==roundStart){_signalLockVerdict=null;_signalLockRoundTs=roundStart;}
+  if(active&&!_signalLockVerdict) _signalLockVerdict=verdict;
+  if(active&&_signalLockVerdict&&verdict!==_signalLockVerdict&&align>0.35&&align<0.65)
+    verdict=_signalLockVerdict;
+
+  if(active&&!_signalActiveTs) _signalActiveTs=Date.now();
+  if(!active) _signalActiveTs=null;
+  const activeDuration=(active&&_signalActiveTs)?Math.floor((Date.now()-_signalActiveTs)/1000):0;
+
+  const kRound=kalshiRound();
+  let phaseConvMult=1,timingLabel='OPTIMAL ENTRY',timingClass='tl-open';
+  if(kRound.secsLeft<=120){phaseConvMult=0.75;timingLabel='CLOSING - LOCK/WAIT';timingClass='tl-closing';}
+  else if(kRound.secsLeft<=300){phaseConvMult=0.88;timingLabel='CAUTION - LATE ENTRY';timingClass='tl-caution';}
+  const conviction=active?Math.round(clamp(Math.max(align,1-align)*quality*confGate*phaseConvMult*100,0,99)):0;
+
+  const _yesAsk=s.kalshiAsk||s.kalshiAbove/100;
+  const _yesBid=s.kalshiBid||s.kalshiAbove/100;
+  const evAbove_=pDecisionAbove-_yesAsk;
+  const evBelow_=pDecisionBelow-(1-_yesBid);
+  let ev=0;
+  if (isBull) ev=evAbove_;
+  else if (isBear) ev=evBelow_;
 
   const reasons=[];
   if(isBull||isBear){
     const d=isBull;
-    if(crossedBull||crossedBear) reasons.unshift({t:d?'bull':'bear',txt:`⚡ ${crossType.replace('_',' ')} — high-priority entry`});
-    reasons.push({t:d?'bull':'bear',txt:`EMA9 ${d?'>':'<'} EMA21 · ${Math.abs(s.emaSpread).toFixed(1)} bps spread`});
-    reasons.push({t:d?'bull':'bear',txt:`Trajectory slope ${slopeP>0?'▲':'▼'} ${Math.abs(slopeP).toFixed(1)}/bar`});
-    reasons.push({t:d?'bull':'bear',txt:`${bsigs}/10 signals ${d?'bullish':'bearish'}`});
+    const reasonsCore=[
+      {t:d?'bull':'bear',txt:`EMA9 ${d?'>':'<'} EMA21 · ${Math.abs(s.emaSpread).toFixed(1)} bps spread`},
+      {t:d?'bull':'bear',txt:`Trajectory slope ${slopeP>0?'▲':'▼'} ${Math.abs(slopeP).toFixed(1)}/bar`},
+      {t:d?'bull':'bear',txt:`${bsigs}/14 signals ${d?'bullish':'bearish'}`},
+    ];
+    if(crossedBull||crossedBear){
+      reasonsCore.unshift({t:d?'bull':'bear',txt:`⚡ ${crossType.replace('_',' ')} — high-priority entry`});
+    }
     const _regimeBull=['TRENDING','VOL_EXPANSION'],_regimeBear=['MEAN_REVERTING','RANGING'];
     const _regimeMatch=d?_regimeBull.includes(s.regime):_regimeBear.includes(s.regime);
-    reasons.push({t:_regimeMatch?(d?'bull':'bear'):'warn',
-      txt:`Regime: ${s.regime.replace(/_/g,' ')} ${_regimeMatch?'✓':'⚠'}`});
-    reasons.push({t:kEdge>=0.08?d?'bull':'bear':'warn',
-      txt:`Kalshi edge ${(kEdge*100).toFixed(1)}% ${kEdge>=0.08?'— strong':'— moderate'}`});
+    let regimeType='warn';
+    if (_regimeMatch) regimeType=d?'bull':'bear';
+    let edgeType='warn';
+    if (kEdge>=0.08) edgeType=d?'bull':'bear';
+    let qualityType='warn';
+    if(quality>=0.75) qualityType=d?'bull':'bear';
+    reasonsCore.push(
+      {t:regimeType,txt:`Regime: ${s.regime.replaceAll('_',' ')} ${_regimeMatch?'✓':'⚠'}`},
+      {t:edgeType,txt:`Kalshi edge ${(kEdge*100).toFixed(1)}% ${kEdge>=0.08?'— strong':'— moderate'}`},
+      {t:qualityType,txt:`Feed quality ${(quality*100).toFixed(0)}% · confidence ${s.confidence||0}%`}
+    );
+    if (Number.isFinite(s.kalshiTargetDistance)) {
+      const dist = s.kalshiTargetDistance;
+      const distTxt = `${dist >= 0 ? '+' : ''}${dist.toFixed(0)}`;
+      reasonsCore.push({
+        t: d ? 'bull' : 'bear',
+        txt: `Target distance ${distTxt} · blend ${(Number(s.kalshiTargetBlend || 0) * 100).toFixed(0)}%`
+      });
+    }
+    reasons.push(...reasonsCore);
   }
 
   return {active,verdict,conviction,bullSigs:bsigs,alignment:align,crossType,reasons,
-    emaSpread:s.emaSpread,slopeP,kEdge};
+    emaSpread:s.emaSpread,slopeP,kEdge,
+    ev,timingLabel,timingClass,activeDuration,roundPhase:kRound.phase};
 }
 
 // ─────────────────────────────────────────────
@@ -1074,7 +1801,7 @@ function resizeChart(){
 }
 window.addEventListener('resize',()=>{resizeChart();drawChart();});
 
-function drawChart(){
+function drawChart(){ // NOSONAR
   if(!chartW) resizeChart();
   const C=marketStore.candles;
   if(!C.length||!chartW) return;
@@ -1155,7 +1882,8 @@ function drawChart(){
     e9a.forEach((v,i)=>{
       if(v==null)return;
       const x=pad+i*(cw+1)+cw/2;
-      if(!started){ctx.moveTo(x,sy(v));started=true;}else ctx.lineTo(x,sy(v));
+      if(started) ctx.lineTo(x,sy(v));
+      else {ctx.moveTo(x,sy(v));started=true;}
     });ctx.stroke();
 
     // EMA21 line
@@ -1164,7 +1892,8 @@ function drawChart(){
     e21a.forEach((v,i)=>{
       if(v==null)return;
       const x=pad+i*(cw+1)+cw/2;
-      if(!started){ctx.moveTo(x,sy(v));started=true;}else ctx.lineTo(x,sy(v));
+      if(started) ctx.lineTo(x,sy(v));
+      else {ctx.moveTo(x,sy(v));started=true;}
     });ctx.stroke();
 
     // EMA50 (purple dashed)
@@ -1172,7 +1901,12 @@ function drawChart(){
       const e50a=computeEMA(closes,50);
       ctx.strokeStyle='rgba(170,0,255,.6)';ctx.lineWidth=1;ctx.setLineDash([4,3]);ctx.beginPath();
       let st50=false;
-      e50a.forEach((v,i)=>{if(v==null)return;const x=pad+i*(cw+1)+cw/2;if(!st50){ctx.moveTo(x,sy(v));st50=true;}else ctx.lineTo(x,sy(v));});
+      e50a.forEach((v,i)=>{
+        if(v==null) return;
+        const x=pad+i*(cw+1)+cw/2;
+        if(st50) ctx.lineTo(x,sy(v));
+        else {ctx.moveTo(x,sy(v));st50=true;}
+      });
       ctx.stroke();ctx.setLineDash([]);
     }
   }
@@ -1271,7 +2005,7 @@ function drawRSI(){
   const C=marketStore.candles;
   if(C.length<15) return;
   const closes=C.map(c=>c.close);
-  const rsiArr=computeRSI(closes,14);
+  const rsiArr=computeRSISeries(closes,14);
   const pad=40,rpad=70;
   const cw=Math.max(2,Math.floor((W-pad-rpad)/C.length)-1);
   const y70=H*(1-70/100),y30=H*(1-30/100);
@@ -1288,12 +2022,15 @@ function drawRSI(){
   rsiArr.forEach((v,i)=>{
     if(v==null)return;
     const x=pad+i*(cw+1)+cw/2,y=H*(1-v/100);
-    if(!started){r2.moveTo(x,y);started=true;}else r2.lineTo(x,y);
+    if(started) r2.lineTo(x,y);
+    else {r2.moveTo(x,y);started=true;}
   });r2.stroke();
   const cr=marketStore.rsi;
   if(cr){
     const y=Math.max(8,Math.min(H-3,H*(1-cr/100)));
-    r2.fillStyle=cr>60?'#ff6b6b':cr<40?'#00e676':'#00e5ff';
+    if (cr > 60) r2.fillStyle='#ff6b6b';
+    else if (cr < 40) r2.fillStyle='#00e676';
+    else r2.fillStyle='#00e5ff';
     r2.font='bold 8px IBM Plex Mono';
     r2.fillText(cr.toFixed(1),W-rpad+4,y+3);
   }
@@ -1329,7 +2066,9 @@ function drawVolumeProfile(){
     const h=Math.max(1,y2-y1);
     const bw=Math.max(2,(buckets[i]/maxB)*(W-4));
     const br=buckets[i]>0?buyB[i]/buckets[i]:0.5;
-    vctx.fillStyle=i===pocIdx?'rgba(255,171,0,.5)':br>0.5?'rgba(0,230,118,.28)':'rgba(255,23,68,.28)';
+    if (i === pocIdx) vctx.fillStyle='rgba(255,171,0,.5)';
+    else if (br > 0.5) vctx.fillStyle='rgba(0,230,118,.28)';
+    else vctx.fillStyle='rgba(255,23,68,.28)';
     vctx.fillRect(0,y1,bw,h);
   }
   // POC line
@@ -1394,7 +2133,7 @@ function flashPrice(dir){
   const el=document.getElementById('tp');
   if(!el) return;
   el.classList.remove('pflash-up','pflash-dn');
-  void el.offsetWidth;
+  el.getBoundingClientRect();
   el.classList.add(dir>0?'pflash-up':'pflash-dn');
 }
 let _lastFlashPrice=0;
@@ -1407,7 +2146,11 @@ let _signalBeepCtx=null;
 function playSignalBeep(direction){
   if(!_soundEnabled) return;
   try{
-    if(!_signalBeepCtx) _signalBeepCtx=new(window.AudioContext||window.webkitAudioContext)();
+    if(!_signalBeepCtx){
+      const AC=globalThis.AudioContext||globalThis.webkitAudioContext;
+      if(!AC) return;
+      _signalBeepCtx=new AC();
+    }
     const ac=_signalBeepCtx;
     const osc=ac.createOscillator();const gain=ac.createGain();
     osc.connect(gain);gain.connect(ac.destination);
@@ -1415,13 +2158,543 @@ function playSignalBeep(direction){
     gain.gain.setValueAtTime(0.2,ac.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.4);
     osc.start(ac.currentTime);osc.stop(ac.currentTime+0.4);
-  }catch(e){}
+  }catch(e){
+    console.debug('signal beep skipped:', e?.message || e);
+  }
 }
 
 let _soundEnabled=true;
 let _lastSignalVerdict=null;
 let _signalAlertTimer=null;
+let _signalLockVerdict=null;
+let _signalLockRoundTs=null;
+let _signalActiveTs=null;
+// ── Kalshi 15-min round countdown helper ──
+function kalshiRound() {
+  const now = Date.now();
+  const roundMs = 900000; // 15 min in ms
+  const roundStart = Math.floor(now / roundMs) * roundMs;
+  const nextClose = Math.ceil(now / roundMs) * roundMs;
+  const msLeft = nextClose - now;
+  const secsLeft = Math.floor(msLeft / 1000);
+  const m = Math.floor(secsLeft / 60);
+  const s = secsLeft % 60;
+  const mmss = `${m}:${String(s).padStart(2,'0')}`;
+  let phase = 'open';
+  if (secsLeft <= 90) phase = 'closing';
+  else if (secsLeft <= 300) phase = 'caution';
+  return { msLeft, secsLeft, mmss, phase, roundStart, nextClose };
+}
+
+const KALSHI_TARGET_STORAGE_KEY = 'qdKalshiTargetPrice';
+const KALSHI_TARGET_ROUND_STORAGE_KEY = 'qdKalshiTargetRoundTs';
+
+function getKalshiRoundStartMs(ts = Date.now()) {
+  return Math.floor(ts / 900000) * 900000;
+}
+
+function formatKalshiTargetPrice(value) {
+  return Number.isFinite(value) ? `$${Math.round(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—';
+}
+
+function readKalshiTargetStorage() {
+  try {
+    const raw = localStorage.getItem(KALSHI_TARGET_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = Number.parseFloat(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  } catch (e) {
+    console.debug('kalshi target hydrate skipped:', e?.message || e);
+    return null;
+  }
+}
+
+function readKalshiTargetRoundStorage() {
+  try {
+    const raw = localStorage.getItem(KALSHI_TARGET_ROUND_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = Number.parseInt(raw, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  } catch (e) {
+    console.debug('kalshi target round hydrate skipped:', e?.message || e);
+    return null;
+  }
+}
+
+function persistKalshiTargetStorage(value, roundTs = null) {
+  try {
+    if (Number.isFinite(value) && value > 0) {
+      localStorage.setItem(KALSHI_TARGET_STORAGE_KEY, String(value));
+      if (Number.isFinite(roundTs)) localStorage.setItem(KALSHI_TARGET_ROUND_STORAGE_KEY, String(roundTs));
+      else localStorage.removeItem(KALSHI_TARGET_ROUND_STORAGE_KEY);
+    } else {
+      localStorage.removeItem(KALSHI_TARGET_STORAGE_KEY);
+      localStorage.removeItem(KALSHI_TARGET_ROUND_STORAGE_KEY);
+    }
+  } catch (e) {
+    console.debug('kalshi target persist skipped:', e?.message || e);
+  }
+}
+
+function getAutoKalshiTargetPrice() {
+  if (Number.isFinite(marketStore.price) && marketStore.price > 0) return marketStore.price;
+  if (Number.isFinite(marketStore.kalmanPrice) && marketStore.kalmanPrice > 0) return marketStore.kalmanPrice;
+  return null;
+}
+
+function getActiveKalshiTargetPrice() {
+  if (Number.isFinite(marketStore.kalshiManualTargetPrice) && marketStore.kalshiManualTargetPrice > 0) {
+    return marketStore.kalshiManualTargetPrice;
+  }
+  return getAutoKalshiTargetPrice();
+}
+
+function pushKalshiTargetSparkPoint(s, roundStart, pDecisionAbove) {
+  if (s.kalshiTargetSparkRoundTs !== roundStart) {
+    s.kalshiTargetSparkRoundTs = roundStart;
+    s.kalshiTargetSpark = [];
+    s.kalshiTargetSparkLastTs = 0;
+  }
+  const now = Date.now();
+  const lastTs = Number.isFinite(s.kalshiTargetSparkLastTs) ? s.kalshiTargetSparkLastTs : 0;
+  if (!Array.isArray(s.kalshiTargetSpark)) s.kalshiTargetSpark = [];
+  if (!s.kalshiTargetSpark.length || now - lastTs >= 3000) {
+    s.kalshiTargetSpark.push(clamp(pDecisionAbove, 0.03, 0.97));
+    if (s.kalshiTargetSpark.length > 220) s.kalshiTargetSpark.shift();
+    s.kalshiTargetSparkLastTs = now;
+  }
+}
+
+function updateKalshiTargetDecisionMetrics(s = marketStore) {
+  const baseAbove = clamp(Number.isFinite(s.pAbove) ? s.pAbove : 0.5, 0.05, 0.95);
+  const activeTarget = getActiveKalshiTargetPrice();
+  const px = Number.isFinite(s.price) && s.price > 0 ? s.price : null;
+  const quality = clamp(Number.isFinite(s.dataQuality) ? s.dataQuality : 1, 0.35, 1);
+  const kr = kalshiRound();
+  const hasManual = Number.isFinite(s.kalshiManualTargetPrice) && s.kalshiManualTargetPrice > 0;
+  let pDecisionAbove = baseAbove;
+
+  if (!Number.isFinite(activeTarget) || !px) {
+    s.kalshiTargetDistance = 0;
+    s.kalshiTargetDistancePct = 0;
+    s.kalshiTargetBlend = 0;
+    s.kalshiTargetOnlyAbove = baseAbove;
+  } else {
+    const atr = Number.isFinite(s.atr) && s.atr > 0 ? s.atr : null;
+    const scale = Math.max((atr || 0) * 1.1, px * 0.0015, 35);
+    const targetDistance = activeTarget - px;
+    const requiredMoveNorm = clamp(targetDistance / scale, -5, 5);
+
+    // Positive required move means ABOVE is harder, so probability should decay.
+    const pTargetOnlyAbove = 1 / (1 + Math.exp(requiredMoveNorm * 1.35));
+    let blend = 0.4 + Math.min(0.25, Math.abs(requiredMoveNorm) * 0.08);
+    if (kr.secsLeft <= 300) blend += 0.08;
+    if (hasManual) blend += 0.08;
+    blend += (1 - quality) * 0.06;
+    blend = clamp(blend, 0.35, 0.82);
+
+    pDecisionAbove = clamp((baseAbove * (1 - blend)) + (pTargetOnlyAbove * blend), 0.03, 0.97);
+    s.kalshiTargetDistance = targetDistance;
+    s.kalshiTargetDistancePct = px > 0 ? (targetDistance / px) * 100 : 0;
+    s.kalshiTargetBlend = blend;
+    s.kalshiTargetOnlyAbove = pTargetOnlyAbove;
+  }
+  s.pDecisionAbove = pDecisionAbove;
+  s.pDecisionBelow = 1 - pDecisionAbove;
+  s.verdictDecision = pDecisionAbove >= 0.5 ? 'ABOVE' : 'BELOW';
+  pushKalshiTargetSparkPoint(s, kr.roundStart, pDecisionAbove);
+}
+
+function renderKalshiTargetSparkline(s = marketStore) {
+  const pathEl = document.getElementById('kTaSparkPath');
+  const dotEl = document.getElementById('kTaSparkDot');
+  const metaEl = document.getElementById('kTaSparkMeta');
+  if (!pathEl || !dotEl) return;
+  const points = Array.isArray(s.kalshiTargetSpark) ? s.kalshiTargetSpark : [];
+  const w = 120;
+  const h = 26;
+  const pad = 2;
+  const kr = kalshiRound();
+  const elapsedPct = clamp((1 - (kr.msLeft / 900000)) * 100, 0, 100);
+
+  if (metaEl) {
+    metaEl.textContent = `${points.length} pts · ${elapsedPct.toFixed(0)}% round`;
+  }
+
+  if (!points.length) {
+    pathEl.setAttribute('d', `M${pad} ${h / 2} L${w - pad} ${h / 2}`);
+    dotEl.setAttribute('cx', String(w - pad));
+    dotEl.setAttribute('cy', String(h / 2));
+    pathEl.style.stroke = 'var(--t3)';
+    dotEl.style.fill = 'var(--t3)';
+    return;
+  }
+
+  const n = points.length;
+  const d = points.map((v, i) => {
+    const x = n === 1 ? w - pad : pad + (i / (n - 1)) * (w - pad * 2);
+    const y = pad + (1 - clamp(v, 0.03, 0.97)) * (h - pad * 2);
+    return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`;
+  }).join(' ');
+  pathEl.setAttribute('d', d);
+
+  const last = clamp(points[n - 1], 0.03, 0.97);
+  const lastX = w - pad;
+  const lastY = pad + (1 - last) * (h - pad * 2);
+  dotEl.setAttribute('cx', String(lastX));
+  dotEl.setAttribute('cy', String(lastY.toFixed(2)));
+  const tone = last >= 0.5 ? 'var(--green)' : 'var(--red)';
+  pathEl.style.stroke = tone;
+  dotEl.style.fill = tone;
+}
+
+function syncKalshiTargetUI() {
+  const input = document.getElementById('kTargetInput');
+  const meta = document.getElementById('kTargetMeta');
+  const heroVal = document.getElementById('kTargetHeroVal');
+  const heroPill = document.getElementById('kTargetHeroPill');
+  if (input) {
+    const isEditing = document.activeElement === input;
+    const hasManual = Number.isFinite(marketStore.kalshiManualTargetPrice) && marketStore.kalshiManualTargetPrice > 0;
+    const hasDraft = input.dataset.draftActive === '1';
+    const draftValue = input.dataset.draftValue ?? '';
+    const nextValue = hasManual ? String(Math.round(marketStore.kalshiManualTargetPrice)) : '';
+    if (hasManual) {
+      input.dataset.draftActive = '0';
+      input.dataset.draftValue = '';
+    }
+    if (!isEditing && !hasDraft && input.value !== nextValue) input.value = nextValue;
+    if (!isEditing && hasDraft && !hasManual && input.value !== draftValue) input.value = draftValue;
+  }
+  if (meta) {
+    const manual = Number.isFinite(marketStore.kalshiManualTargetPrice) && marketStore.kalshiManualTargetPrice > 0;
+    const activeTarget = getActiveKalshiTargetPrice();
+    const suffix = (!manual && marketStore.kalshiTargetExpiryNotice)
+      ? ` · ${marketStore.kalshiTargetExpiryNotice}`
+      : '';
+    meta.textContent = manual
+      ? `MANUAL TARGET ACTIVE · ${formatKalshiTargetPrice(activeTarget)}`
+      : `AUTO TARGET · ${formatKalshiTargetPrice(activeTarget)}${suffix}`;
+    meta.className = `k-top-target-meta ${manual ? 'manual' : ''}`;
+  }
+  if (heroVal || heroPill) {
+    const manual = Number.isFinite(marketStore.kalshiManualTargetPrice) && marketStore.kalshiManualTargetPrice > 0;
+    const activeTarget = getActiveKalshiTargetPrice();
+    if (heroVal) {
+      heroVal.textContent = formatKalshiTargetPrice(activeTarget);
+      heroVal.className = `k-top-target-val ${manual ? 'manual' : ''}`;
+    }
+    if (heroPill) {
+      heroPill.textContent = manual ? 'MANUAL' : 'AUTO';
+      heroPill.className = `k-top-target-pill ${manual ? 'pill-manual' : 'pill-auto'}`;
+    }
+  }
+}
+
+function syncKalshiWhyNowUI(s = marketStore) {
+  const whySub = document.getElementById('kWhySub');
+  const why1 = document.getElementById('kWhy1');
+  const why2 = document.getElementById('kWhy2');
+  const why3 = document.getElementById('kWhy3');
+  if (!whySub || !why1 || !why2 || !why3) return;
+
+  const regime = (s.regime || 'TRANSITIONAL').replaceAll('_', ' ');
+  const regimeConf = Number.isFinite(s.regimeConf) ? `${Math.round(s.regimeConf)}%` : '—';
+  const pDecisionAbove = Number.isFinite(s.pDecisionAbove) ? s.pDecisionAbove : s.pAbove;
+  const directionalEdge = Number.isFinite(pDecisionAbove) && Number.isFinite(s.kalshiAbove)
+    ? (pDecisionAbove - s.kalshiAbove / 100)
+    : 0;
+  const edgePct = `${directionalEdge >= 0 ? '+' : ''}${(directionalEdge * 100).toFixed(1)}%`;
+  const betData = s.betData || {};
+  const timing = betData.timingLabel || '—';
+  const conviction = Number.isFinite(betData.conviction) ? `${betData.conviction}%` : '—';
+  const active = betData.active === true;
+  let regimeTone = '';
+  if (regime.includes('TREND') || regime.includes('VOL')) {
+    regimeTone = 'why-bull';
+  } else if (regime.includes('MEAN') || regime.includes('RANGE')) {
+    regimeTone = 'why-warn';
+  }
+  let edgeTone = 'why-warn';
+  if (directionalEdge > 0) {
+    edgeTone = 'why-bull';
+  } else if (directionalEdge < 0) {
+    edgeTone = 'why-bear';
+  }
+  let timingTone = '';
+  if (timing.includes('CLOSING')) {
+    timingTone = 'why-warn';
+  } else if (active) {
+    timingTone = 'why-bull';
+  }
+  const timingLive = betData.activeDuration ? ' · ' + betData.activeDuration + 's live' : '';
+    let kalshiEvText = '—';
+    if (Number.isFinite(s.kalshiEV)) {
+      kalshiEvText = (s.kalshiEV >= 0 ? '+' : '') + (s.kalshiEV * 100).toFixed(1) + '¢ EV';
+    }
+
+  whySub.textContent = active ? `CONVICTION ${conviction}` : 'STANDBY';
+
+  const setPill = (el, label, value, tone) => {
+    el.className = `k-why-pill ${tone || ''}`.trim();
+    el.innerHTML = `<span class="why-k">${label}</span><span class="why-v">${value}</span>`;
+  };
+
+  setPill(why1, 'REGIME', `${regime} · ${regimeConf}`, regimeTone);
+  setPill(why2, 'EDGE', `${edgePct} · ${kalshiEvText}`, edgeTone);
+  setPill(why3, 'TIMING', timing + timingLive, timingTone);
+}
+
+function setKalshiManualTargetPrice(value) {
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return clearKalshiManualTargetPrice();
+  }
+
+  const roundStart = getKalshiRoundStartMs();
+  marketStore.kalshiManualTargetPrice = parsed;
+  marketStore.kalshiManualTargetRoundTs = roundStart;
+  marketStore.kalshiTargetSource = 'manual';
+  marketStore.kalshiTargetExpiryNotice = '';
+  persistKalshiTargetStorage(parsed, roundStart);
+  updateKalshiTargetDecisionMetrics(marketStore);
+  syncKalshiTargetUI();
+  return parsed;
+}
+
+function clearKalshiManualTargetPrice(reason = 'manual') {
+  marketStore.kalshiManualTargetPrice = null;
+  marketStore.kalshiManualTargetRoundTs = null;
+  marketStore.kalshiTargetSource = 'auto';
+  marketStore.kalshiTargetExpiryNotice = reason === 'round' ? 'ROUND RESET' : '';
+  persistKalshiTargetStorage(null, null);
+  updateKalshiTargetDecisionMetrics(marketStore);
+  syncKalshiTargetUI();
+  return null;
+}
+
+function enforceKalshiManualTargetRoundScope(roundInfo = kalshiRound()) {
+  const hasManual = Number.isFinite(marketStore.kalshiManualTargetPrice) && marketStore.kalshiManualTargetPrice > 0;
+  if (!hasManual) return false;
+  const manualRoundTs = Number.isFinite(marketStore.kalshiManualTargetRoundTs)
+    ? marketStore.kalshiManualTargetRoundTs
+    : null;
+  if (manualRoundTs !== roundInfo.roundStart) {
+    clearKalshiManualTargetPrice('round');
+    return true;
+  }
+  return false;
+}
+
+function hydrateKalshiTargetPrice() {
+  const stored = readKalshiTargetStorage();
+  const storedRound = readKalshiTargetRoundStorage();
+  const currentRound = getKalshiRoundStartMs();
+  const validStored = Number.isFinite(stored) && stored > 0 && Number.isFinite(storedRound) && storedRound === currentRound;
+  marketStore.kalshiManualTargetPrice = validStored ? stored : null;
+  marketStore.kalshiManualTargetRoundTs = validStored ? storedRound : null;
+  marketStore.kalshiTargetSource = validStored ? 'manual' : 'auto';
+  marketStore.kalshiTargetExpiryNotice = '';
+  if (!validStored && (stored !== null || storedRound !== null)) persistKalshiTargetStorage(null, null);
+  updateKalshiTargetDecisionMetrics(marketStore);
+  syncKalshiTargetUI();
+}
+
+function setupKalshiTargetControls() {
+  const input = document.getElementById('kTargetInput');
+  const apply = document.getElementById('kTargetApply');
+  const clear = document.getElementById('kTargetClear');
+  if (!input || !apply || !clear) return;
+
+  const normalize = v => String(v ?? '').trim().replaceAll(',', '');
+  const commit = () => {
+    const raw = normalize(input.value || input.dataset.draftValue || '');
+    const applied = setKalshiManualTargetPrice(raw);
+    if (Number.isFinite(applied) && applied > 0) {
+      input.dataset.draftActive = '0';
+      input.dataset.draftValue = '';
+    } else {
+      input.dataset.draftActive = '1';
+      input.dataset.draftValue = raw;
+    }
+    return applied;
+  };
+
+  input.addEventListener('input', () => {
+    input.dataset.draftActive = '1';
+    input.dataset.draftValue = input.value;
+  });
+
+  apply.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    commit();
+  });
+
+  apply.addEventListener('click', e => {
+    e.preventDefault();
+    commit();
+  });
+
+  clear.addEventListener('click', () => {
+    input.value = '';
+    input.dataset.draftActive = '0';
+    input.dataset.draftValue = '';
+    clearKalshiManualTargetPrice();
+  });
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') commit();
+    if (e.key === 'Escape') {
+      input.value = '';
+      input.dataset.draftActive = '0';
+      input.dataset.draftValue = '';
+      clearKalshiManualTargetPrice();
+    }
+  });
+}
+
+const KALSHI_MANUAL_ABOVE_STORAGE_KEY = 'qdKalshiManualAbovePct';
+
+function readKalshiManualAboveStorage() {
+  try {
+    const raw = localStorage.getItem(KALSHI_MANUAL_ABOVE_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = Number.parseFloat(raw);
+    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 100 ? parsed : null;
+  } catch (e) {
+    console.debug('kalshi above hydrate skipped:', e?.message || e);
+    return null;
+  }
+}
+
+function persistKalshiManualAboveStorage(value) {
+  try {
+    if (Number.isFinite(value) && value >= 0 && value <= 100) localStorage.setItem(KALSHI_MANUAL_ABOVE_STORAGE_KEY, String(value));
+    else localStorage.removeItem(KALSHI_MANUAL_ABOVE_STORAGE_KEY);
+  } catch (e) {
+    console.debug('kalshi above persist skipped:', e?.message || e);
+  }
+}
+
+function syncKalshiManualUI() {
+  const input = document.getElementById('kManualInput');
+  const meta = document.getElementById('kManualMeta');
+  const manual = Number.isFinite(marketStore.kalshiManualAbovePct) && marketStore.kalshiManualAbovePct >= 0 && marketStore.kalshiManualAbovePct <= 100;
+  if (input) {
+    const nextValue = manual ? String(Math.round(marketStore.kalshiManualAbovePct)) : '';
+    if (input.value !== nextValue) input.value = nextValue;
+  }
+  if (meta) {
+    const activeAbove = manual ? marketStore.kalshiManualAbovePct : marketStore.kalshiAbove;
+    meta.textContent = manual
+      ? `MANUAL ABOVE% ACTIVE · ${Math.round(activeAbove)} / ${Math.round(100 - activeAbove)} split`
+      : `LIVE ABOVE% · ${Math.round(activeAbove)} / ${Math.round(100 - activeAbove)} split`;
+    meta.className = `k-manual-meta ${manual ? 'manual' : ''}`;
+  }
+}
+
+function applyKalshiManual(value) {
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) {
+    return clearKalshiManual();
+  }
+
+  const nextAbove = Math.round(parsed);
+  marketStore.kalshiManualAbovePct = nextAbove;
+  marketStore.kalshiAbove = nextAbove;
+  marketStore.kalshiBelow = 100 - nextAbove;
+  marketStore.kalshiAboveSource = 'manual';
+  marketStore._kalshiLive = true;
+  persistKalshiManualAboveStorage(nextAbove);
+  syncKalshiManualUI();
+  if (typeof render === 'function') render();
+  return nextAbove;
+}
+
+function clearKalshiManual() {
+  marketStore.kalshiManualAbovePct = null;
+  marketStore.kalshiAboveSource = 'live';
+  marketStore._kalshiLive = false;
+  persistKalshiManualAboveStorage(null);
+  syncKalshiManualUI();
+  if (typeof render === 'function') render();
+  void fetchKalshiLive();
+  return null;
+}
+
+function hydrateKalshiManualAbove() {
+  const stored = readKalshiManualAboveStorage();
+  marketStore.kalshiManualAbovePct = stored;
+  marketStore.kalshiAboveSource = stored === null ? 'live' : 'manual';
+  if (Number.isFinite(stored)) {
+    const nextAbove = Math.round(stored);
+    marketStore.kalshiAbove = nextAbove;
+    marketStore.kalshiBelow = 100 - nextAbove;
+    marketStore._kalshiLive = true;
+  }
+  syncKalshiManualUI();
+}
+
+function setupKalshiManualControls() {
+  const input = document.getElementById('kManualInput');
+  const apply = document.getElementById('kManualApply');
+  const clear = document.getElementById('kManualClear');
+  if (!input || !apply || !clear) return;
+  const commit = () => applyKalshiManual(input.value);
+  apply.addEventListener('click', commit);
+  clear.addEventListener('click', () => {
+    input.value = '';
+    clearKalshiManual();
+  });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') commit();
+    if (e.key === 'Escape') {
+      input.value = '';
+      clearKalshiManual();
+    }
+  });
+}
+
+function updateKalshiCountdownDisplay(kr) {
+  let phaseColor='var(--green)';
+  let phaseLabel='OPEN';
+  if (kr.phase==='closing') {
+    phaseColor='var(--red)';
+    phaseLabel='CLOSING';
+  } else if (kr.phase==='caution') {
+    phaseColor='var(--amber)';
+    phaseLabel='CAUTION';
+  }
+  const cdEl=document.getElementById('kCountdown');
+  if(cdEl){
+    cdEl.textContent=kr.mmss;
+    cdEl.style.color=phaseColor;
+  }
+  const phEl=document.getElementById('kPhase');
+  if(phEl){
+    phEl.textContent=phaseLabel;
+    phEl.className='k-phase '+kr.phase;
+  }
+  const arc=document.getElementById('kRingArc');
+  if(arc){
+    const circ=163.4;
+    arc.style.strokeDashoffset=String(circ*(1-kr.secsLeft/900));
+    arc.style.stroke=phaseColor;
+  }
+  const txt=document.getElementById('kRingTxt');
+  if(txt) txt.textContent=kr.mmss;
+  const eg=document.getElementById('kEntryGuidance');
+  if(eg){
+    if(kr.secsLeft<=120){eg.textContent='CLOSING - LOCK BET / WAIT NEXT';eg.className='k-entry-guidance eg-closing';}
+    else if(kr.secsLeft<=300){eg.textContent='CAUTION ZONE - LATE ENTRY';eg.className='k-entry-guidance eg-caution';}
+    else{eg.textContent='OPTIMAL ENTRY WINDOW';eg.className='k-entry-guidance eg-open';}
+  }
+  if(kr.phase==='closing') document.body.classList.add('closing-phase');
+  else document.body.classList.remove('closing-phase');
+}
+
 function showSignalAlert(verdict){
+  if(verdict!=='ABOVE'&&verdict!=='BELOW') return;
   const el=document.getElementById('signalAlert');
   const inner=document.getElementById('saInner');
   if(!el||!inner) return;
@@ -1433,25 +2706,44 @@ function showSignalAlert(verdict){
   _signalAlertTimer=setTimeout(()=>el.classList.remove('show'),4000);
 }
 function checkSignalAlert(verdict){
+  if(verdict!=='ABOVE'&&verdict!=='BELOW') return;
   if(!verdict||!_lastSignalVerdict){_lastSignalVerdict=verdict;return;}
   if(verdict!==_lastSignalVerdict){showSignalAlert(verdict);_lastSignalVerdict=verdict;}
 }
 
 async function fetchKalshiLive(){
   try{
-    const r=await fetch('https://api.elections.kalshi.com/trade-api/v2/markets?series_ticker=KXBTC&limit=5',{headers:{Accept:'application/json'}});
+    if (Number.isFinite(marketStore.kalshiManualAbovePct) && marketStore.kalshiManualAbovePct >= 0 && marketStore.kalshiManualAbovePct <= 100) {
+      return;
+    }
+    const r=await fetch('/api/kalshi');
     if(!r.ok) return;
     const d=await r.json();
-    const mkts=d.markets||[];
-    if(!marketStore.price||!mkts.length) return;
-    const m=mkts.find(mk=>mk.yes_bid!=null&&mk.yes_ask!=null);
-    if(!m) return;
-    const mid=((m.yes_bid+m.yes_ask)/2)/100;
-    marketStore.kalshiAbove=Math.round(mid*100);
-    marketStore.kalshiBelow=Math.round((1-mid)*100);
+    const bid=Number.parseFloat(d?.yes_bid);
+    const ask=Number.parseFloat(d?.yes_ask);
+    const midHint=Number.parseFloat(d?.mid);
+    let midRaw=null;
+    if(Number.isFinite(midHint)) midRaw=midHint;
+    else if(Number.isFinite(bid)&&Number.isFinite(ask)) midRaw=(bid+ask)/2;
+    else if(Number.isFinite(bid)) midRaw=bid;
+    else if(Number.isFinite(ask)) midRaw=ask;
+    if(!Number.isFinite(midRaw)) return;
+    const mid = midRaw > 1.5 ? midRaw / 100 : midRaw;
+    if(!Number.isFinite(mid) || mid <= 0 || mid >= 1) return;
+    const above=Math.max(0,Math.min(100,Math.round(mid*100)));
+    marketStore.kalshiAbove=above;
+    marketStore.kalshiBelow=100-above;
+    marketStore.kalshiAboveSource='live';
+    marketStore.kalshiBid=Number.isFinite(bid)?bid:null;
+    marketStore.kalshiAsk=Number.isFinite(ask)?ask:null;
+    if(!Array.isArray(marketStore._kalshiHistory)) marketStore._kalshiHistory=[];
+    marketStore._kalshiHistory.push(mid);
+    if(marketStore._kalshiHistory.length>8) marketStore._kalshiHistory.shift();
     marketStore._kalshiLive=true;
     marketStore._kalshiTs=Date.now();
-  }catch(e){}
+  }catch(e){
+    console.debug('kalshi fetch skipped:', e?.message || e);
+  }
 }
 
 async function pollOracle(){
@@ -1459,12 +2751,14 @@ async function pollOracle(){
     const r=await fetch('/api/oracle');
     if(!r.ok) return;
     const d=await r.json();
-    if(!d.price) return;
+    if(d?.price==null) return;
     marketStore.oraclePrice=d.price;
-    marketStore.oracleDeviation=d.deviation||0;
-    marketStore.oracleConf=d.confidence||0;
+    marketStore.oracleDeviation=d.deviation ?? 0;
+    marketStore.oracleConf=d.confidence ?? 0;
     marketStore.oracleSources=d.sources||[];
-  }catch(e){}
+  }catch(e){
+    console.debug('oracle poll skipped:', e?.message || e);
+  }
 }
 
 async function pollDerivatives(){
@@ -1477,21 +2771,54 @@ async function pollDerivatives(){
       marketStore.fundingRatePct=d.fundingRatePct;
       marketStore.annualizedPct=d.annualizedPct;
       marketStore.fundingCountdown=d.fundingCountdown||'--:--';
-      marketStore.openInterest=d.openInterest;
-      marketStore.oiDelta=d.oiDelta;
-      marketStore.oiDeltaPct=d.oiDeltaPct;
-      marketStore.markPrice=d.markPrice;
-      marketStore.indexPrice=d.indexPrice;
+      if(d.openInterest!=null) marketStore.openInterest=d.openInterest;
+      if(d.oiDelta!=null) marketStore.oiDelta=d.oiDelta;
+      if(d.oiDeltaPct!=null) marketStore.oiDeltaPct=d.oiDeltaPct;
+      if(d.markPrice!=null) marketStore.markPrice=d.markPrice;
+      if(d.indexPrice!=null) marketStore.indexPrice=d.indexPrice;
     }
-  }catch(e){}
+  }catch(e){
+    console.debug('derivatives poll skipped:', e?.message || e);
+  }
 }
 
 let _sessionStart=Date.now();
 let _sessionSigs=0;
 let _sessionLastSig='—';
-let _msgCount=0;
+var _msgCount=0;
 let _msgCountLast=0;
 let _msgTs=Date.now();
+const _latencySamples=[];
+const _msgGapSamples=[];
+
+function recordFeedSamples(state){
+  if(!state||typeof state!=='object') return;
+  const lastTs = Number.isFinite(marketStore._latencyLastMsgTs) ? marketStore._latencyLastMsgTs : 0;
+  if (Number.isFinite(state.wsLatency) && state.wsSource !== 'rest') {
+    pushBounded(_latencySamples, state.wsLatency, 300);
+  }
+  if (Number.isFinite(state.lastMsgTs) && state.lastMsgTs > lastTs) {
+    if (lastTs > 0) {
+      const gap = state.lastMsgTs - lastTs;
+      if (gap >= 0 && gap < 30000) pushBounded(_msgGapSamples, gap, 300);
+    }
+    marketStore._latencyLastMsgTs = state.lastMsgTs;
+  }
+}
+
+function sampleP(arr, p){
+  if(!Array.isArray(arr)||!arr.length) return null;
+  const sorted=[...arr].sort((a,b)=>a-b);
+  const idx=Math.min(sorted.length-1,Math.max(0,Math.floor((sorted.length-1)*p)));
+  return sorted[idx];
+}
+
+function pushBounded(arr, val, maxLen=240){
+  if(!Number.isFinite(val)) return;
+  arr.push(val);
+  if(arr.length>maxLen) arr.splice(0,arr.length-maxLen);
+}
+
 function updateSessionBar(){
   const elapsed=Date.now()-_sessionStart;
   const h=Math.floor(elapsed/3600000);
@@ -1503,6 +2830,15 @@ function updateSessionBar(){
   const now=Date.now();const dt=(now-_msgTs)/1000;
   setTxt('sbMps',dt>0?((_msgCount-_msgCountLast)/dt).toFixed(1):'0.0');
   _msgCountLast=_msgCount;_msgTs=now;
+  const lat50=sampleP(_latencySamples,0.5);
+  const lat95=sampleP(_latencySamples,0.95);
+  const gap95=sampleP(_msgGapSamples,0.95);
+  marketStore.wsLatencyP50=lat50;
+  marketStore.wsLatencyP95=lat95;
+  marketStore.wsGapP95=gap95;
+  setTxt('sbLatP50',Number.isFinite(lat50)?`${Math.round(lat50)}ms`:'—');
+  setTxt('sbLatP95',Number.isFinite(lat95)?`${Math.round(lat95)}ms`:'—');
+  setTxt('sbGapP95',Number.isFinite(gap95)?`${Math.round(gap95)}ms`:'—');
   setTxt('sbCandles',marketStore.candles?.length||0);
   setTxt('sbRv',marketStore.realizedVol?marketStore.realizedVol.toFixed(1)+'%':'—');
   setTxt('sbAdx',marketStore.adxVal?marketStore.adxVal.toFixed(1):'—');
@@ -1527,7 +2863,7 @@ function setupCrosshair(){
     setTxt('ctL',c.low.toFixed(0));setTxt('ctC',c.close.toFixed(0));
     setTxt('ctV',(c.volume||0).toFixed(2));
     const closes=C.slice(0,idx+1).map(x=>x.close);
-    const rsiArr=computeRSI(closes,14);
+    const rsiArr=computeRSISeries(closes,14);
     const rsiV=rsiArr[rsiArr.length-1];
     setTxt('ctR',rsiV?rsiV.toFixed(1):'—');
     const t=new Date(c.time*1000);
@@ -1540,9 +2876,11 @@ document.addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
   if(e.key==='a'||e.key==='A'){if(typeof runAI==='function') runAI();}
   if(e.key==='s'||e.key==='S'){_soundEnabled=!_soundEnabled;}
+  if(e.key==='k'||e.key==='K'){toggleWsFallback();}
+  if(e.key==='r'||e.key==='R'){toggleWsRest();}
   if(e.key==='f'||e.key==='F'){
-    if(!document.fullscreenElement) document.documentElement.requestFullscreen?.();
-    else document.exitFullscreen?.();
+    if(document.fullscreenElement) document.exitFullscreen?.();
+    else document.documentElement.requestFullscreen?.();
   }
 });
 
@@ -1560,7 +2898,11 @@ function resolveSignalLog(){
   while(log.length>100) log.shift();
   marketStore.signalLog=log;
   computeBrierScore(log);
-  try{localStorage.setItem('qdSignalLog',JSON.stringify(log));}catch(e){}
+  try{
+    localStorage.setItem('qdSignalLog',JSON.stringify(log));
+  }catch(e){
+    console.debug('signal log save skipped:', e?.message || e);
+  }
 }
 
 function computeBrierScore(log){
@@ -1573,6 +2915,26 @@ function computeBrierScore(log){
   marketStore.signalAccuracy=(correct/resolved.length*100).toFixed(1);
 }
 
+function hydrateSignalLog(){
+  try{
+    const raw=localStorage.getItem('qdSignalLog');
+    if(!raw) return;
+    const parsed=JSON.parse(raw);
+    if(!Array.isArray(parsed)) return;
+    const clean=parsed.filter(e=>
+      Number.isFinite(e?.ts)
+      && Number.isFinite(e?.price)
+      && Number.isFinite(e?.pAbove)
+      && typeof e?.verdict==='string'
+      && typeof e?.resolved==='boolean'
+    ).slice(-100);
+    marketStore.signalLog=clean;
+    computeBrierScore(clean);
+  }catch(e){
+    console.debug('signal log hydrate skipped:', e?.message || e);
+  }
+}
+
 // ─────────────────────────────────────────────
 // UI RENDER — throttled to 4 fps via rAF
 // ─────────────────────────────────────────────
@@ -1583,7 +2945,7 @@ function scheduleRender(){
   requestAnimationFrame(()=>{renderScheduled=false; renderAll();});
 }
 
-function renderAll(){
+function renderAll(){ // NOSONAR
   const s=marketStore;
   const p=s.price;
   const pch=p&&s.open24?((p-s.open24)/s.open24*100):0;
@@ -1603,18 +2965,32 @@ function renderAll(){
   setTxt('tsp',spread?'$'+spread.toFixed(2):'——');
   const imPct=(s.imbalance*100).toFixed(1)+'%';
   const imEl=document.getElementById('tim');
-  if(imEl){imEl.textContent=imPct;imEl.className='tb-stat-val num '+(s.imbalance>0.05?'up':s.imbalance<-0.05?'dn':'neut');}
+  if(imEl){
+    let imClass='neut';
+    if (s.imbalance > 0.05) imClass='up';
+    else if (s.imbalance < -0.05) imClass='dn';
+    imEl.textContent=imPct;
+    imEl.className='tb-stat-val num '+imClass;
+  }
 
   // WS latency
-  if(s.wsLatency) setTxt('wsLatency',s.wsLatency+'ms');
+  if (s.wsSource === 'rest') setTxt('wsLatency', 'REST');
+  else if (s.wsLatency) setTxt('wsLatency', s.wsLatency+'ms');
+  else setTxt('wsLatency', '');
+  updateWsSourceUI();
+  updateWsFreshnessUI();
 
   // Tape
+  let cvdTape='——';
+  if (s.cvd) {
+    cvdTape=(s.cvd>0?'+':'')+s.cvd.toFixed(2);
+  }
   const tv=[
     p?'$'+p.toLocaleString(undefined,{maximumFractionDigits:0}):'——',
     s.high24?'$'+s.high24.toLocaleString(undefined,{maximumFractionDigits:0}):'——',
     s.low24?'$'+s.low24.toLocaleString(undefined,{maximumFractionDigits:0}):'——',
     s.vol24?s.vol24.toFixed(0)+' BTC':'——',
-    s.cvd?(s.cvd>0?'+':'')+s.cvd.toFixed(2):'——',
+    cvdTape,
     s.regime, s.kalshiAbove+'%',
     ((s.pAbove-s.kalshiAbove/100)*100).toFixed(1)+'%',
     (s.kellyFull*50*100).toFixed(0)+'%',
@@ -1631,22 +3007,78 @@ function renderAll(){
   const crossEl=document.getElementById('crossTag');
   if(crossEl&&e9&&e21){
     const cross=s.emaCross;
-    crossEl.textContent=cross==='GOLDEN_CROSS'?'⚡ GOLDEN CROSS':cross==='DEATH_CROSS'?'⚡ DEATH CROSS':`EMA9 ${e9>e21?'>':'<'} EMA21`;
+    if (cross === 'GOLDEN_CROSS') crossEl.textContent='⚡ GOLDEN CROSS';
+    else if (cross === 'DEATH_CROSS') crossEl.textContent='⚡ DEATH CROSS';
+    else crossEl.textContent=`EMA9 ${e9>e21?'>':'<'} EMA21`;
     crossEl.className='cross-tag '+(e9>e21?'cross-bull':'cross-bear');
   }
 
-  const sigsData=[
-    e9&&e21?(e9>e21?{v:'▲'+e9.toFixed(0),c:'sv-bull'}:{v:'▼'+e9.toFixed(0),c:'sv-bear'}):{v:'—',c:'sv-neut'},
-    s.rsi?{v:s.rsi.toFixed(0),c:s.rsi>60?'sv-bull':s.rsi<40?'sv-bear':'sv-neut'}:{v:'—',c:'sv-neut'},
-    s.macd?{v:s.macd>s.macdSig?'BULL':'BEAR',c:s.macd>s.macdSig?'sv-bull':'sv-bear'}:{v:'—',c:'sv-neut'},
-    s.bb.mid?{v:s.price>s.bb.upper?'OB':s.price<s.bb.lower?'OS':'MID',c:s.price>s.bb.upper?'sv-bear':s.price<s.bb.lower?'sv-bull':'sv-neut'}:{v:'—',c:'sv-neut'},
-    s.vwap?{v:s.price>s.vwap?'ABOV':'BLEW',c:s.price>s.vwap?'sv-bull':'sv-bear'}:{v:'—',c:'sv-neut'},
-    {v:s.cvd?(s.cvd>0?'+':'')+s.cvd.toFixed(1):'—',c:s.cvd>0?'sv-bull':s.cvd<0?'sv-bear':'sv-neut'},
-    s.atr?{v:s.atr.toFixed(0),c:'sv-neut'}:{v:'—',c:'sv-neut'},
-    s.stoch?{v:s.stoch.toFixed(0),c:s.stoch>80?'sv-bear':s.stoch<20?'sv-bull':'sv-neut'}:{v:'—',c:'sv-neut'},
-    {v:s.momentum?(s.momentum>0?'+':'')+s.momentum.toFixed(0):'—',c:s.momentum>0?'sv-bull':s.momentum<0?'sv-bear':'sv-neut'},
-    {v:(s.aggression*100).toFixed(0)+'%',c:s.aggression>0.1?'sv-bull':s.aggression<-0.1?'sv-bear':'sv-neut'},
-  ];
+  const sigsData=[];
+  if (e9 && e21) {
+    sigsData.push(e9>e21?{v:'▲'+e9.toFixed(0),c:'sv-bull'}:{v:'▼'+e9.toFixed(0),c:'sv-bear'});
+  } else {
+    sigsData.push({v:'—',c:'sv-neut'});
+  }
+  if (s.rsi) {
+    let rsiClass='sv-neut';
+    if (s.rsi > 60) rsiClass='sv-bull';
+    else if (s.rsi < 40) rsiClass='sv-bear';
+    sigsData.push({v:s.rsi.toFixed(0),c:rsiClass});
+  } else {
+    sigsData.push({v:'—',c:'sv-neut'});
+  }
+  if (s.macd) {
+    const bull=s.macd>s.macdSig;
+    sigsData.push({v:bull?'BULL':'BEAR',c:bull?'sv-bull':'sv-bear'});
+  } else {
+    sigsData.push({v:'—',c:'sv-neut'});
+  }
+  if (s.bb.mid) {
+    let bbV='MID';
+    let bbC='sv-neut';
+    if (s.price > s.bb.upper) {
+      bbV='OB';
+      bbC='sv-bear';
+    } else if (s.price < s.bb.lower) {
+      bbV='OS';
+      bbC='sv-bull';
+    }
+    sigsData.push({v:bbV,c:bbC});
+  } else {
+    sigsData.push({v:'—',c:'sv-neut'});
+  }
+  if (s.vwap) {
+    const above=s.price>s.vwap;
+    sigsData.push({v:above?'ABOV':'BLEW',c:above?'sv-bull':'sv-bear'});
+  } else {
+    sigsData.push({v:'—',c:'sv-neut'});
+  }
+  let cvdSig='—';
+  if (s.cvd) cvdSig=(s.cvd>0?'+':'')+s.cvd.toFixed(1);
+  let cvdClass='sv-neut';
+  if (s.cvd > 0) cvdClass='sv-bull';
+  else if (s.cvd < 0) cvdClass='sv-bear';
+  sigsData.push({v:cvdSig,c:cvdClass});
+  const atrSig=s.atr?{v:s.atr.toFixed(0),c:'sv-neut'}:{v:'—',c:'sv-neut'};
+  sigsData[sigsData.length]=atrSig;
+  if (s.stoch) {
+    let stochClass='sv-neut';
+    if (s.stoch > 80) stochClass='sv-bear';
+    else if (s.stoch < 20) stochClass='sv-bull';
+    sigsData.push({v:s.stoch.toFixed(0),c:stochClass});
+  } else {
+    sigsData.push({v:'—',c:'sv-neut'});
+  }
+  let momSig='—';
+  if (s.momentum) momSig=(s.momentum>0?'+':'')+s.momentum.toFixed(0);
+  let momClass='sv-neut';
+  if (s.momentum > 0) momClass='sv-bull';
+  else if (s.momentum < 0) momClass='sv-bear';
+  sigsData.push({v:momSig,c:momClass});
+  let agClass='sv-neut';
+  if (s.aggression > 0.1) agClass='sv-bull';
+  else if (s.aggression < -0.1) agClass='sv-bear';
+  sigsData.push({v:(s.aggression*100).toFixed(0)+'%',c:agClass});
   sigsData.forEach((d,i)=>{const el=document.getElementById('s'+i);if(el){el.textContent=d.v;el.className='sig-v '+d.c;}});
 
   // OHLC
@@ -1662,22 +3094,42 @@ function renderAll(){
   if(bar){bar.style.width=cvdPct+'%';bar.style.background=cvdBull?'var(--green)':'var(--red)';}
   setTxt('ofCvdSub',cvdBull?'Buy aggression':'Sell aggression');
   const ibEl=document.getElementById('ofImbal');
-  if(ibEl){ibEl.textContent=(s.imbalance>=0?'+':'')+((s.imbalance*100).toFixed(1))+'%';ibEl.className='of-val num '+(s.imbalance>0.05?'up':s.imbalance<-0.05?'dn':'neut');}
-  setTxt('ofImbalSub',s.imbalance>0.1?'Bid heavy':s.imbalance<-0.1?'Ask heavy':'Balanced');
+  if(ibEl){
+    const imText=(s.imbalance>=0?'+':'')+((s.imbalance*100).toFixed(1))+'%';
+    let imClass='neut';
+    if (s.imbalance > 0.05) imClass='up';
+    else if (s.imbalance < -0.05) imClass='dn';
+    ibEl.textContent=imText;
+    ibEl.className='of-val num '+imClass;
+  }
+  let imSub='Balanced';
+  if (s.imbalance > 0.1) imSub='Bid heavy';
+  else if (s.imbalance < -0.1) imSub='Ask heavy';
+  setTxt('ofImbalSub',imSub);
   const deltaEl=document.getElementById('ofDelta');
   const agPct=(s.aggression*100).toFixed(1)+'%';
-  if(deltaEl){deltaEl.textContent=(s.aggression>=0?'+':'')+agPct;deltaEl.className='of-val num '+(s.aggression>0.1?'up':s.aggression<-0.1?'dn':'neut');}
+  if(deltaEl){
+    let deltaClass='neut';
+    if (s.aggression > 0.1) deltaClass='up';
+    else if (s.aggression < -0.1) deltaClass='dn';
+    deltaEl.textContent=(s.aggression>=0?'+':'')+agPct;
+    deltaEl.className='of-val num '+deltaClass;
+  }
   setTxt('ofDeltaSub',s.tradeDeltaBuy>s.tradeDeltaSell?'Buyers dominant':'Sellers dominant');
   const anom=s.anomalies[0];
   const absorb=s.absorption;
   const spoof=s.spoofLevels?.length>0;
   const anomEl=document.getElementById('ofAnom');
-  const anomDisplay = absorb ? absorb.type : spoof ? 'SPOOF DETECT' : anom ? anom.type : 'NONE';
+  let anomDisplay='NONE';
+  if (absorb) anomDisplay=absorb.type;
+  else if (spoof) anomDisplay='SPOOF DETECT';
+  else if (anom) anomDisplay=anom.type;
   const anomClass = (absorb||spoof||anom) ? 'dn' : 'neut';
   if(anomEl){anomEl.textContent=anomDisplay;anomEl.className='of-val num '+anomClass;}
-  const anomSubTxt = absorb ? `@ $${(absorb.price||0).toLocaleString(undefined,{maximumFractionDigits:0})}` :
-    spoof ? `${s.spoofLevels[0].side} @ $${s.spoofLevels[0].price.toFixed(0)}` :
-    anom ? `@ $${(anom.price||0).toLocaleString(undefined,{maximumFractionDigits:0})}` : 'Volume normal';
+  let anomSubTxt='Volume normal';
+  if (absorb) anomSubTxt=`@ $${(absorb.price||0).toLocaleString(undefined,{maximumFractionDigits:0})}`;
+  else if (spoof) anomSubTxt=`${s.spoofLevels[0].side} @ $${s.spoofLevels[0].price.toFixed(0)}`;
+  else if (anom) anomSubTxt=`@ $${(anom.price||0).toLocaleString(undefined,{maximumFractionDigits:0})}`;
   setTxt('ofAnomSub', anomSubTxt);
 
   // Orderbook
@@ -1700,28 +3152,112 @@ function renderAll(){
   setTxt('rAdx',s.adxVal?s.adxVal.toFixed(1)+' ADX':'——');
   setTxt('rConf',s.regimeConf?s.regimeConf.toFixed(0)+'%':'——');
 
-  // Verdict
+  // Verdict (secure decision layer)
+  const quality = Number.isFinite(s.dataQuality) ? s.dataQuality : 1;
+  const pDecisionAbove = Number.isFinite(s.pDecisionAbove) ? s.pDecisionAbove : s.pAbove;
+  const directionalEdge = Math.abs((pDecisionAbove || 0.5) - 0.5) * 2;
+  const kRoundNow = kalshiRound();
+  // In the final 90s of a round, require stronger conviction to call a direction
+  const confThreshold = kRoundNow.phase === 'closing' ? 50 : 35;
+  const edgeThreshold = kRoundNow.phase === 'closing' ? 0.12 : 0.08;
+  const secureDecision = (s.confidence || 0) >= confThreshold && quality >= 0.65 && directionalEdge >= edgeThreshold;
+  const decisionVerdict = s.verdictDecision || (pDecisionAbove >= 0.5 ? 'ABOVE' : 'BELOW');
+  const verdictUi = secureDecision ? decisionVerdict : 'STANDBY';
   const vb=document.getElementById('verdictBox');
-  if(vb) vb.className='verdict-box '+(s.verdict==='ABOVE'?'verdict-above':'verdict-below');
+  if(vb){
+    if (verdictUi === 'ABOVE') vb.className='verdict-box verdict-above';
+    else if (verdictUi === 'BELOW') vb.className='verdict-box verdict-below';
+    else vb.className='verdict-box verdict-standby';
+  }
   const vv=document.getElementById('verdictVal');
-  if(vv){vv.textContent=s.verdict;vv.style.color=s.verdict==='ABOVE'?'var(--green)':'var(--red)';}
-  setTxt('verdictConf','Confidence: '+s.confidence+'%');
+  if(vv){
+    vv.textContent=verdictUi;
+    if (verdictUi === 'ABOVE') vv.style.color='var(--green)';
+    else if (verdictUi === 'BELOW') vv.style.color='var(--red)';
+    else vv.style.color='var(--t2)';
+  }
+  setTxt('verdictConf',`Confidence: ${s.confidence}% ${secureDecision ? '· SECURE' : '· LOW'}`);
 
   // Kalshi
   setTxt('kAp',s.kalshiAbove+'%'); setTxt('kBp',s.kalshiBelow+'%');
   const kab=document.getElementById('kABar'),kbb=document.getElementById('kBBar');
   if(kab){kab.style.width=s.kalshiAbove+'%';} if(kbb){kbb.style.width=s.kalshiBelow+'%';}
-  setTxt('kA',s.kalshiAbove+'%'); setTxt('kM',(s.pAbove*100).toFixed(1)+'%');
-  const edge=s.pAbove-s.kalshiAbove/100;
+  setTxt('kA',s.kalshiAbove+'%'); setTxt('kM',(pDecisionAbove*100).toFixed(1)+'%');
+  const edge=pDecisionAbove-s.kalshiAbove/100;
   const ke=document.getElementById('kE');
   if(ke){ke.textContent=(edge>=0?'+':'')+((edge*100).toFixed(1))+'%';ke.style.color=edge>0?'var(--green)':'var(--red)';}
-  setTxt('kStr',p?'$'+p.toLocaleString(undefined,{maximumFractionDigits:0}):'—');
-  const nw=new Date(Math.ceil(Date.now()/900000)*900000);
-  setTxt('kWin',nw.toLocaleTimeString());
+  setTxt('kStr',formatKalshiTargetPrice(getActiveKalshiTargetPrice()));
+  syncKalshiTargetUI();
+  syncKalshiWhyNowUI(s);
+  const evEl=document.getElementById('kEV');
+  if(evEl){
+    const ev_=marketStore.kalshiEV??0;
+    evEl.textContent=(ev_>=0?'+':'')+(ev_*100).toFixed(1)+'¢';
+    evEl.style.color=ev_>0?'var(--green)':'var(--red)';
+  }
+  const taSourceEl=document.getElementById('kTaSource');
+  if(taSourceEl){
+    const source = Number.isFinite(s.kalshiManualTargetPrice) && s.kalshiManualTargetPrice > 0 ? 'MANUAL BLEND' : 'AUTO BLEND';
+    taSourceEl.textContent = source;
+    taSourceEl.style.color = source === 'MANUAL BLEND' ? 'var(--cyan)' : 'var(--t3)';
+  }
+  const taProbEl=document.getElementById('kTaProb');
+  if(taProbEl){
+    const pAdj = Number.isFinite(s.pDecisionAbove) ? s.pDecisionAbove : s.pAbove;
+    taProbEl.textContent = (pAdj * 100).toFixed(1) + '%';
+    taProbEl.className = 'k-impact-v ' + (pAdj >= 0.5 ? 'up' : 'dn');
+  }
+  const taDistEl=document.getElementById('kTaDist');
+  if(taDistEl){
+    if (Number.isFinite(s.kalshiTargetDistance)) {
+      const dist = s.kalshiTargetDistance;
+      taDistEl.textContent = (dist >= 0 ? '+' : '') + dist.toFixed(0);
+      taDistEl.className = 'k-impact-v ' + (dist >= 0 ? 'up' : 'dn');
+    } else {
+      taDistEl.textContent = '—';
+      taDistEl.className = 'k-impact-v';
+    }
+  }
+  const taBlendEl=document.getElementById('kTaBlend');
+  if(taBlendEl){
+    if (Number.isFinite(s.kalshiTargetBlend)) {
+      taBlendEl.textContent = (s.kalshiTargetBlend * 100).toFixed(0) + '%';
+    } else {
+      taBlendEl.textContent = '—';
+    }
+    taBlendEl.className = 'k-impact-v';
+  }
+  renderKalshiTargetSparkline(s);
+  const kTrendEl=document.getElementById('kTrend');
+  const kHist=marketStore._kalshiHistory||[];
+  if(kTrendEl&&kHist.length>=3){
+    const kTrendDelta=kHist[kHist.length-1]-kHist[kHist.length-3];
+    if (kTrendDelta>0.005) {
+      kTrendEl.textContent='↑';
+      kTrendEl.style.color='var(--green)';
+    } else if (kTrendDelta<-0.005) {
+      kTrendEl.textContent='↓';
+      kTrendEl.style.color='var(--red)';
+    } else {
+      kTrendEl.textContent='→';
+      kTrendEl.style.color='var(--t2)';
+    }
+  }
+  const kw2=document.getElementById('kWin2');
+  if(kw2) kw2.textContent=new Date(Math.ceil(Date.now()/900000)*900000).toLocaleTimeString();
+  updateKalshiCountdownDisplay(kalshiRound());
+  const sbKRoundEl=document.getElementById('sbKRound');
+  if(sbKRoundEl){const kRoundSb=kalshiRound();sbKRoundEl.textContent=kRoundSb.mmss;sbKRoundEl.classList.remove('up','dn');if(kRoundSb.phase==='open')sbKRoundEl.classList.add('up');else if(kRoundSb.phase==='closing')sbKRoundEl.classList.add('dn');}
+  const sbKTargetEl=document.getElementById('sbKTarget');
+  if(sbKTargetEl){sbKTargetEl.textContent=formatKalshiTargetPrice(getActiveKalshiTargetPrice());}
   const keb=document.getElementById('kEdgeBox');
   if(keb){
-    keb.textContent=edge>0.05?`▲ EDGE +${(edge*100).toFixed(1)}% — BET ABOVE`:edge<-0.05?`▼ EDGE ${(edge*100).toFixed(1)}% — BET BELOW`:'— NO SIGNIFICANT EDGE —';
-    keb.style.color=edge>0?'var(--green)':edge<0?'var(--red)':'var(--t2)';
+    if (edge > 0.05) keb.textContent=`▲ EDGE +${(edge*100).toFixed(1)}% — BET ABOVE`;
+    else if (edge < -0.05) keb.textContent=`▼ EDGE ${(edge*100).toFixed(1)}% — BET BELOW`;
+    else keb.textContent='— NO SIGNIFICANT EDGE —';
+    if (edge > 0) keb.style.color='var(--green)';
+    else if (edge < 0) keb.style.color='var(--red)';
+    else keb.style.color='var(--t2)';
   }
 
   // Kelly
@@ -1731,7 +3267,18 @@ function renderAll(){
   const ke2=document.getElementById('kEdge2');
   if(ke2){ke2.textContent=(s.kellyEdge>=0?'+':'')+((s.kellyEdge*100).toFixed(1))+'%';ke2.style.color=s.kellyEdge>0?'var(--green)':'var(--red)';}
   const ks=document.getElementById('kSig');
-  if(ks){ks.textContent=s.verdict==='ABOVE'?'LONG ABOVE':'SHORT BELOW';ks.style.color=s.verdict==='ABOVE'?'var(--green)':'var(--red)';}
+  if(ks){
+    if (verdictUi === 'ABOVE') {
+      ks.textContent='LONG ABOVE';
+      ks.style.color='var(--green)';
+    } else if (verdictUi === 'BELOW') {
+      ks.textContent='SHORT BELOW';
+      ks.style.color='var(--red)';
+    } else {
+      ks.textContent='STANDBY';
+      ks.style.color='var(--t2)';
+    }
+  }
 
   // Bet signal
   renderBetSignal();
@@ -1740,35 +3287,62 @@ function renderAll(){
   if(s.oracleSources&&s.oracleSources.length){
     const src={BNC:null,KRK:null,BYB:null};
     s.oracleSources.forEach(x=>{
-      if(x.exchange==='binance-us') src.BNC=x;
-      if(x.exchange==='kraken') src.KRK=x;
-      if(x.exchange==='bybit') src.BYB=x;
+      const ex=String(x.exchange||'').toLowerCase().replaceAll('_','-');
+      if(ex==='binance-us'||ex==='binanceus') src.BNC=x;
+      if(ex==='kraken') src.KRK=x;
+      if(ex==='bybit') src.BYB=x;
     });
     ['BNC','KRK','BYB'].forEach(k=>{
       const x=src[k];
       const dot=document.getElementById('obDot'+k);
       const priceEl=document.getElementById('obPrice'+k);
-      if(dot){dot.className='ob-dot '+(x?x.outlier?'out':'ok':'wait');}
+      if(dot){
+        let dotState='wait';
+        if (x) dotState=x.outlier?'out':'ok';
+        dot.className='ob-dot '+dotState;
+      }
       if(priceEl&&x) priceEl.textContent=x.price?'$'+x.price.toLocaleString(undefined,{maximumFractionDigits:0}):'—';
     });
-    if(s.oraclePrice) setTxt('oraclePrice','$'+s.oraclePrice.toLocaleString(undefined,{maximumFractionDigits:0}));
-    if(s.oracleDeviation!=null) setTxt('oracleDev',(s.oracleDeviation*100).toFixed(2)+'%');
+    if(s.oraclePrice!=null) setTxt('oraclePrice','$'+s.oraclePrice.toLocaleString(undefined,{maximumFractionDigits:0}));
+    if(Number.isFinite(s.oracleDeviation)) setTxt('oracleDev',s.oracleDeviation.toFixed(2)+'%');
     setTxt('oracleConf',(s.oracleConf||0).toFixed(0)+'/100');
   }
 
   // Derivatives panel
-  if(s.fundingRatePct!=null&&s.fundingRatePct!==0){
+  if(s.fundingRatePct!=null){
     const fEl=document.getElementById('dFund');
     const fr=s.fundingRatePct||0;
-    if(fEl){fEl.textContent=(fr>=0?'+':'')+fr.toFixed(4)+'%';fEl.style.color=fr>0?'var(--red)':fr<0?'var(--green)':'var(--t2)';}
-    setTxt('dFundAnn',s.annualizedPct?(s.annualizedPct>0?'+':'')+s.annualizedPct.toFixed(1)+'%pa':'');
+    if(fEl){
+      fEl.textContent=(fr>=0?'+':'')+fr.toFixed(4)+'%';
+      if (fr > 0) fEl.style.color='var(--red)';
+      else if (fr < 0) fEl.style.color='var(--green)';
+      else fEl.style.color='var(--t2)';
+    }
+    let ann='';
+    if (s.annualizedPct!=null) ann=(s.annualizedPct>0?'+':'')+s.annualizedPct.toFixed(1)+'%pa';
+    setTxt('dFundAnn',ann);
     setTxt('dCountdown',s.fundingCountdown||'--:--');
     const oiEl=document.getElementById('dOI');
-    if(oiEl&&s.openInterest) oiEl.textContent=(s.openInterest/1e9).toFixed(2)+'B '+(s.oiDeltaPct?(s.oiDeltaPct>0?'▲+':'▼')+s.oiDeltaPct.toFixed(1)+'%':'');
+    if(oiEl&&s.openInterest!=null){
+      let oiDeltaTxt='';
+      if (s.oiDeltaPct!=null) oiDeltaTxt=(s.oiDeltaPct>0?'▲+':'▼')+s.oiDeltaPct.toFixed(1)+'%';
+      oiEl.textContent=(s.openInterest/1e9).toFixed(2)+'B '+oiDeltaTxt;
+    }
     const divEl=document.getElementById('dOIDiv');
-    if(divEl){divEl.textContent=s.oiPriceDiv||'NEUTRAL';divEl.style.color=s.oiPriceDiv==='DIVERGE'?'var(--amber)':s.oiPriceDiv==='CONVERGE'?'var(--cyan)':'var(--t2)';}
+    if(divEl){
+      divEl.textContent=s.oiPriceDiv||'NEUTRAL';
+      if (s.oiPriceDiv==='DIVERGE') divEl.style.color='var(--amber)';
+      else if (s.oiPriceDiv==='CONVERGE') divEl.style.color='var(--cyan)';
+      else divEl.style.color='var(--t2)';
+    }
     const mEl=document.getElementById('dMark');
-    if(mEl&&s.markPrice) mEl.textContent='$'+s.markPrice.toFixed(0)+' / $'+(s.indexPrice||0).toFixed(0);
+    const hasMark=Number.isFinite(s.markPrice);
+    const hasIndex=Number.isFinite(s.indexPrice);
+    if(mEl&&(hasMark||hasIndex)){
+      const markTxt=hasMark?'$'+s.markPrice.toFixed(0):'—';
+      const indexTxt=hasIndex?'$'+s.indexPrice.toFixed(0):'—';
+      mEl.textContent=markTxt+' / '+indexTxt;
+    }
   }
   const tox=s.flowToxicity||0;
   setTxt('toxVal',tox.toFixed(1)+'%');
@@ -1785,13 +3359,30 @@ function renderAll(){
   // Kalman direction
   const kv=s.kalmanVelocity||0;
   const kd=document.getElementById('kalmanDir');
-  if(kd){kd.textContent=(kv>0?'▲ ':kv<0?'▼ ':'─ ')+(s.kalmanPrice?'$'+s.kalmanPrice.toFixed(0):'—');kd.style.color=kv>0?'var(--green)':kv<0?'var(--red)':'var(--t2)';}
-  setTxt('kalmanBand',s.kalmanUncertainty!=null?'±$'+s.kalmanUncertainty.toFixed(0):'—');
+  if(kd){
+    let dir='─ ';
+    if (kv > 0) dir='▲ ';
+    else if (kv < 0) dir='▼ ';
+    const kPrice=s.kalmanPrice?'$'+s.kalmanPrice.toFixed(0):'—';
+    kd.textContent=dir+kPrice;
+    if (kv > 0) kd.style.color='var(--green)';
+    else if (kv < 0) kd.style.color='var(--red)';
+    else kd.style.color='var(--t2)';
+  }
+  if(s.kalmanUncertainty==null) setTxt('kalmanBand','—');
+  else setTxt('kalmanBand','±$'+s.kalmanUncertainty.toFixed(0));
 
   // Scout scores
   const sc=s.scoutScores||{};
-  const colorSc=v=>v>0.1?'var(--green)':v<-0.1?'var(--red)':'var(--t2)';
-  const fmtSc=v=>v!=null?(v>0?'+':'')+v.toFixed(2):'—';
+  const colorSc=v=>{
+    if (v > 0.1) return 'var(--green)';
+    if (v < -0.1) return 'var(--red)';
+    return 'var(--t2)';
+  };
+  const fmtSc=v=>{
+    if (v == null) return '—';
+    return (v>0?'+':'')+v.toFixed(2);
+  };
   const sTE=document.getElementById('scTrend');const sME=document.getElementById('scMrev');
   const sVE=document.getElementById('scVol');const sFE=document.getElementById('scFlow');
   if(sTE){sTE.textContent=fmtSc(sc.trend);sTE.style.color=colorSc(sc.trend||0);}
@@ -1805,14 +3396,17 @@ function renderAll(){
   const dotsEl=document.getElementById('accDots');
   if(dotsEl&&s.signalLog){
     const last5=s.signalLog.slice(-5);
-    dotsEl.innerHTML=last5.map(e=>
-      `<div class="acc-dot ${e.resolved?(e.correct?'ok':'ng'):'pending'}" title="${e.verdict} @ ${e.price?.toFixed(0)||'?'}"></div>`
-    ).join('');
+    dotsEl.innerHTML=last5.map(e=>{
+      let cls='pending';
+      if (e.resolved) cls=e.correct?'ok':'ng';
+      const px=e.price?.toFixed(0)||'?';
+      return `<div class="acc-dot ${cls}" title="${e.verdict} @ ${px}"></div>`;
+    }).join('');
   }
 
   // Flash & alert
   checkFlash(p);
-  checkSignalAlert(s.verdict);
+  checkSignalAlert(verdictUi);
   updateSessionBar();
 
   // Chart + heatmap + RSI strip + VP
@@ -1830,31 +3424,36 @@ function renderOB(){
   // Asks reversed (highest at top)
   [...s.asksList].reverse().slice(0,8).forEach(a=>{
     const w=Math.round((a.size/maxSz)*100);
-    h+=`<div class="ob-ask"><div class="ob-bar-wrap"><div class="ob-bar" style="width:${w}%;background:rgba(255,23,68,.2);right:0;position:absolute;top:0;height:100%"></div></div><div class="ob-price dn">${a.price.toFixed(1)}</div><div class="ob-size">${a.size.toFixed(4)}</div></div>`;
+    h+=`<div class="ob-ask"><div class="ob-bar-wrap"><div class="ob-bar ob-bar-ask" data-w="${w}"></div></div><div class="ob-price dn">${a.price.toFixed(1)}</div><div class="ob-size">${a.size.toFixed(4)}</div></div>`;
   });
   const sp=s.bestAsk&&s.bestBid?'$'+(s.bestAsk-s.bestBid).toFixed(2):'—';
   h+=`<div class="ob-spread">SPREAD ${sp}</div>`;
   s.bidsList.slice(0,8).forEach(b=>{
     const w=Math.round((b.size/maxSz)*100);
-    h+=`<div class="ob-bid"><div class="ob-bar-wrap"><div class="ob-bar ob-bar-bid" style="width:${w}%"></div></div><div class="ob-price up">${b.price.toFixed(1)}</div><div class="ob-size">${b.size.toFixed(4)}</div></div>`;
+    h+=`<div class="ob-bid"><div class="ob-bar-wrap"><div class="ob-bar ob-bar-bid" data-w="${w}"></div></div><div class="ob-price up">${b.price.toFixed(1)}</div><div class="ob-size">${b.size.toFixed(4)}</div></div>`;
   });
   // Liquidity walls
   const walls = marketStore.liquidityWalls || [];
   if (walls.length) {
-    h += '<div style="margin-top:5px;padding-top:4px;border-top:1px solid var(--border)">';
-    h += '<div style="font-size:7px;color:var(--t3);letter-spacing:.8px;margin-bottom:2px">LIQUIDITY WALLS</div>';
+    h += '<div class="ob-walls-wrap">';
+    h += '<div class="ob-walls-title">LIQUIDITY WALLS</div>';
     walls.forEach(w => {
       const isBid = w.side === 'bid';
-      h += `<div style="display:flex;justify-content:space-between;font-size:9px;padding:1px 0">
-        <span style="color:${isBid?'var(--green)':'var(--red)'}">${isBid?'BID':'ASK'} $${w.price.toFixed(0)}</span>
-        <span style="color:var(--amber);font-weight:700">${w.size.toFixed(3)} BTC</span>
+      h += `<div class="ob-wall-row">
+        <span class="${isBid?'up':'dn'}">${isBid?'BID':'ASK'} $${w.price.toFixed(0)}</span>
+        <span class="ob-wall-size">${w.size.toFixed(3)} BTC</span>
       </div>`;
     });
     h += '</div>';
   }
 
   const panel=document.getElementById('obPanel');
-  if(panel) panel.innerHTML=h;
+  if(panel){
+    panel.innerHTML=h;
+    panel.querySelectorAll('.ob-bar[data-w]').forEach(el=>{
+      el.style.width=(el.dataset.w||'0')+'%';
+    });
+  }
 }
 
 function renderTrades(){
@@ -1862,7 +3461,7 @@ function renderTrades(){
   if(!t.length){setTxt('tradesPanel','Waiting for trades…');return;}
   const h=t.map(tr=>{
     const ts=new Date(tr.ts).toLocaleTimeString('en',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    return `<div class="trade-row"><div class="trade-time">${ts}</div><div class="trade-price ${tr.side}">${parseFloat(tr.price).toFixed(1)}</div><div class="trade-size">${parseFloat(tr.size).toFixed(4)}</div></div>`;
+    return `<div class="trade-row"><div class="trade-time">${ts}</div><div class="trade-price ${tr.side}">${Number.parseFloat(tr.price).toFixed(1)}</div><div class="trade-size">${Number.parseFloat(tr.size).toFixed(4)}</div></div>`;
   }).join('');
   const panel=document.getElementById('tradesPanel');
   if(panel) panel.innerHTML=h;
@@ -1873,7 +3472,7 @@ function renderSweeps(){
   if(!sw.length){setTxt('sweepPanel','No sweeps detected');return;}
   const h=[...sw].reverse().slice(0,8).map(s=>{
     const t=new Date(s.time*1000);
-    return `<div class="sweep-row"><span class="sweep-tag ${s.type==='BSL'?'stag-b':'stag-s'}">${s.type}</span>$${(s.price||0).toLocaleString(undefined,{maximumFractionDigits:0})}<span style="color:var(--t3);font-size:8px"> ${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}</span></div>`;
+    return `<div class="sweep-row"><span class="sweep-tag ${s.type==='BSL'?'stag-b':'stag-s'}">${s.type}</span>$${(s.price||0).toLocaleString(undefined,{maximumFractionDigits:0})}<span class="sweep-time"> ${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}</span></div>`;
   }).join('');
   const panel=document.getElementById('sweepPanel');
   if(panel) panel.innerHTML=h;
@@ -1887,74 +3486,251 @@ function renderFVGs(){
   if(panel) panel.innerHTML=h;
 }
 
-function renderBetSignal(){
+function renderBetSignal(){ // NOSONAR
   const bet=marketStore.betData;
   const leftEl=document.getElementById('betLeft');
   const centerEl=document.getElementById('betCenter');
   if(!bet||!marketStore.price) return;
 
   setTxt('betTs','Updated '+new Date().toLocaleTimeString());
-  const col=bet.verdict==='ABOVE'?'var(--green)':bet.verdict==='BELOW'?'var(--red)':'var(--t2)';
+  let col='var(--t2)';
+  let stateClass='neut';
+  if (bet.verdict==='ABOVE') {
+    col='var(--green)';
+    stateClass='up';
+  } else if (bet.verdict==='BELOW') {
+    col='var(--red)';
+    stateClass='dn';
+  }
 
   if(bet.active){
     const bc=bet.verdict==='ABOVE'?'bb-above':'bb-below';
     leftEl.innerHTML=`<div class="bet-badge ${bc}">${bet.verdict}</div>
-    <div class="conv-bar-wrap"><div class="conv-bar" style="width:${bet.conviction}%;background:${col}"></div></div>
-    <div style="display:flex;justify-content:space-between;margin-top:2px"><span style="font-size:8px;color:var(--t2)">CONVICTION</span><span style="font-size:9px;font-weight:700;color:${col}">${bet.conviction}%</span></div>
-    <div style="font-size:8px;color:var(--t2);text-align:center;margin-top:3px;letter-spacing:.5px">HIGH CONVICTION</div>`;
+    <div class="conv-bar-wrap"><div class="conv-bar" id="betConvBar"></div></div>
+    <div class="conv-meta-row"><span class="conv-meta-label">CONVICTION</span><span class="conv-meta-value ${stateClass}">${bet.conviction}%</span></div>
+    <div class="conv-note">HIGH CONVICTION</div>`;
+    const betConvBar=leftEl.querySelector('#betConvBar');
+    if(betConvBar){betConvBar.style.width=bet.conviction+'%';betConvBar.style.background=col;}
 
-    const _esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const _esc=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
     const reasonsHtml=(bet.reasons||[]).map(r=>`<div class="reason r-${r.t}"><div class="rdot"></div><div class="rtxt">${_esc(r.txt)}</div></div>`).join('');
-    centerEl.innerHTML=`<div style="font-size:8px;color:${col};font-weight:700;letter-spacing:.8px;margin-bottom:5px">⚡ SIGNAL ACTIVE — ${bet.verdict}</div><div class="reason-list">${reasonsHtml}</div><div style="margin-top:5px;padding:4px 6px;background:var(--bg2);border-radius:2px;border:1px solid ${col}22;font-size:8px"><span style="color:var(--t2)">CROSS: </span><span style="color:${col};font-weight:700">${(bet.crossType||'').replace('_',' ')}</span><span style="color:var(--t2);margin-left:8px">SPREAD: </span><span style="color:var(--cyan);font-weight:700">${Math.abs(bet.emaSpread||0).toFixed(1)} bps</span></div>`;
+    centerEl.innerHTML=`<div class="signal-title ${stateClass}">⚡ SIGNAL ACTIVE — ${bet.verdict}</div><div class="reason-list">${reasonsHtml}</div><div class="signal-detail ${stateClass}"><span class="signal-label">CROSS: </span><span class="signal-strong ${stateClass}">${(bet.crossType||'').replace('_',' ')}</span><span class="signal-label-spread">SPREAD: </span><span class="signal-strong txt-cyan">${Math.abs(bet.emaSpread||0).toFixed(1)} bps</span></div>`;
   } else {
+    const alignPct=Math.round((bet.alignment||0)*100);
+    const alignCol=(bet.alignment||0)>=.5?'var(--green)':'var(--red)';
     leftEl.innerHTML=`<div class="bet-badge bb-wait">MONITORING</div>
-    <div class="conv-bar-wrap" style="margin-top:6px"><div class="conv-bar" style="width:${Math.round((bet.alignment||0)*100)}%;background:${(bet.alignment||0)>=.5?'var(--green)':'var(--red)'}"></div></div>
-    <div style="font-size:8px;color:var(--t3);text-align:center;margin-top:3px">${bet.bullSigs||0}/10 signals · waiting</div>`;
+    <div class="conv-bar-wrap conv-bar-wrap-top"><div class="conv-bar" id="betAlignBar"></div></div>
+    <div class="bet-wait-note">${bet.bullSigs||0}/14 signals · waiting</div>`;
+    const betAlignBar=leftEl.querySelector('#betAlignBar');
+    if(betAlignBar){betAlignBar.style.width=alignPct+'%';betAlignBar.style.background=alignCol;}
 
     const closes=marketStore.candles.map(c=>c.close);
     const e9a=computeEMA(closes,9), e21a=computeEMA(closes,21);
     const slopeE9=trajectorySlope(e9a,6), slopeE21=trajectorySlope(e21a,6);
     const slopeP=marketStore.trajectorySlope;
     const e9=e9a[e9a.length-1]||0, e21=e21a[e21a.length-1]||0;
-    centerEl.innerHTML=`<div style="font-size:8px;color:var(--t3);letter-spacing:.8px;margin-bottom:6px">TRAJECTORY ANALYSIS</div>
-    <div class="traj-row"><div class="traj-ico">${slopeE9>0?'📈':'📉'}</div><div><div class="traj-lbl">EMA9 TRAJECTORY</div><div class="traj-val" style="color:${slopeE9>0?'var(--green)':'var(--red)'}">${slopeE9>0?'▲':'▼'} ${Math.abs(slopeE9).toFixed(2)}/bar · $${e9.toFixed(0)}</div></div></div>
-    <div class="traj-row"><div class="traj-ico">${slopeE21>0?'📈':'📉'}</div><div><div class="traj-lbl">EMA21 TRAJECTORY</div><div class="traj-val" style="color:${slopeE21>0?'var(--green)':'var(--red)'}">${slopeE21>0?'▲':'▼'} ${Math.abs(slopeE21).toFixed(2)}/bar · $${e21.toFixed(0)}</div></div></div>
-    <div class="traj-row"><div class="traj-ico">🎯</div><div><div class="traj-lbl">PRICE TRAJECTORY</div><div class="traj-val" style="color:${slopeP>0?'var(--green)':'var(--red)'}">${slopeP>0?'▲':'▼'} ${Math.abs(slopeP).toFixed(2)}/bar</div></div></div>
-    <div class="traj-row"><div class="traj-ico">⚡</div><div><div class="traj-lbl">EMA SPREAD</div><div class="traj-val" style="color:${Math.abs(marketStore.emaSpread)<1?'var(--amber)':e9>e21?'var(--green)':'var(--red)'}">${Math.abs(marketStore.emaSpread)<1?'CONVERGING — cross imminent':Math.abs(marketStore.emaSpread).toFixed(1)+' bps '+marketStore.emaCross.replace('_',' ')}</div></div></div>`;
+    let spreadClass='dn';
+    if (Math.abs(marketStore.emaSpread)<1) spreadClass='txt-amber';
+    else if (e9>e21) spreadClass='up';
+    centerEl.innerHTML=`<div class="traj-title">TRAJECTORY ANALYSIS</div>
+    <div class="traj-row"><div class="traj-ico">${slopeE9>0?'📈':'📉'}</div><div><div class="traj-lbl">EMA9 TRAJECTORY</div><div class="traj-val ${slopeE9>0?'up':'dn'}">${slopeE9>0?'▲':'▼'} ${Math.abs(slopeE9).toFixed(2)}/bar · $${e9.toFixed(0)}</div></div></div>
+    <div class="traj-row"><div class="traj-ico">${slopeE21>0?'📈':'📉'}</div><div><div class="traj-lbl">EMA21 TRAJECTORY</div><div class="traj-val ${slopeE21>0?'up':'dn'}">${slopeE21>0?'▲':'▼'} ${Math.abs(slopeE21).toFixed(2)}/bar · $${e21.toFixed(0)}</div></div></div>
+    <div class="traj-row"><div class="traj-ico">🎯</div><div><div class="traj-lbl">PRICE TRAJECTORY</div><div class="traj-val ${slopeP>0?'up':'dn'}">${slopeP>0?'▲':'▼'} ${Math.abs(slopeP).toFixed(2)}/bar</div></div></div>
+    <div class="traj-row"><div class="traj-ico">⚡</div><div><div class="traj-lbl">EMA SPREAD</div><div class="traj-val ${spreadClass}">${Math.abs(marketStore.emaSpread)<1?'CONVERGING — cross imminent':Math.abs(marketStore.emaSpread).toFixed(1)+' bps '+marketStore.emaCross.replace('_',' ')}</div></div></div>`;
   }
 
   // Right metrics
-  setTxt('bm0',`${Math.round((bet.alignment||0)*100)}% (${bet.bullSigs||0}/10)`);
-  document.getElementById('bm0').style.color=(bet.alignment||0)>=.6?'var(--green)':(bet.alignment||0)<.4?'var(--red)':'var(--amber)';
+  setTxt('bm0',`${Math.round((bet.alignment||0)*100)}% (${bet.bullSigs||0}/14)`);
+  const bm0=document.getElementById('bm0');
+  if(bm0){
+    if((bet.alignment||0)>=0.6) bm0.style.color='var(--green)';
+    else if((bet.alignment||0)<0.4) bm0.style.color='var(--red)';
+    else bm0.style.color='var(--amber)';
+  }
   const bm1=document.getElementById('bm1');
   if(bm1){bm1.textContent=(marketStore.emaSpread>=0?'+':'')+marketStore.emaSpread.toFixed(1)+' bps';bm1.style.color=marketStore.emaSpread>0?'var(--green)':'var(--red)';}
   const bm2=document.getElementById('bm2');
   if(bm2){bm2.textContent=(marketStore.trajectorySlope>0?'▲ +':'▼ ')+Math.abs(marketStore.trajectorySlope).toFixed(2)+'/bar';bm2.style.color=marketStore.trajectorySlope>0?'var(--green)':'var(--red)';}
   const bm3=document.getElementById('bm3');
-  if(bm3){bm3.textContent=marketStore.regime;bm3.style.color=marketStore.regime==='BULL_TREND'?'var(--green)':marketStore.regime==='BEAR_TREND'?'var(--red)':'var(--amber)';}
+  if(bm3){
+    bm3.textContent=marketStore.regime;
+    if (marketStore.regime==='BULL_TREND') bm3.style.color='var(--green)';
+    else if (marketStore.regime==='BEAR_TREND') bm3.style.color='var(--red)';
+    else bm3.style.color='var(--amber)';
+  }
   const bm4=document.getElementById('bm4');
-  const ke3=Math.abs(marketStore.pAbove-marketStore.kalshiAbove/100);
-  if(bm4){bm4.textContent=(ke3*100).toFixed(1)+'% '+(ke3>=.08?'★ STRONG':ke3>=.04?'▲ MOD':'— LOW');bm4.style.color=ke3>=.08?'var(--green)':ke3>=.04?'var(--amber)':'var(--t3)';}
+  const pDecision = Number.isFinite(marketStore.pDecisionAbove) ? marketStore.pDecisionAbove : marketStore.pAbove;
+  const ke3=Math.abs(pDecision-marketStore.kalshiAbove/100);
+  if(bm4){
+    let edgeBand='— LOW';
+    if (ke3>=0.08) edgeBand='★ STRONG';
+    else if (ke3>=0.04) edgeBand='▲ MOD';
+    bm4.textContent=(ke3*100).toFixed(1)+'% '+edgeBand;
+    if (ke3>=0.08) bm4.style.color='var(--green)';
+    else if (ke3>=0.04) bm4.style.color='var(--amber)';
+    else bm4.style.color='var(--t3)';
+  }
   const bm5=document.getElementById('bm5');
   if(bm5){bm5.textContent=bet.active?`${(marketStore.kellyFull*50*100).toFixed(0)}% BAL / ${(marketStore.kellyFull*25*100).toFixed(0)}% SAFE`:'HOLD';bm5.style.color=bet.active?'var(--amber)':'var(--t3)';}
+  const bm6=document.getElementById('bm6');
+  if(bm6){
+    const ev=bet.ev??0;
+    if (bet.active) {
+      const sign = ev>=0?'+':'';
+      bm6.textContent=sign+(ev*100).toFixed(1)+'¢';
+    } else {
+      bm6.textContent='—';
+    }
+    if (ev>0) bm6.style.color='var(--green)';
+    else if (ev<0) bm6.style.color='var(--red)';
+    else bm6.style.color='var(--t3)';
+  }
+  const bm7=document.getElementById('bm7');
+  if(bm7){
+    bm7.textContent=bet.active?(bet.timingLabel||'—'):'—';
+    bm7.className='mv num '+(bet.active?(bet.timingClass||''):'');
+  }
+  const bm8=document.getElementById('bm8');
+  if(bm8){
+    if(bet.active&&bet.activeDuration>0){
+      const m_=Math.floor(bet.activeDuration/60);
+      const s2=bet.activeDuration%60;
+      bm8.textContent=`ACTIVE ${m_}:${String(s2).padStart(2,'0')}`;
+      bm8.style.color='var(--amber)';
+    }else if(bet.active){
+      bm8.textContent='NEW *';
+      bm8.style.color='var(--green)';
+    }else{
+      bm8.textContent='—';
+      bm8.style.color='var(--t3)';
+    }
+  }
 }
 
 // ─────────────────────────────────────────────
 // AI ANALYST
 // ─────────────────────────────────────────────
 let _aiCooldownTs = 0;
-async function runAI(){
+
+function buildTrajectoryForecast(s = marketStore) {
+  const px = Number.isFinite(s.price) && s.price > 0 ? s.price : null;
+  if (!px) {
+    return {
+      slopeBpsPerMin: 0,
+      confidence: 'LOW',
+      p1: null,
+      p3: null,
+      p5: null,
+      b1: null,
+      b3: null,
+      b5: null,
+    };
+  }
+
+  const slopePerBar = Number.isFinite(s.trajectorySlope) ? s.trajectorySlope : 0;
+  const slopePerMin = slopePerBar / 15;
+  const kalmanVel = Number.isFinite(s.kalmanVelocity) ? s.kalmanVelocity : 0;
+  const blendedSlopePerMin = (slopePerMin * 0.78) + (kalmanVel * 0.22);
+  const slopeBpsPerMin = (blendedSlopePerMin / px) * 10000;
+
+  const quality = clamp(Number.isFinite(s.dataQuality) ? s.dataQuality : 0.7, 0.35, 1);
+  const adxNorm = clamp((Number.isFinite(s.adxVal) ? s.adxVal : 18) / 35, 0.3, 1);
+  const confScore = quality * adxNorm;
+  let confidence = 'LOW';
+  if (confScore >= 0.75) confidence = 'HIGH';
+  else if (confScore >= 0.55) confidence = 'MED';
+
+  const atr = Number.isFinite(s.atr) && s.atr > 0 ? s.atr : Math.max(px * 0.0018, 35);
+  const ku = Number.isFinite(s.kalmanUncertainty) && s.kalmanUncertainty > 0 ? s.kalmanUncertainty : atr * 0.4;
+
+  const project = mins => {
+    const proj = px + blendedSlopePerMin * mins;
+    const band = Math.max(atr * (mins / 15) * 0.65, ku * 0.35 * Math.sqrt(mins));
+    return { price: proj, band };
+  };
+
+  const t1 = project(1);
+  const t3 = project(3);
+  const t5 = project(5);
+  return {
+    slopeBpsPerMin,
+    confidence,
+    p1: t1.price,
+    p3: t3.price,
+    p5: t5.price,
+    b1: t1.band,
+    b3: t3.band,
+    b5: t5.band,
+  };
+}
+
+function buildLocalAnalystFallback(s = marketStore, trajFc = buildTrajectoryForecast(s)) {
+  const pDecision = Number.isFinite(s.pDecisionAbove) ? s.pDecisionAbove : s.pAbove;
+  const edge = Number.isFinite(s.kalshiAbove) ? (pDecision - s.kalshiAbove / 100) : 0;
+  const verdict = pDecision >= 0.5 ? 'ABOVE' : 'BELOW';
+  const conviction = Math.round(clamp(Math.abs(pDecision - 0.5) * 200 * clamp(Number.isFinite(s.dataQuality) ? s.dataQuality : 0.7, 0.35, 1), 8, 96));
+  const slope = Number.isFinite(trajFc.slopeBpsPerMin) ? trajFc.slopeBpsPerMin : 0;
+  const slopeDir = slope >= 0 ? 'upward' : 'downward';
+  const flowTilt = (s.tradeDeltaBuy || 0) - (s.tradeDeltaSell || 0);
+  const flowLabel = flowTilt >= 0 ? 'buy-pressure' : 'sell-pressure';
+  const risk = Math.max(
+    Number.isFinite(s.flowToxicity) ? s.flowToxicity / 100 : 0,
+    Number.isFinite(s.realizedVol) ? clamp(s.realizedVol / 120, 0, 1) : 0
+  );
+  let riskLabel = 'CONTROLLED';
+  if (risk > 0.72) riskLabel = 'ELEVATED';
+  else if (risk > 0.48) riskLabel = 'MODERATE';
+  const targetDistance = Number.isFinite(s.kalshiTargetDistance) ? s.kalshiTargetDistance : 0;
+  const targetStr = `${targetDistance >= 0 ? '+' : ''}${targetDistance.toFixed(0)}`;
+
+  return [
+    `STRUCTURE: EMA9 ${s.ema9 > s.ema21 ? 'above' : 'below'} EMA21, spread ${Math.abs(s.emaSpread || 0).toFixed(1)} bps; oracle deviation ${(Number.isFinite(s.oracleDeviation) ? s.oracleDeviation.toFixed(3) : '0.000')}%.`,
+    `TRAJECTORY: ${slopeDir} slope ${Math.abs(slope).toFixed(2)} bps/min, Kalman velocity ${(s.kalmanVelocity || 0).toFixed(2)}/tick; 5m path $${Number.isFinite(trajFc.p5) ? trajFc.p5.toFixed(0) : '—'} +/- $${Number.isFinite(trajFc.b5) ? trajFc.b5.toFixed(0) : '—'} (${trajFc.confidence}).`,
+    `ORDERFLOW: ${flowLabel}, CVD ${(s.cvd || 0).toFixed(2)}, aggression ${((s.aggression || 0) * 100).toFixed(1)}%, toxicity ${(s.flowToxicity || 0).toFixed(0)}%.`,
+    `REGIME: ${s.regime || 'TRANSITIONAL'} with ADX ${(s.adxVal || 0).toFixed(1)} and RV ${(s.realizedVol || 0).toFixed(1)}%.`,
+    `ADAPTIVE CALIBRATION: ${Number.isFinite(s.adaptiveScoutSampleN) ? s.adaptiveScoutSampleN : 0} resolved samples; weights trend ${(Number(s.adaptiveScoutWeights?.trend || 0)).toFixed(2)}, meanRev ${(Number(s.adaptiveScoutWeights?.meanRev || 0)).toFixed(2)}, flow ${(Number(s.adaptiveScoutWeights?.flow || 0)).toFixed(2)}.`,
+    `KALSHI EDGE: market ${s.kalshiAbove || 50}% vs adjusted ${(pDecision * 100).toFixed(1)}% (edge ${(edge * 100).toFixed(1)}%, target distance ${targetStr}).`,
+    `VERDICT: ${verdict} (${conviction}% conviction). RISK: ${riskLabel}.`
+  ].join('\n');
+}
+
+async function runAI(){ // NOSONAR
   if(_aiCooldownTs>0 && Date.now()-_aiCooldownTs<8000) return;
   _aiCooldownTs = Date.now();
   const btn=document.getElementById('aiBtn');
   const out=document.getElementById('aiOut');
   btn.disabled=true; btn.textContent='⟳ ANALYZING…';
-  out.innerHTML='<span style="color:var(--t3);font-style:italic">Generating report</span><span class="ai-cursor"></span>';
+  out.innerHTML='<span class="ai-status-loading">Generating report</span><span class="ai-cursor"></span>';
 
   const s=marketStore;
   const pch=s.price&&s.open24?((s.price-s.open24)/s.open24*100).toFixed(2):0;
   const sc=s.scoutScores||{};
+  let bollingerState='INSIDE';
+  if (s.price>s.bb?.upper) bollingerState='ABOVE UPPER';
+  else if (s.price<s.bb?.lower) bollingerState='BELOW LOWER';
+  let kalmanVelocityTxt=' —';
+  if (s.kalmanVelocity != null) {
+    kalmanVelocityTxt=(s.kalmanVelocity>=0?'+':'')+s.kalmanVelocity.toFixed(2);
+  }
+  let fundingRateTxt='—';
+  if (s.fundingRatePct != null) {
+    fundingRateTxt=(s.fundingRatePct>=0?'+':'')+s.fundingRatePct.toFixed(4)+'%';
+  }
+  let annualizedTxt='—';
+  if (s.annualizedPct != null) {
+    annualizedTxt=(s.annualizedPct>0?'+':'')+s.annualizedPct.toFixed(1)+'% ann';
+  }
+  const hasOracleDeviation=Number.isFinite(s.oracleDeviation);
+  const hasOpenInterest=Number.isFinite(s.openInterest);
 
+  const targetPrice = getActiveKalshiTargetPrice();
+  const targetProb = Number.isFinite(s.pDecisionAbove) ? s.pDecisionAbove : s.pAbove;
+  const trajFc = buildTrajectoryForecast(s);
+  let targetDistanceTxt = '—';
+  if (Number.isFinite(s.kalshiTargetDistance)) {
+    const targetDistanceSign = s.kalshiTargetDistance >= 0 ? '+' : '';
+    targetDistanceTxt = targetDistanceSign + s.kalshiTargetDistance.toFixed(0);
+  }
   const prompt=`BTC LIVE DATA — ${new Date().toISOString()}
 
 PRICE: $${s.price?.toLocaleString()} (${pch>=0?'+':''}${pch}% 24H)
@@ -1962,7 +3738,7 @@ HIGH24: $${s.high24?.toLocaleString()} | LOW24: $${s.low24?.toLocaleString()}
 SPREAD: $${s.bestAsk&&s.bestBid?(s.bestAsk-s.bestBid).toFixed(2):'—'} | IMBALANCE: ${(s.imbalance*100).toFixed(1)}%
 
 MULTI-SOURCE ORACLE:
-- Oracle price: $${s.oraclePrice?.toLocaleString()||'—'} | Deviation: ${s.oracleDeviation?(s.oracleDeviation*100).toFixed(3)+'%':'—'} | Confidence: ${s.oracleConf||'—'}/100
+- Oracle price: $${s.oraclePrice?.toLocaleString()||'—'} | Deviation: ${hasOracleDeviation?s.oracleDeviation.toFixed(3)+'%':'—'} | Confidence: ${s.oracleConf||'—'}/100
 - Sources: ${(s.oracleSources||[]).map(x=>x.exchange+(x.outlier?' [OUTLIER]':' ✓')).join(', ')||'—'}
 
 EMA STRUCTURE:
@@ -1973,7 +3749,7 @@ EMA STRUCTURE:
 
 SIGNALS:
 - RSI: ${s.rsi?.toFixed(1)} | MACD: ${s.macd>s.macdSig?'BULL':'BEAR'} | VWAP: ${s.price>s.vwap?'ABOVE':'BELOW'}
-- Bollinger: ${s.price>s.bb?.upper?'ABOVE UPPER':s.price<s.bb?.lower?'BELOW LOWER':'INSIDE'} | ATR: $${s.atr?.toFixed(0)}
+- Bollinger: ${bollingerState} | ATR: $${s.atr?.toFixed(0)}
 - Stochastic: ${s.stoch?.toFixed(1)} | Momentum: ${s.momentum?.toFixed(0)}
 
 ORDERFLOW (LIVE WS):
@@ -1987,21 +3763,35 @@ REGIME INTELLIGENCE:
 - Regime: ${s.regime} (conf: ${s.regimeConf?.toFixed(0)||'—'}%) | ADX: ${s.adxVal?.toFixed(1)||'—'} | Realized Vol: ${s.realizedVol?.toFixed(1)||'—'}%
 - Ensemble P(ABOVE): ${(s.pAbove*100)?.toFixed(1)}%
 
+TRAJECTORY FORECAST:
+- Slope: ${Number.isFinite(trajFc.slopeBpsPerMin)?trajFc.slopeBpsPerMin.toFixed(2):'—'} bps/min | Confidence: ${trajFc.confidence}
+- 1m: $${Number.isFinite(trajFc.p1)?trajFc.p1.toFixed(0):'—'} ± $${Number.isFinite(trajFc.b1)?trajFc.b1.toFixed(0):'—'}
+- 3m: $${Number.isFinite(trajFc.p3)?trajFc.p3.toFixed(0):'—'} ± $${Number.isFinite(trajFc.b3)?trajFc.b3.toFixed(0):'—'}
+- 5m: $${Number.isFinite(trajFc.p5)?trajFc.p5.toFixed(0):'—'} ± $${Number.isFinite(trajFc.b5)?trajFc.b5.toFixed(0):'—'}
+
 ENSEMBLE SCOUTS:
 - Trend: ${sc.trend?.toFixed(2)||'—'} | MeanRev: ${sc.meanRev?.toFixed(2)||'—'} | Volatility: ${sc.volatility?.toFixed(2)||'—'} | Flow: ${sc.flow?.toFixed(2)||'—'}
+
+ADAPTIVE CALIBRATION:
+- Resolved samples: ${Number.isFinite(s.adaptiveScoutSampleN) ? s.adaptiveScoutSampleN : 0}
+- Trend weight: ${Number(s.adaptiveScoutWeights?.trend || 0).toFixed(2)} | MeanRev weight: ${Number(s.adaptiveScoutWeights?.meanRev || 0).toFixed(2)} | Flow weight: ${Number(s.adaptiveScoutWeights?.flow || 0).toFixed(2)}
+- Calibration trust: ${(Number.isFinite(s.adaptiveScoutSampleN) ? Math.min(100, (s.adaptiveScoutSampleN / 40) * 100) : 0).toFixed(0)}% sample confidence
 
 4-SCENARIO PROBABILITIES:
 - Bull Drift: ${((s.pBullDrift||0)*100).toFixed(1)}% | Range-Bound: ${((s.pRangeBound||0)*100).toFixed(1)}% | Vol Expansion: ${((s.pVolExpansion||0)*100).toFixed(1)}% | Tail Risk: ${((s.pTailRisk||0)*100).toFixed(1)}%
 
 KALMAN FILTER:
-- Price: $${s.kalmanPrice?.toFixed(0)||'—'} | Velocity: ${s.kalmanVelocity!=null?(s.kalmanVelocity>=0?'+':'')+s.kalmanVelocity.toFixed(2):' —'}/tick | Uncertainty: ±$${s.kalmanUncertainty?.toFixed(0)||'—'}
+- Price: $${s.kalmanPrice?.toFixed(0)||'—'} | Velocity: ${kalmanVelocityTxt}/tick | Uncertainty: ±$${s.kalmanUncertainty?.toFixed(0)||'—'}
 
 DERIVATIVES:
-- Funding rate: ${s.fundingRatePct!=null?((s.fundingRatePct>=0?'+':'')+s.fundingRatePct.toFixed(4)+'%'):'—'} (${s.annualizedPct!=null?(s.annualizedPct>0?'+':'')+s.annualizedPct.toFixed(1)+'% ann':'—'}) | Next: ${s.fundingCountdown||'—'}
-- Open interest: ${s.openInterest?(s.openInterest/1e9).toFixed(2)+'B':'—'} | OI vs price: ${s.oiPriceDiv||'NEUTRAL'}
+- Funding rate: ${fundingRateTxt} (${annualizedTxt}) | Next: ${s.fundingCountdown||'—'}
+- Open interest: ${hasOpenInterest?(s.openInterest/1e9).toFixed(2)+'B':'—'} | OI vs price: ${s.oiPriceDiv||'NEUTRAL'}
 - Mark: $${s.markPrice?.toFixed(0)||'—'} | Index: $${s.indexPrice?.toFixed(0)||'—'}
 
 KALSHI: Market ${s.kalshiAbove}% | Model ${(s.pAbove*100)?.toFixed(1)}% | Edge ${((s.pAbove-s.kalshiAbove/100)*100)?.toFixed(1)}%
+KALSHI TARGET: ${formatKalshiTargetPrice(targetPrice)} (${Number.isFinite(s.kalshiManualTargetPrice) && s.kalshiManualTargetPrice > 0 ? 'MANUAL' : 'AUTO'})
+KALSHI TARGET-ADJUSTED: ${(targetProb*100).toFixed(1)}% ABOVE | Distance ${targetDistanceTxt}
+KALSHI TARGET EDGE (ADJ): ${((targetProb-s.kalshiAbove/100)*100).toFixed(1)}%
 BET ENGINE: ${s.betData?.active?`ACTIVE — ${s.betData.verdict} (${s.betData.conviction}% conviction)`:'MONITORING'}
 SIGNAL ACCURACY: ${s.signalAccuracy||'—'}% | BRIER: ${s.brierScore||'—'}`;
 
@@ -2020,6 +3810,7 @@ Interpret data as follows:
 FORMAT (plain text, no markdown):
 STRUCTURE: [EMA9/21 + Kalman alignment, oracle vs WS price delta if notable]
 TRAJECTORY: [slope, Kalman velocity, ensemble direction, where price is heading next 15min]
+TRAJECTORY FORECAST: [1m/3m/5m projected path with uncertainty bands and confidence tier]
 ORDERFLOW: [CVD, toxicity, delta, bid/ask pressure, whale activity, OI signal]
 REGIME: [regime state, ADX, realized vol, dominant scenario probability]
 SIGNALS: [scout scores synthesis, key confluences]
@@ -2032,25 +3823,35 @@ Under 250 words. Pure institutional signal.`;
     const resp=await fetch('/api/analyze',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
+      signal: AbortSignal.timeout(6500),
       body:JSON.stringify({prompt,system}),
     });
     if(!resp.ok){const e=await resp.json().catch(()=>({error:resp.statusText}));throw new Error(e.error||`HTTP ${resp.status}`);}
     const data=await resp.json();
-    const text=data.content?.[0]?.text||'No response.';
+    const text=data.content?.[0]?.text||buildLocalAnalystFallback(s, trajFc);
     const modelInfo=data.model||'';
     const aiModelEl=document.getElementById('aiModel');
     if(aiModelEl) aiModelEl.textContent='OpenRouter · '+(modelInfo.split('/')[1]||modelInfo).split(':')[0];
     // Sanitize AI text before HTML injection — escape tags, then re-apply safe spans
-    const safe=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const safe=text.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
     const fmt=safe
-      .replace(/BULLISH|BUY[\s-]SIDE|ABOVE|LONG|EXPANSION/gi,m=>`<span class="bull">${m}</span>`)
-      .replace(/BEARISH|SELL[\s-]SIDE|BELOW|SHORT|CONTRACTION/gi,m=>`<span class="bear">${m}</span>`)
-      .replace(/WARNING|RISK|CAUTION|ALERT|CASCADE/gi,m=>`<span class="warn">${m}</span>`)
-      .replace(/EDGE|KALSHI|BAYESIAN|CVD|VWAP|FVG|KALMAN|SCOUT|ORACLE|REGIME/gi,m=>`<span class="cyan">${m}</span>`);
+      .replaceAll(/BULLISH|BUY[\s-]SIDE|ABOVE|LONG|EXPANSION/gi,m=>`<span class="bull">${m}</span>`)
+      .replaceAll(/BEARISH|SELL[\s-]SIDE|BELOW|SHORT|CONTRACTION/gi,m=>`<span class="bear">${m}</span>`)
+      .replaceAll(/WARNING|RISK|CAUTION|ALERT|CASCADE/gi,m=>`<span class="warn">${m}</span>`)
+      .replaceAll(/EDGE|KALSHI|BAYESIAN|CVD|VWAP|FVG|KALMAN|SCOUT|ORACLE|REGIME/gi,m=>`<span class="cyan">${m}</span>`);
     out.innerHTML=fmt;
   } catch(e){
-    const safeMsg=String(e.message).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    out.innerHTML=`<span style="color:var(--red)">API error: ${safeMsg}</span>`;
+    console.debug('[runAI] remote analysis fallback:', e?.message || e);
+    const aiModelEl=document.getElementById('aiModel');
+    if(aiModelEl) aiModelEl.textContent='Local Quant Fallback · Deterministic';
+    const fallbackText = buildLocalAnalystFallback(s, trajFc);
+    const safe=fallbackText.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+    const fmt=safe
+      .replaceAll(/ABOVE|LONG|BULLISH/gi,m=>`<span class="bull">${m}</span>`)
+      .replaceAll(/BELOW|SHORT|BEARISH/gi,m=>`<span class="bear">${m}</span>`)
+      .replaceAll(/RISK|ELEVATED|MODERATE/gi,m=>`<span class="warn">${m}</span>`)
+      .replaceAll(/EDGE|KALSHI|CVD|KALMAN|REGIME|TRAJECTORY/gi,m=>`<span class="cyan">${m}</span>`);
+    out.innerHTML=fmt;
   }
   btn.disabled=false; btn.textContent='⟳ GENERATE ANALYSIS';
 }
@@ -2067,8 +3868,16 @@ let lastRender=0;
 function renderLoop(ts){
   if(ts-lastRender>=100){  // ~10fps max for chart, UI
     lastRender=ts;
-    computeIndicators();
-    renderAll();
+    try {
+      computeIndicators();
+    } catch(e) {
+      console.error('[renderLoop] computeIndicators:', e);
+    }
+    try {
+      renderAll();
+    } catch(e) {
+      console.error('[renderLoop] renderAll:', e);
+    }
   }
   requestAnimationFrame(renderLoop);
 }
@@ -2084,7 +3893,7 @@ setInterval(()=>{computeIndicators();},30000);
 setInterval(()=>{
   const cl=document.getElementById('clock');
   if(cl) cl.textContent=new Date().toLocaleTimeString();
-  const kw=document.getElementById('kWin');
+  const kw=document.getElementById('kWin2');
   if(kw) kw.textContent=new Date(Math.ceil(Date.now()/900000)*900000).toLocaleTimeString();
 },1000);
 
@@ -2094,13 +3903,23 @@ setInterval(()=>{
 async function init(){
   resizeChart();
   setWsStatus('connecting');
+  hydrateSignalLog();
+  hydrateKalshiTargetPrice();
+  setupKalshiTargetControls();
+  hydrateKalshiManualAbove();
+  setupKalshiManualControls();
   await bootstrapCandles();   // REST candle bootstrap from REST API
   resizeChart();              // re-measure after layout settles
   setupCrosshair();
   // Start polling loops
   pollOracle(); setInterval(pollOracle, 8000);
   pollDerivatives(); setInterval(pollDerivatives, 15000);
-  fetchKalshiLive(); setInterval(fetchKalshiLive, 60000);
+  fetchKalshiLive(); setInterval(fetchKalshiLive, 10000);
+  setInterval(() => {
+    const kr = kalshiRound();
+    enforceKalshiManualTargetRoundScope(kr);
+    updateKalshiCountdownDisplay(kr);
+  }, 250);
   setInterval(bootstrapCandles, 1800000); // refresh candle history every 30 min
   // WS engine started by module script — see bottom of <body>
   requestAnimationFrame(renderLoop);
@@ -2111,15 +3930,16 @@ async function init(){
 
 <!-- ── MODULE BOOTSTRAP ────────────────────────────────── -->
 <script type="module">
-  import { MarketStore, marketStore } from '/lib/marketStore.js';
-  import { CoinbaseWS } from '/lib/coinbaseWebsocket.js';
+  /* eslint-disable sonarjs/cognitive-complexity */
+  import { marketStore } from './lib/marketStore.js';
+  import { CoinbaseWS } from './lib/coinbaseWebsocket.js';
 
   // Expose to non-module script
-  window._mStore = marketStore;
+  globalThis._mStore = marketStore;
 
   // WS engine
   const ws = new CoinbaseWS();
-  window._wsEngine = ws;
+  globalThis._wsEngine = ws;
 
   // Bridge WS status to UI
   ws.onStatus(status => {
@@ -2129,12 +3949,13 @@ async function init(){
   // Subscribe: mirror WS store state into the legacy inline marketStore
   // so all indicator + render code works without changes
   let _bridgeLastTrade = null;
-  marketStore.subscribe(state => {
-    if (!window.marketStore) return;
-    const ms = window.marketStore;
+  let _bridgeUpdating = false;
+  marketStore.subscribe(state => { // NOSONAR
+    if (!globalThis.marketStore || _bridgeUpdating) return;
+    const ms = globalThis.marketStore;
 
     // Count every state notification for the MPS display
-    if (typeof _msgCount !== 'undefined') _msgCount++;
+    if (globalThis._msgCount !== undefined) globalThis._msgCount++;
 
     // Mirror live fields
     ms.price        = state.price       || ms.price;
@@ -2144,7 +3965,12 @@ async function init(){
     ms.low24        = state.low24       || ms.low24;
     ms.open24       = state.open24      || ms.open24;
     ms.vol24        = state.vol24       || ms.vol24;
-    ms.wsLatency    = state.wsLatency   || ms.wsLatency;
+    ms.wsLatency    = state.wsLatency   ?? ms.wsLatency;
+    ms.wsConnected  = state.wsConnected ?? ms.wsConnected;
+    ms.lastMsgTs    = state.lastMsgTs   ?? ms.lastMsgTs;
+    ms.wsSource     = state.wsSource    ?? ms.wsSource;
+    ms.manualFallback = state.manualFallbackEnabled ?? ms.manualFallback;
+    ms.manualRest   = state.manualRestEnabled ?? ms.manualRest;
     ms.imbalance    = state.imbalance   ?? ms.imbalance;
     ms.cvd          = state.cvd         ?? ms.cvd;
     ms.tradeDeltaBuy  = state.tradeDeltaBuy  ?? ms.tradeDeltaBuy;
@@ -2154,6 +3980,8 @@ async function init(){
     ms.liquidityWalls = state.liquidityWalls || [];
     ms.absorption   = state.absorption  || null;
     ms.spoofLevels  = state.spoofLevels || [];
+
+    if (typeof globalThis.recordFeedSamples === 'function') globalThis.recordFeedSamples(state);
 
     // Sync OB lists for renderOB()
     if (state.orderbook?.bids?.length) {
@@ -2180,16 +4008,20 @@ async function init(){
           if (ms.candles.length > 300) ms.candles.shift();
           _bridgeLastTrade = null;
         }
-        if (window._mStore) window._mStore.setState({ candles: ms.candles });
+        if (globalThis._mStore) {
+          _bridgeUpdating = true;
+          globalThis._mStore.setState({ candles: ms.candles });
+          _bridgeUpdating = false;
+        }
       }
     }
   });
 
   // Wait for inline script to set up, then start
   function startWhenReady() {
-    if (typeof init === 'function' && typeof marketStore !== 'undefined') {
+    if (typeof init === 'function' && globalThis.marketStore !== undefined) {
       // Sync inline marketStore reference
-      window.marketStore = window.marketStore || {};
+      globalThis.marketStore = globalThis.marketStore || {};
       init();
       ws.connect();
     } else {

@@ -9,6 +9,7 @@ const MODELS = [
 async function callOpenRouter(model, system, prompt, apiKey) {
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
+    signal: AbortSignal.timeout(9000),
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`,
@@ -17,8 +18,8 @@ async function callOpenRouter(model, system, prompt, apiKey) {
     },
     body: JSON.stringify({
       model,
-      max_tokens: 1200,
-      temperature: 0.3,
+      max_tokens: 1000,
+      temperature: 0.2,
       messages: [
         { role: 'system', content: system },
         { role: 'user',   content: prompt },

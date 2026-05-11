@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { MarketStore } from '../lib/marketStore.js';
@@ -49,7 +50,7 @@ describe('MarketStore — reactive state', () => {
     const calls = [];
     store.subscribe(s => calls.push(s.price));
     store.setState({ price: 1 });
-    assert.equal(calls[calls.length - 1], 1);
+    assert.equal(calls.at(-1), 1);
   });
 });
 

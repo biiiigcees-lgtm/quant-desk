@@ -1,0 +1,17 @@
+export const EVENTS = {
+  MARKET_DATA: 'market:data',
+  MICROSTRUCTURE: 'microstructure:update',
+  FEATURES: 'features:update',
+  PROBABILITY: 'probability:update',
+  STRATEGY_SIGNAL: 'strategy:signal',
+  AGGREGATED_SIGNAL: 'signal:aggregated',
+  RISK_DECISION: 'risk:decision',
+  EXECUTION_PLAN: 'execution:plan',
+  ORDER_EVENT: 'order:event',
+  PORTFOLIO_UPDATE: 'portfolio:update',
+  RECONCILIATION: 'reconciliation:event',
+  REPLAY_EVENT: 'replay:event',
+  AI_NARRATIVE: 'ai:narrative',
+  ANOMALY: 'anomaly:event',
+  TELEMETRY: 'telemetry:event',
+} as const;

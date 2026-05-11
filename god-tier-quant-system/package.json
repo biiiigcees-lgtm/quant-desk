@@ -1,0 +1,22 @@
+{
+  "name": "god-tier-quant-system",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "smoke": "node --enable-source-maps dist/tests/smoke.js",
+    "test:orchestration-authority": "node --enable-source-maps dist/tests/orchestration-authority.test.js",
+    "test:orchestration-router-reliability": "node --enable-source-maps dist/tests/orchestration-router-reliability.test.js",
+    "test:replay-memory": "node --enable-source-maps dist/tests/replay-memory.test.js",
+    "test:authority-determinism": "node --enable-source-maps dist/tests/authority-determinism.test.js",
+    "test:slice-6": "node --enable-source-maps dist/tests/slice-6-services.test.js",
+    "test:cognitive": "node --enable-source-maps dist/tests/cognitive-services.test.js"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.18",
+    "typescript": "^5.7.2"
+  }
+}
