@@ -36,6 +36,10 @@ import { BeliefGraphService } from './services/belief-graph/service.js';
 import { AiAgentRouterService } from './services/ai-orchestration/router/service.js';
 import { AiAggregationService } from './services/ai-orchestration/aggregation/service.js';
 import { OpenRouterProvider } from './services/ai-orchestration/providers/openrouter.js';
+import { SystemConsciousnessService } from './services/system-consciousness/service.js';
+import { DigitalImmuneSystemService } from './services/digital-immune-system/service.js';
+import { StrategyGenomeService } from './services/strategy-genome/service.js';
+import { ReplayIntegrityService } from './services/replay-integrity/service.js';
 async function main() {
     const config = loadConfig();
     const bus = new EventBus();
@@ -74,6 +78,16 @@ async function main() {
     const beliefGraph = new BeliefGraphService(bus);
     const constitutionalDecision = new ConstitutionalDecisionService(bus);
     const aiAggregation = new AiAggregationService(bus);
+    const consciousness = new SystemConsciousnessService(bus, {
+        epistemicFloor: config.organism.epistemicFloor,
+    });
+    const immuneSystem = new DigitalImmuneSystemService(bus, {
+        cooldownMs: config.organism.immuneCooldownMs,
+    });
+    const strategyGenome = new StrategyGenomeService(bus);
+    const replayIntegrity = new ReplayIntegrityService(bus, replay, {
+        minimumSampleSize: config.organism.replayValidationMinSamples,
+    });
     const openRouterProvider = new OpenRouterProvider({
         apiKey: config.openRouter.apiKey,
         timeoutMs: config.openRouter.timeoutMs,
@@ -118,11 +132,14 @@ async function main() {
     aiMemory.start();
     beliefGraph.start();
     constitutionalDecision.start();
+    consciousness.start();
+    immuneSystem.start();
+    strategyGenome.start();
+    replayIntegrity.start();
     autonomousResearch.start();
     aiAggregation.start();
     snapshotSync.start();
     aiRouter.start();
-    constitutionalDecision.start();
     bus.on(EVENTS.TELEMETRY, (event) => {
         metrics.record(event);
     });

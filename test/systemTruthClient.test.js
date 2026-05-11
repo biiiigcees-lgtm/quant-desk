@@ -23,6 +23,12 @@ describe('systemTruthClient', () => {
     assert.equal(truth.executionAllowed, true);
     assert.equal(truth.riskLevel, 'LOW');
     assert.equal(truth.verdict, 'ABOVE');
+    assert.deepEqual(truth.authority, {
+      source: 'COGNITION_LAYER',
+      realityValid: true,
+      riskVeto: false,
+      simulationPassed: true,
+    });
   });
 
   it('downgrades to NEUTRAL when conviction or quality is insufficient', () => {
@@ -37,6 +43,7 @@ describe('systemTruthClient', () => {
 
     assert.equal(truth.currentBelief.direction, 'NEUTRAL');
     assert.equal(truth.executionAllowed, false);
+    assert.equal(truth.authority.simulationPassed, false);
   });
 
   it('locks execution when risk crosses HIGH or CRITICAL thresholds', () => {
@@ -56,6 +63,7 @@ describe('systemTruthClient', () => {
     assert.equal(deriveRiskScalar({ flowToxicity: 76, realizedVol: 35 }), 0.76);
     assert.equal(truth.riskLevel, 'CRITICAL');
     assert.equal(truth.executionAllowed, false);
+    assert.equal(truth.authority.riskVeto, true);
   });
 
   it('retries stale responses only once', () => {

@@ -492,6 +492,69 @@ export interface ConstitutionalDecisionEvent {
   timestamp: number;
 }
 
+export interface SystemConsciousnessEvent {
+  contractId: string;
+  cycleId: string;
+  snapshotId: string;
+  beliefTopology: {
+    topHypotheses: Array<{ nodeId: string; evidence: number; uncertainty: number }>;
+    contradictionCount: number;
+    contradictionDensity: number;
+    uncertaintyTopology: number;
+  };
+  epistemicStress: {
+    driftStress: number;
+    calibrationStress: number;
+    contradictionStress: number;
+    aggregate: number;
+  };
+  executionConfidence: number;
+  invalidationPath: string;
+  timestamp: number;
+}
+
+export interface EpistemicHealthEvent {
+  contractId: string;
+  score: number;
+  status: 'stable' | 'degraded' | 'critical';
+  components: {
+    contradiction: number;
+    calibration: number;
+    drift: number;
+    anomaly: number;
+  };
+  timestamp: number;
+}
+
+export interface DigitalImmuneAlertEvent {
+  contractId: string;
+  threatLevel: 'elevated' | 'critical';
+  reason: string;
+  recommendedMode: ExecutionMode;
+  cooldownUntil: number;
+  timestamp: number;
+}
+
+export interface StrategyGenomeUpdateEvent {
+  timestamp: number;
+  topGenomes: Array<{
+    strategyId: string;
+    fitness: number;
+    stability: number;
+    mutationRate: number;
+    lifecycle: 'birth' | 'growth' | 'maturity' | 'decay' | 'extinction';
+  }>;
+  retiring: string[];
+}
+
+export interface ReplayIntegrityEvent {
+  timestamp: number;
+  deterministic: boolean;
+  sourceChecksum: string;
+  replayChecksum: string;
+  sampleSize: number;
+}
+
 // Belief-Graph Engine Event Schemas (Phase B)
 
 export interface BeliefGraphNode {

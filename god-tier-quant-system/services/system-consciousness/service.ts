@@ -1,196 +1,166 @@
 import { EventBus } from '../../core/event-bus/bus.js';
 import { EVENTS } from '../../core/event-bus/events.js';
-import { safeHandler } from '../../core/errors/handler.js';
 import {
-  AggregatedSignal,
-  AnomalyEvent,
-  BeliefGraphEvent,
+  BeliefGraphStateEvent,
   CalibrationEvent,
-  CausalInsight,
-  ProbabilityEvent,
-  RealitySnapshot,
+  ConstitutionalDecisionEvent,
+  DriftEvent,
+  EpistemicHealthEvent,
   SystemConsciousnessEvent,
 } from '../../core/schemas/events.js';
 
-interface Contradiction {
-  source: string;
-  target: string;
-  description: string;
+interface ConsciousnessOptions {
+  epistemicFloor: number;
 }
-
-interface ContractState {
-  probability: number;
-  edge: number;
-  beliefAdjustment: number;
-  graphConfidence: number;
-  ece: number;
-  driftFactor: number;   // mapped from driftSeverity (0=none→1.0, high→0.3)
-  anomalyFactor: number; // mapped from anomalySeverity
-  truthScore: number;
-  signalDirection: number; // +1 YES, -1 NO, 0 FLAT
-  spuriousInsights: number;
-  totalInsights: number;
-  contradictions: Contradiction[];
-  contractId: string;
-  timestamp: number;
-}
-
-const DRIFT_UNCERTAINTY: Record<string, number> = { none: 0.0, low: 0.15, medium: 0.4, high: 0.7 };
-const ANOMALY_UNCERTAINTY: Record<string, number> = { none: 0.0, low: 0.2, medium: 0.45, high: 0.75, critical: 1.0 };
 
 export class SystemConsciousnessService {
-  private readonly state: Map<string, ContractState> = new Map();
-  private readonly latest: Map<string, SystemConsciousnessEvent> = new Map();
+  private latestBelief: BeliefGraphStateEvent | null = null;
+  private latestDecision: ConstitutionalDecisionEvent | null = null;
+  private latestCalibration: CalibrationEvent | null = null;
+  private latestDrift: DriftEvent | null = null;
 
-  constructor(private readonly bus: EventBus) {}
+  constructor(
+    private readonly bus: EventBus,
+    private readonly options: ConsciousnessOptions,
+  ) {}
 
   start(): void {
-    this.bus.on<ProbabilityEvent>(EVENTS.PROBABILITY, safeHandler((e) => {
-      const s = this.getOrCreate(e.contractId);
-      s.probability = e.estimatedProbability;
-      s.edge = e.edge;
-      s.ece = e.calibrationError;
-      s.timestamp = e.timestamp;
-      this.emit(e.contractId);
-    }, 'SystemConsciousness.probability'));
+    this.bus.on<BeliefGraphStateEvent>(EVENTS.BELIEF_GRAPH_STATE, (event) => {
+      this.latestBelief = event;
+      this.publish();
+    });
 
-    this.bus.on<BeliefGraphEvent>(EVENTS.BELIEF_GRAPH_UPDATE, safeHandler((e) => {
-      const s = this.getOrCreate(e.contractId);
-      s.beliefAdjustment = e.constitutionalAdjustment;
-      s.graphConfidence = e.graphConfidence;
-      s.timestamp = e.timestamp;
-      this.emit(e.contractId);
-    }, 'SystemConsciousness.beliefGraph'));
+    this.bus.on<ConstitutionalDecisionEvent>(EVENTS.CONSTITUTIONAL_DECISION, (event) => {
+      this.latestDecision = event;
+      this.publish();
+    });
 
-    this.bus.on<RealitySnapshot>(EVENTS.REALITY_SNAPSHOT, safeHandler((e) => {
-      const s = this.getOrCreate(e.contractId);
-      s.truthScore = e.truthScore;
-      s.driftFactor = DRIFT_UNCERTAINTY[e.uncertaintyState] ?? 0.0;
-      s.anomalyFactor = e.anomalyFactor;
-      s.timestamp = e.timestamp;
-      this.emit(e.contractId);
-    }, 'SystemConsciousness.reality'));
+    this.bus.on<CalibrationEvent>(EVENTS.CALIBRATION_UPDATE, (event) => {
+      this.latestCalibration = event;
+      this.publish();
+    });
 
-    this.bus.on<AnomalyEvent>(EVENTS.ANOMALY, safeHandler((e) => {
-      const s = this.getOrCreate(e.contractId);
-      s.anomalyFactor = ANOMALY_UNCERTAINTY[e.severity] ?? 0.0;
-      s.timestamp = e.timestamp;
-      this.emit(e.contractId);
-    }, 'SystemConsciousness.anomaly'));
-
-    this.bus.on<CalibrationEvent>(EVENTS.CALIBRATION_UPDATE, safeHandler((e) => {
-      const s = this.getOrCreate(e.contractId);
-      s.ece = e.ece;
-      s.timestamp = e.timestamp;
-      this.emit(e.contractId);
-    }, 'SystemConsciousness.calibration'));
-
-    this.bus.on<CausalInsight>(EVENTS.CAUSAL_INSIGHT, safeHandler((e) => {
-      const s = this.getOrCreate(e.contractId);
-      s.totalInsights += 1;
-      if (e.spurious) s.spuriousInsights += 1;
-      s.timestamp = e.timestamp;
-      this.emit(e.contractId);
-    }, 'SystemConsciousness.causal'));
-
-    this.bus.on<AggregatedSignal>(EVENTS.AGGREGATED_SIGNAL, safeHandler((e) => {
-      const s = this.getOrCreate(e.contractId);
-      s.signalDirection = e.direction === 'YES' ? 1 : e.direction === 'NO' ? -1 : 0;
-      s.timestamp = e.timestamp;
-      this.emit(e.contractId);
-    }, 'SystemConsciousness.signal'));
+    this.bus.on<DriftEvent>(EVENTS.DRIFT_EVENT, (event) => {
+      this.latestDrift = event;
+      this.publish();
+    });
   }
 
-  getLatestConsciousness(contractId: string): SystemConsciousnessEvent | undefined {
-    return this.latest.get(contractId);
-  }
-
-  private getOrCreate(contractId: string): ContractState {
-    if (!this.state.has(contractId)) {
-      this.state.set(contractId, {
-        probability: 0.5, edge: 0, beliefAdjustment: 0, graphConfidence: 0.5,
-        ece: 0, driftFactor: 0, anomalyFactor: 0, truthScore: 0.5,
-        signalDirection: 0, spuriousInsights: 0, totalInsights: 0,
-        contradictions: [], contractId, timestamp: Date.now(),
-      });
-    }
-    return this.state.get(contractId)!;
-  }
-
-  private detectContradictions(s: ContractState): Contradiction[] {
-    const found: Contradiction[] = [...s.contradictions];
-
-    if (Math.abs(s.edge) > 0.02 && s.truthScore < 0.45) {
-      const desc = `edge=${s.edge.toFixed(3)} but truthScore=${s.truthScore.toFixed(3)}`;
-      if (!found.slice(0, 5).some((c) => c.description === desc)) {
-        found.unshift({ source: 'probability', target: 'reality', description: desc });
-      }
+  private publish(): void {
+    if (!this.latestBelief || !this.latestDecision) {
+      return;
     }
 
-    if (s.beliefAdjustment < -0.05 && s.signalDirection > 0) {
-      const desc = `beliefAdj=${s.beliefAdjustment.toFixed(3)} opposes YES signal`;
-      if (!found.slice(0, 5).some((c) => c.description === desc)) {
-        found.unshift({ source: 'belief-graph', target: 'signal', description: desc });
-      }
-    }
-
-    if (s.ece > 0.20 && Math.abs(s.edge) > 0.03) {
-      const desc = `ece=${s.ece.toFixed(3)} but edge=${s.edge.toFixed(3)}`;
-      if (!found.slice(0, 5).some((c) => c.description === desc)) {
-        found.unshift({ source: 'calibration', target: 'edge', description: desc });
-      }
-    }
-
-    return found.slice(0, 10);
-  }
-
-  private emit(contractId: string): void {
-    const s = this.state.get(contractId);
-    if (!s) return;
-
-    s.contradictions = this.detectContradictions(s);
-
-    const calibrationHealth = Math.max(0, Math.min(1, 1 - s.ece * 5));
-    const driftH = Math.max(0, 1 - s.driftFactor);
-    const anomalyH = Math.max(0, 1 - s.anomalyFactor);
-    const beliefUncertainty = Math.max(0, 1 - s.graphConfidence);
-
-    const uncertaintyTopology = {
-      calibration: Number((1 - calibrationHealth).toFixed(4)),
-      drift: Number(s.driftFactor.toFixed(4)),
-      anomaly: Number(s.anomalyFactor.toFixed(4)),
-      belief: Number(beliefUncertainty.toFixed(4)),
-      composite: Number((
-        (1 - calibrationHealth) * 0.35 +
-        s.driftFactor * 0.25 +
-        s.anomalyFactor * 0.25 +
-        beliefUncertainty * 0.15
-      ).toFixed(4)),
-    };
-
-    const contradictionDensity = Number(
-      (s.spuriousInsights / Math.max(1, s.totalInsights)).toFixed(4),
+    const top = this.latestBelief.summary.topHypotheses.slice(0, 3).map((item) => ({
+      nodeId: item.nodeId,
+      evidence: item.evidence,
+      uncertainty: item.uncertainty,
+    }));
+    const contradictionDensity = clamp(
+      this.latestBelief.summary.contradictionCount / Math.max(1, this.latestBelief.summary.topHypotheses.length),
+      0,
+      1,
     );
-    const compositeUncertainty = uncertaintyTopology.composite;
-    const stress = contradictionDensity * 0.4 + compositeUncertainty * 0.6;
-    const cognitiveStressState: 'stable' | 'stressed' | 'critical' =
-      stress > 0.70 ? 'critical' : stress > 0.40 ? 'stressed' : 'stable';
+    const uncertaintyTopology = clamp(this.latestBelief.summary.graphEntropy, 0, 1);
+    const driftStress = this.latestDrift ? clamp(Math.max(this.latestDrift.psi, this.latestDrift.kl), 0, 1) : 0;
+    const calibrationStress = this.latestCalibration ? clamp(this.latestCalibration.ece, 0, 1) : 0;
+    const contradictionStress = clamp(
+      this.latestBelief.summary.maxContradictionStrength,
+      0,
+      1,
+    );
+    const aggregateStress = clamp(
+      0.35 * contradictionStress + 0.35 * calibrationStress + 0.3 * driftStress,
+      0,
+      1,
+    );
 
-    const event: SystemConsciousnessEvent = {
-      contractId,
-      beliefState: {
-        probability: Number(s.probability.toFixed(4)),
-        confidence: Number(s.graphConfidence.toFixed(4)),
-        beliefAdjustment: Number(s.beliefAdjustment.toFixed(4)),
-      },
-      uncertaintyTopology,
+    const executionConfidence = clamp(
+      this.latestDecision.confidence_score * (1 - uncertaintyTopology) * (1 - aggregateStress * 0.5),
+      0,
+      1,
+    );
+
+    const invalidationPath = buildInvalidationPath({
+      stress: aggregateStress,
       contradictionDensity,
-      contradictions: s.contradictions.map((c) => ({ ...c })),
-      cognitiveStressState,
-      timestamp: s.timestamp,
+      tradeAllowed: this.latestDecision.trade_allowed,
+      epistemicFloor: this.options.epistemicFloor,
+    });
+
+    const consciousness: SystemConsciousnessEvent = {
+      contractId: this.latestDecision.contractId,
+      cycleId: this.latestDecision.cycle_id,
+      snapshotId: this.latestDecision.snapshot_id,
+      beliefTopology: {
+        topHypotheses: top,
+        contradictionCount: this.latestBelief.summary.contradictionCount,
+        contradictionDensity,
+        uncertaintyTopology,
+      },
+      epistemicStress: {
+        driftStress,
+        calibrationStress,
+        contradictionStress,
+        aggregate: aggregateStress,
+      },
+      executionConfidence,
+      invalidationPath,
+      timestamp: Date.now(),
     };
 
-    this.latest.set(contractId, event);
-    this.bus.emit<SystemConsciousnessEvent>(EVENTS.SYSTEM_CONSCIOUSNESS, event);
+    let status: EpistemicHealthEvent['status'] = 'stable';
+    if (aggregateStress >= 0.72) {
+      status = 'critical';
+    } else if (aggregateStress >= 0.45) {
+      status = 'degraded';
+    }
+
+    const health: EpistemicHealthEvent = {
+      contractId: this.latestDecision.contractId,
+      score: clamp(1 - aggregateStress, 0, 1),
+      status,
+      components: {
+        contradiction: contradictionStress,
+        calibration: calibrationStress,
+        drift: driftStress,
+        anomaly: clamp(uncertaintyTopology, 0, 1),
+      },
+      timestamp: consciousness.timestamp,
+    };
+
+    this.bus.emit(EVENTS.SYSTEM_CONSCIOUSNESS, consciousness);
+    this.bus.emit(EVENTS.EPISTEMIC_HEALTH, health);
+    this.bus.emit(EVENTS.TELEMETRY, {
+      name: 'organism.epistemic.health',
+      value: health.score,
+      tags: { status: health.status, contractId: health.contractId },
+      timestamp: health.timestamp,
+    });
   }
+}
+
+function buildInvalidationPath(input: {
+  stress: number;
+  contradictionDensity: number;
+  tradeAllowed: boolean;
+  epistemicFloor: number;
+}): string {
+  if (!input.tradeAllowed) {
+    return 'Constitutional decision blocks execution; await governance pass.';
+  }
+  if (input.stress > 1 - input.epistemicFloor) {
+    return 'Epistemic stress breached floor; require recalibration and fresh snapshot.';
+  }
+  if (input.contradictionDensity > 0.55) {
+    return 'Contradiction density too high; force adversarial review cycle.';
+  }
+  return 'Invalidate on drift escalation, contradiction growth, or confidence floor breach.';
+}
+
+function clamp(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+  return Math.max(min, Math.min(max, value));
 }

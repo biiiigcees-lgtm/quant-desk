@@ -27,6 +27,11 @@ export interface SystemConfig {
     maxTokens: number;
     temperature: number;
   };
+  organism: {
+    epistemicFloor: number;
+    immuneCooldownMs: number;
+    replayValidationMinSamples: number;
+  };
 }
 
 export function loadConfig(): SystemConfig {
@@ -59,6 +64,11 @@ export function loadConfig(): SystemConfig {
       title: process.env.OPENROUTER_TITLE ?? 'god-tier-quant-system',
       maxTokens: Number(process.env.OPENROUTER_MAX_TOKENS ?? 900),
       temperature: Number(process.env.OPENROUTER_TEMPERATURE ?? 0.15),
+    },
+    organism: {
+      epistemicFloor: Number(process.env.ORGANISM_EPISTEMIC_FLOOR ?? 0.35),
+      immuneCooldownMs: Number(process.env.ORGANISM_IMMUNE_COOLDOWN_MS ?? 10_000),
+      replayValidationMinSamples: Number(process.env.ORGANISM_REPLAY_MIN_SAMPLES ?? 25),
     },
   };
 }

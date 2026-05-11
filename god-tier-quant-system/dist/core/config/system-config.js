@@ -29,5 +29,10 @@ export function loadConfig() {
             maxTokens: Number(process.env.OPENROUTER_MAX_TOKENS ?? 900),
             temperature: Number(process.env.OPENROUTER_TEMPERATURE ?? 0.15),
         },
+        organism: {
+            epistemicFloor: Number(process.env.ORGANISM_EPISTEMIC_FLOOR ?? 0.35),
+            immuneCooldownMs: Number(process.env.ORGANISM_IMMUNE_COOLDOWN_MS ?? 10000),
+            replayValidationMinSamples: Number(process.env.ORGANISM_REPLAY_MIN_SAMPLES ?? 25),
+        },
     };
 }

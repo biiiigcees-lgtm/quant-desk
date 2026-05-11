@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { EVENTS } from '../../../core/event-bus/events.js';
 import { AGENT_SPECS } from '../agents/index.js';
 export class AiAgentRouterService {
@@ -107,23 +108,7 @@ export class AiAgentRouterService {
                 model: providerResult.model,
                 expiresAt: Date.now() + spec.cacheTtlMs,
             });
-            if (!this.options.shadowMode) {
-                this.emitResult({
-                    agent,
-                    output,
-                    metrics: {
-                        latencyMs,
-                        model: providerResult.model,
-                        promptTokens: providerResult.promptTokens,
-                        completionTokens: providerResult.completionTokens,
-                        totalTokens: providerResult.totalTokens,
-                        estimatedCostUsd: providerResult.estimatedCostUsd,
-                        fallbackDepth: providerResult.fallbackDepth,
-                        cacheHit: false,
-                    },
-                }, context);
-            }
-            else {
+            if (this.options.shadowMode) {
                 this.bus.emit(EVENTS.AI_ORCHESTRATION_METRICS, {
                     agent,
                     contractId: context.contractId,
@@ -141,6 +126,22 @@ export class AiAgentRouterService {
                     shadowMode: true,
                     timestamp: Date.now(),
                 });
+            }
+            else {
+                this.emitResult({
+                    agent,
+                    output,
+                    metrics: {
+                        latencyMs,
+                        model: providerResult.model,
+                        promptTokens: providerResult.promptTokens,
+                        completionTokens: providerResult.completionTokens,
+                        totalTokens: providerResult.totalTokens,
+                        estimatedCostUsd: providerResult.estimatedCostUsd,
+                        fallbackDepth: providerResult.fallbackDepth,
+                        cacheHit: false,
+                    },
+                }, context);
             }
         }
         catch (error) {
@@ -227,11 +228,19 @@ function routeAgentsForTrigger(triggerEvent) {
     return [];
 }
 function stableHash(payload) {
-    const text = JSON.stringify(payload, Object.keys((payload ?? {})).sort());
-    let hash = 0;
-    for (let i = 0; i < text.length; i += 1) {
-        hash = (hash << 5) - hash + text.charCodeAt(i);
-        hash |= 0;
-    }
-    return hash.toString(16);
+    const normalize = (value) => {
+        if (value === null || typeof value !== 'object') {
+            return value;
+        }
+        if (Array.isArray(value)) {
+            return value.map((item) => normalize(item));
+        }
+        const normalized = {};
+        for (const key of Object.keys(value).sort((a, b) => a.localeCompare(b))) {
+            normalized[key] = normalize(value[key]);
+        }
+        return normalized;
+    };
+    const text = JSON.stringify(normalize(payload));
+    return createHash('sha256').update(text).digest('hex');
 }

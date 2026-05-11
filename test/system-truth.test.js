@@ -49,9 +49,22 @@ function resetSharedState() {
   systemTruth.currentBelief = { direction: 'NEUTRAL', confidence: 0 };
   systemTruth.executionAllowed = false;
   systemTruth.riskLevel = 'MEDIUM';
+  systemTruth.authority = {
+    source: 'COGNITION_LAYER',
+    realityValid: true,
+    riskVeto: false,
+    simulationPassed: false,
+  };
   systemTruth.snapshotId = generateSnapshotId();
   systemTruth.lastUpdated = Date.now();
   results.length = 0;
+}
+
+function nextSnapshotId(aheadMs = 10) {
+  const [currentTsRaw] = String(systemTruth.snapshotId).split('-', 1);
+  const currentTs = Number(currentTsRaw);
+  const baseTs = Number.isFinite(currentTs) ? currentTs : Date.now();
+  return generateSnapshotId(baseTs + aheadMs);
 }
 
 function stableStringify(value) {
@@ -97,14 +110,83 @@ describe('system truth state', () => {
       currentBelief: { direction: 'UP', confidence: 78.6 },
       executionAllowed: true,
       riskLevel: 'LOW',
-      snapshotId: generateSnapshotId(1760000000100),
+      authority: {
+        source: 'COGNITION_LAYER',
+        realityValid: true,
+        riskVeto: false,
+        simulationPassed: true,
+      },
+      snapshotId: nextSnapshotId(50),
     });
 
     assert.equal(next.currentBelief.direction, 'UP');
     assert.equal(next.executionAllowed, true);
     assert.equal(next.riskLevel, 'LOW');
+    assert.equal(next.authority.simulationPassed, true);
     assert.ok(next.lastUpdated >= before);
     assert.deepEqual(getSystemTruth(), next);
+  });
+
+  it('rejects executionAllowed=true when authority metadata is missing', () => {
+    assert.throws(() => {
+      updateSystemTruth({
+        currentBelief: { direction: 'UP', confidence: 62 },
+        executionAllowed: true,
+        riskLevel: 'LOW',
+        snapshotId: nextSnapshotId(60),
+      });
+    }, /authority metadata required/i);
+  });
+
+  it('forces execution lock when authority vetoes execution', () => {
+    const next = updateSystemTruth({
+      currentBelief: { direction: 'UP', confidence: 88 },
+      executionAllowed: true,
+      riskLevel: 'HIGH',
+      authority: {
+        source: 'RISK_ENGINE',
+        realityValid: true,
+        riskVeto: true,
+        simulationPassed: true,
+      },
+      snapshotId: nextSnapshotId(70),
+    });
+
+    assert.equal(next.executionAllowed, false);
+    assert.equal(next.authority.source, 'RISK_ENGINE');
+    assert.equal(next.authority.riskVeto, true);
+  });
+
+  it('rejects stale snapshot rollback updates', () => {
+    updateSystemTruth({
+      currentBelief: { direction: 'UP', confidence: 70 },
+      executionAllowed: false,
+      riskLevel: 'MEDIUM',
+      authority: {
+        source: 'COGNITION_LAYER',
+        realityValid: true,
+        riskVeto: false,
+        simulationPassed: false,
+      },
+      snapshotId: nextSnapshotId(80),
+    });
+
+    const [latestTsRaw] = String(systemTruth.snapshotId).split('-', 1);
+    const latestTs = Number(latestTsRaw);
+    assert.throws(() => {
+      updateSystemTruth({
+        currentBelief: { direction: 'DOWN', confidence: 42 },
+        executionAllowed: false,
+        riskLevel: 'LOW',
+        authority: {
+          source: 'COGNITION_LAYER',
+          realityValid: true,
+          riskVeto: false,
+          simulationPassed: false,
+        },
+        snapshotId: generateSnapshotId(latestTs - 10),
+      });
+    }, /snapshot-regression-detected/);
   });
 
   it('rejects invalid snapshot ids on POST', async () => {
@@ -112,6 +194,12 @@ describe('system truth state', () => {
       currentBelief: { direction: 'UP', confidence: 50 },
       executionAllowed: true,
       riskLevel: 'LOW',
+      authority: {
+        source: 'COGNITION_LAYER',
+        realityValid: true,
+        riskVeto: false,
+        simulationPassed: true,
+      },
       snapshotId: 'bad-id',
     };
     const req = mockReq({
@@ -134,6 +222,12 @@ describe('system truth state', () => {
         currentBelief: { direction: 'UP', confidence: 50 },
         executionAllowed: true,
         riskLevel: 'LOW',
+        authority: {
+          source: 'COGNITION_LAYER',
+          realityValid: true,
+          riskVeto: false,
+          simulationPassed: true,
+        },
         snapshotId: generateSnapshotId(),
       },
     });

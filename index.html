@@ -4,19 +4,33 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QUANT//DESK — BTC Institutional Intelligence</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:     #080809; --bg1:   #0d0d0f; --bg2:  #111114; --bg3:  #161619;
-  --border: #1e1e22; --b2:    #252529; --b3:   #2e2e34;
-  --text:   #c4c4cc; --t2:    #72727e; --t3:   #3a3a44;
-  --green:  #00e676; --g2:    #00c853; --g3:   rgba(0,230,118,.12);
-  --red:    #ff1744; --r2:    #d50000; --r3:   rgba(255,23,68,.12);
-  --amber:  #ffab00; --cyan:  #00e5ff; --blue: #2979ff; --purple:#aa00ff;
-  --white:  #eeeef5;
+  --bg: #0A0F1C;
+  --bg1: #101826;
+  --bg2: #141F30;
+  --bg3: #1A2638;
+  --border: rgba(255,255,255,0.06);
+  --b2: rgba(255,255,255,0.1);
+  --b3: rgba(255,255,255,0.16);
+  --text: #E6EDF3;
+  --t2: #7D8590;
+  --t3: #5F6B7A;
+  --green: #00E5A8;
+  --g2: #00c18d;
+  --g3: rgba(0,229,168,.14);
+  --red: #FF4D4D;
+  --r2: #ff2f2f;
+  --r3: rgba(255,77,77,.14);
+  --amber: #FFB020;
+  --cyan: #4DA3FF;
+  --blue: #4DA3FF;
+  --purple: #B388FF;
+  --white: #E6EDF3;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;overflow-x:hidden;overflow-y:auto}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;font-size:11px;overflow-x:hidden;overflow-y:auto}
 ::-webkit-scrollbar{width:3px;height:3px}
 ::-webkit-scrollbar-track{background:var(--bg1)}
 ::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
@@ -49,6 +63,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Pl
 .ws-toggle:disabled{opacity:.45;cursor:not-allowed}
 .up{color:var(--green)!important}.dn{color:var(--red)!important}.neut{color:var(--t2)!important}
 .num{font-variant-numeric:tabular-nums}
+.mono{font-family:'JetBrains Mono',monospace}
 
 /* ── TAPE ── */
 #tape{height:20px;background:var(--bg1);border-bottom:1px solid var(--border);overflow:hidden;display:flex;align-items:center}
@@ -57,11 +72,28 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Pl
 .ti{font-size:9px;color:var(--text)}.ti b{color:var(--white);font-weight:600}
 
 /* ── MAIN GRID ── */
-#app{display:grid;grid-template-columns:220px 1fr 240px;min-height:calc(100vh - 128px);height:auto;gap:1px;background:var(--border);align-items:start}
+#app{
+  display:grid;
+  grid-template-columns:320px minmax(0,1fr) 340px;
+  grid-template-rows:minmax(560px,1fr) 250px;
+  grid-template-areas:
+    "market decision ai"
+    "execution execution execution";
+  min-height:calc(100vh - 128px);
+  height:auto;
+  gap:1px;
+  background:var(--border);
+  align-items:start;
+}
+#left-col{grid-area:market}
+#center-col{grid-area:decision}
+#right-col{grid-area:ai}
+#execution-zone{grid-area:execution}
 
 /* ── PANELS ── */
 .col{display:flex;flex-direction:column;gap:1px;background:var(--border)}
 .panel{background:var(--bg1);display:flex;flex-direction:column;overflow:hidden}
+.zone-shell{display:flex;flex-direction:column;gap:1px;background:var(--border)}
 .ph{padding:6px 10px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .ph-title{font-size:9px;font-weight:600;letter-spacing:1.2px;color:var(--t2);text-transform:uppercase}
 .badge{font-size:8px;padding:1px 5px;border-radius:2px;font-weight:700}
@@ -70,6 +102,27 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Pl
 .badge-ai{background:rgba(88,0,134,.78);color:#ffffff;border:1px solid rgba(212,154,255,.68)}
 .badge-warn{background:rgba(255,171,0,.1);color:var(--amber);border:1px solid rgba(255,171,0,.3)}
 .pb{padding:8px 10px;flex:1;overflow-y:auto}
+
+/* ── DECISION CORE ── */
+#decisionCore{border-top:1px solid var(--border)}
+.dc-grid{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:1px;background:var(--border)}
+.dc-main,.dc-card{background:var(--bg1);padding:10px}
+.dc-k{font-size:8px;letter-spacing:.9px;color:var(--t2);text-transform:uppercase}
+.dc-signal{font-size:26px;font-weight:700;line-height:1.05;margin-top:6px;font-family:'JetBrains Mono',monospace}
+.dc-sub{font-size:9px;color:var(--t2);margin-top:4px}
+.dc-v{font-size:16px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.dc-v.warn{color:var(--amber)}
+.dc-v.ok{color:var(--green)}
+.dc-v.bad{color:var(--red)}
+.mt8{margin-top:8px}
+
+/* ── EXECUTION STRIP ── */
+#execution-zone .pb{padding:0}
+.exec-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:1px;background:var(--border)}
+.exec-card{background:var(--bg1);padding:8px 9px;min-height:74px}
+.exec-k{font-size:8px;color:var(--t3);letter-spacing:.7px;text-transform:uppercase}
+.exec-v{font-size:14px;font-weight:700;margin-top:6px;font-family:'JetBrains Mono',monospace}
+.exec-note{font-size:8px;color:var(--t2);margin-top:4px}
 
 /* ── METRIC ROWS ── */
 .mr{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)}
@@ -272,7 +325,16 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
 .traj-lbl{font-size:7px;color:var(--t2);letter-spacing:.8px;margin-bottom:1px}
 .traj-val{font-size:9px;font-weight:500}
 
-@media(max-width:900px){#app{grid-template-columns:1fr}#left-col,#right-col{display:none}}
+@media(max-width:1200px){
+  #app{grid-template-columns:280px minmax(0,1fr);grid-template-areas:"market decision" "execution execution"}
+  #right-col{display:none}
+}
+@media(max-width:900px){
+  #app{grid-template-columns:1fr;grid-template-areas:"decision" "market" "execution";grid-template-rows:auto auto auto}
+  #left-col,#right-col{display:flex}
+  .dc-grid{grid-template-columns:1fr}
+  .exec-grid{grid-template-columns:repeat(2,1fr)}
+}
 @media (max-width:640px){
   html,body{overflow-x:hidden;overflow-y:auto}
   #topbar,#oracleBar,#sessionBar{flex-wrap:wrap;height:auto;gap:4px 8px;padding:6px 8px}
@@ -621,7 +683,29 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
 </div>
 
 <!-- CENTER -->
-<div class="col">
+<div class="col zone-shell" id="center-col">
+  <div class="panel panel-fixed" id="decisionCore">
+    <div class="ph"><span class="ph-title">DECISION ENGINE CORE</span><span class="badge badge-live">PRIORITY</span></div>
+    <div class="dc-grid">
+      <div class="dc-main">
+        <div class="dc-k">SYSTEM BELIEF</div>
+        <div class="dc-signal" id="dcSignal">STANDBY</div>
+        <div class="dc-sub" id="dcInvalidation">Awaiting high-quality alignment and execution permission.</div>
+      </div>
+      <div class="dc-card">
+        <div class="dc-k">CONFIDENCE</div>
+        <div class="dc-v" id="dcConfidence">—</div>
+        <div class="dc-k mt8">EDGE</div>
+        <div class="dc-v" id="dcEdge">—</div>
+      </div>
+      <div class="dc-card">
+        <div class="dc-k">RISK LEVEL</div>
+        <div class="dc-v" id="dcRisk">—</div>
+        <div class="dc-k mt8">EXECUTION</div>
+        <div class="dc-v" id="dcExecution">—</div>
+      </div>
+    </div>
+  </div>
   <!-- Chart -->
   <div id="chart-wrap" class="panel">
     <div id="chart-hdr">
@@ -717,7 +801,7 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
 </div>
 
 <!-- RIGHT -->
-<div id="right-col" class="col">
+<div id="right-col" class="col zone-shell">
   <!-- Regime -->
   <div class="panel panel-fixed">
     <div class="ph"><span class="ph-title">REGIME + PROBABILITY</span><span class="badge badge-live">LIVE</span></div>
@@ -920,6 +1004,23 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
   </div>
 </div>
 
+<!-- EXECUTION ZONE -->
+<div id="execution-zone" class="panel panel-fixed">
+  <div class="ph"><span class="ph-title">EXECUTION + MICROSTRUCTURE LAYER</span><span class="badge badge-warn">OPS</span></div>
+  <div class="pb">
+    <div class="exec-grid">
+      <div class="exec-card"><div class="exec-k">SPREAD</div><div class="exec-v" id="exSpread">—</div><div class="exec-note">Top of book</div></div>
+      <div class="exec-card"><div class="exec-k">LATENCY</div><div class="exec-v" id="exLatency">—</div><div class="exec-note">Feed freshness</div></div>
+      <div class="exec-card"><div class="exec-k">SLIPPAGE</div><div class="exec-v" id="exSlippage">—</div><div class="exec-note">Expected impact</div></div>
+      <div class="exec-card"><div class="exec-k">FLOW TOXICITY</div><div class="exec-v" id="exToxicity">—</div><div class="exec-note">Execution hazard</div></div>
+      <div class="exec-card"><div class="exec-k">KELLY SIZE</div><div class="exec-v" id="exKelly">—</div><div class="exec-note">Sizing envelope</div></div>
+      <div class="exec-card"><div class="exec-k">EV / $1</div><div class="exec-v" id="exEv">—</div><div class="exec-note">Decision economics</div></div>
+      <div class="exec-card"><div class="exec-k">RISK LOCK</div><div class="exec-v" id="exLock">—</div><div class="exec-note">Veto authority</div></div>
+      <div class="exec-card"><div class="exec-k">ROUND PHASE</div><div class="exec-v" id="exPhase">—</div><div class="exec-note">Timing pressure</div></div>
+    </div>
+  </div>
+</div>
+
 </div><!-- #app -->
 
 <script>
@@ -1018,6 +1119,12 @@ var marketStore = {
     currentBelief: { direction: 'NEUTRAL', confidence: 0 },
     executionAllowed: false,
     riskLevel: 'MEDIUM',
+    authority: {
+      source: 'COGNITION_LAYER',
+      realityValid: true,
+      riskVeto: false,
+      simulationPassed: false,
+    },
     snapshotId: '',
     lastUpdated: 0,
   },
@@ -1032,6 +1139,12 @@ const DEFAULT_SYSTEM_TRUTH = {
   currentBelief: { direction: 'NEUTRAL', confidence: 0 },
   executionAllowed: false,
   riskLevel: 'MEDIUM',
+  authority: {
+    source: 'COGNITION_LAYER',
+    realityValid: true,
+    riskVeto: false,
+    simulationPassed: false,
+  },
   snapshotId: '',
   lastUpdated: 0,
 };
@@ -1057,16 +1170,26 @@ function getSystemTruthClient() {
       if (riskScalar >= 0.75) riskLevel = 'CRITICAL';
       else if (riskScalar >= 0.55) riskLevel = 'HIGH';
       else if (riskScalar >= 0.35) riskLevel = 'MEDIUM';
+      const realityValid = quality >= 0.65;
+      const riskVeto = riskLevel === 'HIGH' || riskLevel === 'CRITICAL';
+      const simulationPassed = secureDecision;
       const boundedDecisionAbove = Number.isFinite(pDecisionAbove) ? pDecisionAbove : 0.5;
       const verdict = boundedDecisionAbove >= 0.5 ? 'ABOVE' : 'BELOW';
       let direction = 'NEUTRAL';
       if (secureDecision) {
         direction = verdict === 'ABOVE' ? 'UP' : 'DOWN';
       }
+      const authority = {
+        source: 'COGNITION_LAYER',
+        realityValid,
+        riskVeto,
+        simulationPassed,
+      };
       return {
         currentBelief: { direction, confidence: clamp(confidence, 0, 100) },
-        executionAllowed: secureDecision && direction !== 'NEUTRAL' && riskLevel !== 'HIGH' && riskLevel !== 'CRITICAL',
+        executionAllowed: direction !== 'NEUTRAL' && authority.realityValid && !authority.riskVeto && authority.simulationPassed,
         riskLevel,
+        authority,
         riskScalar,
         secureDecision,
         verdict,
@@ -1096,6 +1219,9 @@ function buildTruthPublishSignature(derivedTruth) {
     derivedTruth.currentBelief.confidence,
     derivedTruth.executionAllowed,
     derivedTruth.riskLevel,
+    derivedTruth.authority?.realityValid,
+    derivedTruth.authority?.riskVeto,
+    derivedTruth.authority?.simulationPassed,
     marketStore.price,
     marketStore.lastMsgTs,
     marketStore.pDecisionAbove,
@@ -1106,6 +1232,7 @@ function buildTruthPublishSignature(derivedTruth) {
 
 function syncSystemTruthMirror(nextTruth, meta = {}) {
   const currentBelief = nextTruth?.currentBelief || DEFAULT_SYSTEM_TRUTH.currentBelief;
+  const authority = nextTruth?.authority || DEFAULT_SYSTEM_TRUTH.authority;
   marketStore.systemTruth = {
     currentBelief: {
       direction: currentBelief.direction || 'NEUTRAL',
@@ -1113,6 +1240,12 @@ function syncSystemTruthMirror(nextTruth, meta = {}) {
     },
     executionAllowed: typeof nextTruth?.executionAllowed === 'boolean' ? nextTruth.executionAllowed : false,
     riskLevel: nextTruth?.riskLevel || 'MEDIUM',
+    authority: {
+      source: authority?.source || 'COGNITION_LAYER',
+      realityValid: typeof authority?.realityValid === 'boolean' ? authority.realityValid : true,
+      riskVeto: typeof authority?.riskVeto === 'boolean' ? authority.riskVeto : false,
+      simulationPassed: typeof authority?.simulationPassed === 'boolean' ? authority.simulationPassed : false,
+    },
     snapshotId: typeof nextTruth?.snapshotId === 'string' ? nextTruth.snapshotId : '',
     lastUpdated: Number.isFinite(nextTruth?.lastUpdated) ? nextTruth.lastUpdated : 0,
   };
@@ -1185,6 +1318,7 @@ async function publishSystemTruth(force = false) {
         currentBelief: derivedTruth.currentBelief,
         executionAllowed: derivedTruth.executionAllowed,
         riskLevel: derivedTruth.riskLevel,
+        authority: derivedTruth.authority,
         snapshotId: createClientSnapshotId(),
         lastUpdated: Date.now(),
       }),
@@ -3403,6 +3537,41 @@ function renderAll(){ // NOSONAR
   const secureDecision = (s.confidence || 0) >= confThreshold && quality >= 0.65 && directionalEdge >= edgeThreshold;
   const decisionVerdict = s.verdictDecision || (pDecisionAbove >= 0.5 ? 'ABOVE' : 'BELOW');
   const verdictUi = secureDecision ? decisionVerdict : 'STANDBY';
+  const edgePct = ((pDecisionAbove - s.kalshiAbove / 100) * 100);
+  const riskLevelUi = s.systemTruth?.riskLevel || 'MEDIUM';
+  const execAllowedUi = s.systemTruth?.executionAllowed ? 'ALLOW' : 'BLOCK';
+
+  let dcSignalText = 'WAIT';
+  if (verdictUi === 'ABOVE') dcSignalText = 'LONG / ABOVE';
+  else if (verdictUi === 'BELOW') dcSignalText = 'SHORT / BELOW';
+  setTxt('dcSignal', dcSignalText);
+  setTxt('dcConfidence', `${(s.confidence || 0).toFixed(0)}%`);
+  setTxt('dcEdge', `${edgePct >= 0 ? '+' : ''}${edgePct.toFixed(1)}%`);
+  setTxt('dcRisk', riskLevelUi);
+  setTxt('dcExecution', execAllowedUi);
+  const dcSignalEl = document.getElementById('dcSignal');
+  if (dcSignalEl) {
+    let dcSignalTone = 'neut';
+    if (verdictUi === 'ABOVE') dcSignalTone = 'up';
+    else if (verdictUi === 'BELOW') dcSignalTone = 'dn';
+    dcSignalEl.className = `dc-signal ${dcSignalTone}`;
+  }
+  const dcRiskEl = document.getElementById('dcRisk');
+  if (dcRiskEl) {
+    let riskTone = 'bad';
+    if (riskLevelUi === 'LOW' || riskLevelUi === 'MEDIUM') riskTone = 'ok';
+    else if (riskLevelUi === 'HIGH') riskTone = 'warn';
+    dcRiskEl.className = `dc-v ${riskTone}`;
+  }
+  const dcExecEl = document.getElementById('dcExecution');
+  if (dcExecEl) {
+    dcExecEl.className = 'dc-v ' + (execAllowedUi === 'ALLOW' ? 'ok' : 'bad');
+  }
+  let invalidationTxt = `Invalidates on risk veto, stale snapshot, or edge collapse below ${(edgeThreshold * 100).toFixed(0)}%.`;
+  if (secureDecision === false) {
+    invalidationTxt = `Quality ${Math.round(quality * 100)}% or directional edge ${(directionalEdge * 100).toFixed(1)}% is below threshold.`;
+  }
+  setTxt('dcInvalidation', invalidationTxt);
   const vb=document.getElementById('verdictBox');
   if(vb){
     if (verdictUi === 'ABOVE') vb.className='verdict-box verdict-above';
@@ -3499,6 +3668,20 @@ function renderAll(){ // NOSONAR
     else if (edge < 0) keb.style.color='var(--red)';
     else keb.style.color='var(--t2)';
   }
+
+  // Execution layer strip
+  const spreadTxt = spread ? `$${spread.toFixed(2)}` : '—';
+  setTxt('exSpread', spreadTxt);
+  let exLatencyTxt = '—';
+  if (s.wsSource === 'rest') exLatencyTxt = 'REST';
+  else if (s.wsLatency) exLatencyTxt = `${s.wsLatency}ms`;
+  setTxt('exLatency', exLatencyTxt);
+  setTxt('exSlippage', `${(((s.atr || 0) / Math.max(1, s.price || 1)) * 100).toFixed(2)}%`);
+  setTxt('exToxicity', `${(s.flowToxicity || 0).toFixed(1)}%`);
+  setTxt('exKelly', `${((s.kellyFull || 0) * 50 * 100).toFixed(1)}%`);
+  setTxt('exEv', `${(marketStore.kalshiEV ?? 0) >= 0 ? '+' : ''}${((marketStore.kalshiEV ?? 0) * 100).toFixed(1)}¢`);
+  setTxt('exLock', execAllowedUi === 'ALLOW' ? 'OPEN' : 'LOCKED');
+  setTxt('exPhase', String(kRoundNow.phase || 'open').toUpperCase());
 
   // Kelly
   const kf=s.kellyFull;

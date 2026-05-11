@@ -15,6 +15,9 @@ function testBeliefGraphUpdatesFromSnapshot() {
     const snapshot = makeSnapshot('KXBTC-BF-1', now);
     bus.emit(EVENTS.DECISION_SNAPSHOT, snapshot);
     assert.ok(beliefEvent !== null, 'expected belief graph state event');
+    if (!beliefEvent) {
+        throw new Error('belief event missing');
+    }
     const summary = beliefEvent.summary;
     assert.ok(summary.beliefAdjustedProbability > 0, 'belief adjusted probability must be positive');
     assert.ok(summary.beliefAdjustedProbability < 1, 'belief adjusted probability must be < 1');
@@ -43,6 +46,9 @@ function testBeliefGraphDetectsContradictions() {
     });
     bus.emit(EVENTS.DECISION_SNAPSHOT, snapshot);
     assert.ok(beliefEvent !== null, 'expected belief graph state event');
+    if (!beliefEvent) {
+        throw new Error('belief event missing');
+    }
     const summary = beliefEvent.summary;
     assert.ok(summary.contradictionCount >= 0, 'contradiction count should be >= 0');
 }
@@ -67,6 +73,9 @@ function testBeliefGraphCalibrationNode() {
     });
     bus.emit(EVENTS.DECISION_SNAPSHOT, snapshot);
     assert.ok(beliefEvent !== null, 'expected belief graph state event');
+    if (!beliefEvent) {
+        throw new Error('belief event missing');
+    }
     const summary = beliefEvent.summary;
     // With good calibration, uncertainty should be lower
     assert.ok(summary.beliefUncertaintyInterval[1] - summary.beliefUncertaintyInterval[0] < 0.5, 'belief uncertainty interval should be reasonable');
@@ -123,6 +132,9 @@ function testBeliefGraphRegimeTransitionHazard() {
     };
     bus.emit(EVENTS.DECISION_SNAPSHOT, snapshotWithDrift);
     assert.ok(beliefEvent !== null, 'expected belief graph state event');
+    if (!beliefEvent) {
+        throw new Error('belief event missing');
+    }
     const summary = beliefEvent.summary;
     assert.ok(summary.regimeTransitionHazard > 0.2, `regime transition hazard should be > 0.2 but got ${summary.regimeTransitionHazard}`);
 }
@@ -138,6 +150,9 @@ function testBeliefGraphGraphHealth() {
     const snapshot = makeSnapshot('KXBTC-BF-6', now);
     bus.emit(EVENTS.DECISION_SNAPSHOT, snapshot);
     assert.ok(beliefEvent !== null, 'expected belief graph state event');
+    if (!beliefEvent) {
+        throw new Error('belief event missing');
+    }
     const summary = beliefEvent.summary;
     assert.ok(summary.graphDensity >= 0 && summary.graphDensity <= 1, 'graph density should be 0-1');
     assert.ok(summary.graphEntropy >= 0, 'graph entropy should be >= 0');
@@ -318,5 +333,5 @@ async function runAllTests() {
     }
 }
 if (import.meta.url === `file://${process.argv[1]}`) {
-    runAllTests().catch(console.error);
+    await runAllTests();
 }

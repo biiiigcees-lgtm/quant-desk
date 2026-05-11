@@ -2,6 +2,7 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
 const DIRECTION_SET = new Set(['UP', 'DOWN', 'NEUTRAL']);
 const RISK_LEVEL_SET = new Set(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
+const AUTHORITY_SOURCE_SET = new Set(['COGNITION_LAYER', 'RISK_ENGINE', 'REALITY_LAYER']);
 const RISK_ORDER = {
   LOW: 0,
   MEDIUM: 1,
@@ -79,6 +80,15 @@ function requireSnapshotId(value) {
   return value;
 }
 
+function extractSnapshotTimestamp(snapshotId) {
+  const [timestampRaw] = String(snapshotId).split('-', 1);
+  const timestampMs = Number(timestampRaw);
+  if (!Number.isFinite(timestampMs)) {
+    throw new TypeError('snapshotId timestamp is invalid');
+  }
+  return Math.floor(timestampMs);
+}
+
 function normalizeConfidence(value, label = 'confidence') {
   const confidence = Number(value);
   if (!Number.isFinite(confidence)) {
@@ -95,11 +105,40 @@ function validateBelief(currentBelief) {
   };
 }
 
+function validateAuthority(authorityInput, executionAllowed) {
+  if (authorityInput == null) {
+    if (executionAllowed) {
+      throw new Error('authority metadata required when executionAllowed=true');
+    }
+    return {
+      source: 'COGNITION_LAYER',
+      realityValid: true,
+      riskVeto: false,
+      simulationPassed: false,
+    };
+  }
+
+  const authority = requireObject(authorityInput, 'authority');
+  const validated = {
+    source: requireEnum(authority.source, AUTHORITY_SOURCE_SET, 'authority.source'),
+    realityValid: requireBoolean(authority.realityValid, 'authority.realityValid'),
+    riskVeto: requireBoolean(authority.riskVeto, 'authority.riskVeto'),
+    simulationPassed: requireBoolean(authority.simulationPassed, 'authority.simulationPassed'),
+  };
+
+  if (executionAllowed && !validated.simulationPassed) {
+    throw new Error('executionAllowed requires authority.simulationPassed=true');
+  }
+
+  return validated;
+}
+
 function cloneTruth() {
   return {
     currentBelief: { ...systemTruth.currentBelief },
     executionAllowed: systemTruth.executionAllowed,
     riskLevel: systemTruth.riskLevel,
+    authority: { ...systemTruth.authority },
     snapshotId: systemTruth.snapshotId,
     lastUpdated: systemTruth.lastUpdated,
   };
@@ -112,6 +151,12 @@ export const systemTruth = {
   },
   executionAllowed: false,
   riskLevel: 'MEDIUM',
+  authority: {
+    source: 'COGNITION_LAYER',
+    realityValid: true,
+    riskVeto: false,
+    simulationPassed: false,
+  },
   snapshotId: generateSnapshotId(),
   lastUpdated: Date.now(),
 };
@@ -125,10 +170,22 @@ export function getSystemTruth() {
 export function updateSystemTruth(nextState) {
   const next = requireObject(nextState, 'system truth payload');
   const snapshotId = requireSnapshotId(next.snapshotId);
+  const nextSnapshotTs = extractSnapshotTimestamp(snapshotId);
+  const currentSnapshotTs = extractSnapshotTimestamp(systemTruth.snapshotId);
+  if (nextSnapshotTs < currentSnapshotTs) {
+    throw new Error('snapshot-regression-detected');
+  }
+  const requestedExecutionAllowed = requireBoolean(next.executionAllowed, 'executionAllowed');
+  const authority = validateAuthority(next.authority, requestedExecutionAllowed);
+  const effectiveExecutionAllowed = requestedExecutionAllowed
+    && authority.realityValid
+    && !authority.riskVeto
+    && authority.simulationPassed;
   const updated = {
     currentBelief: validateBelief(next.currentBelief),
-    executionAllowed: requireBoolean(next.executionAllowed, 'executionAllowed'),
+    executionAllowed: effectiveExecutionAllowed,
     riskLevel: requireEnum(next.riskLevel, RISK_LEVEL_SET, 'riskLevel'),
+    authority,
     snapshotId,
     lastUpdated: Date.now(),
   };
@@ -136,6 +193,7 @@ export function updateSystemTruth(nextState) {
   systemTruth.currentBelief = updated.currentBelief;
   systemTruth.executionAllowed = updated.executionAllowed;
   systemTruth.riskLevel = updated.riskLevel;
+  systemTruth.authority = updated.authority;
   systemTruth.snapshotId = updated.snapshotId;
   systemTruth.lastUpdated = updated.lastUpdated;
 

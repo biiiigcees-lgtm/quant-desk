@@ -3,19 +3,30 @@ export class AiAggregationService {
     constructor(bus) {
         this.bus = bus;
         this.state = new Map();
+        this.stateTtlMs = 5 * 60 * 1000;
     }
     start() {
         this.bus.on(EVENTS.AI_AGENT_RESPONSE, (event) => {
-            const current = this.state.get(event.contractId) ?? { byAgent: {} };
+            this.pruneState(event.timestamp);
+            const current = this.state.get(event.contractId) ?? { byAgent: {}, updatedAt: event.timestamp };
             current.byAgent[event.agent] = {
                 output: event.output,
                 confidence: extractConfidence(event.output),
                 timestamp: event.timestamp,
             };
+            current.updatedAt = event.timestamp;
             this.state.set(event.contractId, current);
             const aggregate = this.buildAggregate(event.contractId, current.byAgent);
             this.bus.emit(EVENTS.AI_AGGREGATED_INTELLIGENCE, aggregate);
         });
+    }
+    pruneState(nowMs = Date.now()) {
+        const cutoff = nowMs - this.stateTtlMs;
+        for (const [contractId, state] of this.state.entries()) {
+            if (state.updatedAt < cutoff) {
+                this.state.delete(contractId);
+            }
+        }
     }
     buildAggregate(contractId, byAgent) {
         const market = (byAgent['market-analyst']?.output ?? {});

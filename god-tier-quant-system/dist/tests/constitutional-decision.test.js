@@ -5,13 +5,15 @@ import { ConstitutionalDecisionService } from '../services/constitutional-decisi
 function testBlocksWithoutSnapshot() {
     const bus = new EventBus();
     new ConstitutionalDecisionService(bus).start();
-    let decision = null;
+    const decisions = [];
     bus.on(EVENTS.CONSTITUTIONAL_DECISION, (event) => {
-        decision = event;
+        decisions.push(event);
     });
     bus.emit(EVENTS.AI_AGGREGATED_INTELLIGENCE, makeAggregated('KXBTC-CD-1'));
-    assert.ok(decision !== null, 'expected constitutional decision output');
-    const out = decision;
+    const out = decisions[0];
+    if (!out) {
+        throw new Error('expected constitutional decision output');
+    }
     assert.equal(out.trade_allowed, false, 'missing snapshot must block trading');
     assert.equal(out.execution_mode, 'blocked', 'missing snapshot must force blocked execution mode');
     assert.ok(out.governance_log.some((row) => row.rule === 'snapshot-required' && row.outcome === 'block'), 'expected snapshot-required block trace');
@@ -19,9 +21,9 @@ function testBlocksWithoutSnapshot() {
 function testHardStopVetoWins() {
     const bus = new EventBus();
     new ConstitutionalDecisionService(bus).start();
-    let decision = null;
+    const decisions = [];
     bus.on(EVENTS.CONSTITUTIONAL_DECISION, (event) => {
-        decision = event;
+        decisions.push(event);
     });
     const now = Date.now();
     bus.emit(EVENTS.DECISION_SNAPSHOT, makeSnapshot('KXBTC-CD-2', now));
@@ -32,8 +34,10 @@ function testHardStopVetoWins() {
         timestamp: now + 1,
     });
     bus.emit(EVENTS.AI_AGGREGATED_INTELLIGENCE, makeAggregated('KXBTC-CD-2'));
-    assert.ok(decision !== null, 'expected constitutional decision output');
-    const out = decision;
+    const out = decisions[0];
+    if (!out) {
+        throw new Error('expected constitutional decision output');
+    }
     assert.equal(out.trade_allowed, false, 'hard-stop must veto execution');
     assert.equal(out.execution_mode, 'blocked', 'hard-stop must force blocked mode');
     assert.ok(out.governance_log.some((row) => row.rule === 'hard-risk-veto' && row.outcome === 'block'), 'expected hard-risk-veto block trace');

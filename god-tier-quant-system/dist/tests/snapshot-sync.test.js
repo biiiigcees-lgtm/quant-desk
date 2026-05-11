@@ -26,6 +26,9 @@ function testInvalidWhenSourcesMissing() {
         timestamp: now,
     });
     assert.ok(invalid !== null, 'expected invalid cycle while required sources are missing');
+    if (!invalid) {
+        throw new Error('invalid event missing');
+    }
     const invalidEvent = invalid;
     assert.equal(invalidEvent.reason, 'missing-source');
     assert.ok((invalidEvent.missingSources?.length ?? 0) > 0, 'expected missing source names');
@@ -104,6 +107,9 @@ function testSnapshotReadyWhenSourcesSynchronized() {
         timestamp: now + 18,
     });
     assert.ok(ready !== null, 'expected synchronized snapshot event');
+    if (!ready) {
+        throw new Error('ready snapshot missing');
+    }
     const readySnapshot = ready;
     assert.ok(readySnapshot.snapshot_id.startsWith('KXBTC-SNAP:'), 'expected deterministic snapshot id format');
     assert.equal(readySnapshot.triggerEvent, EVENTS.DRIFT_EVENT, 'expected snapshot trigger to match latest source update');

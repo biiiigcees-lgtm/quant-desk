@@ -53,6 +53,21 @@ export class ApiServer {
     this.bus.on(EVENTS.BELIEF_GRAPH_STATE, (event) => {
       this.latest.beliefGraphState = event;
     });
+    this.bus.on(EVENTS.SYSTEM_CONSCIOUSNESS, (event) => {
+      this.latest.systemConsciousness = event;
+    });
+    this.bus.on(EVENTS.EPISTEMIC_HEALTH, (event) => {
+      this.latest.epistemicHealth = event;
+    });
+    this.bus.on(EVENTS.DIGITAL_IMMUNE_ALERT, (event) => {
+      this.latest.digitalImmuneAlert = event;
+    });
+    this.bus.on(EVENTS.STRATEGY_GENOME_UPDATE, (event) => {
+      this.latest.strategyGenome = event;
+    });
+    this.bus.on(EVENTS.REPLAY_INTEGRITY, (event) => {
+      this.latest.replayIntegrity = event;
+    });
     this.bus.on(EVENTS.CONSTITUTIONAL_DECISION, (event) => {
       this.latest.constitutionalDecision = event;
     });
@@ -146,6 +161,20 @@ export class ApiServer {
       if (path === '/orchestration/summary') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(this.computeOrchestrationSummary()));
+        return;
+      }
+
+      if (path === '/organism') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            systemConsciousness: this.latest.systemConsciousness ?? null,
+            epistemicHealth: this.latest.epistemicHealth ?? null,
+            digitalImmuneAlert: this.latest.digitalImmuneAlert ?? null,
+            strategyGenome: this.latest.strategyGenome ?? null,
+            replayIntegrity: this.latest.replayIntegrity ?? null,
+          }),
+        );
         return;
       }
 

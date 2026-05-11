@@ -2,8 +2,9 @@ import { EVENTS } from '../../core/event-bus/events.js';
 export class ExecutionIntelligenceEngine {
     constructor(bus) {
         this.bus = bus;
-        this.idempotency = new Set();
+        this.idempotency = new Map();
         this.states = new Map();
+        this.idempotencyTtlMs = 60 * 60 * 1000;
         this.aiExecutionAdvisory = null;
     }
     start() {
@@ -30,7 +31,16 @@ export class ExecutionIntelligenceEngine {
             this.handleOrderEvent(order);
         });
     }
+    pruneIdempotency(nowMs = Date.now()) {
+        const cutoff = nowMs - this.idempotencyTtlMs;
+        for (const [key, ts] of this.idempotency.entries()) {
+            if (ts < cutoff) {
+                this.idempotency.delete(key);
+            }
+        }
+    }
     handleConstitutionalDecision(decision) {
+        this.pruneIdempotency();
         const executionId = `exec-${decision.contractId}-${decision.cycle_id}`;
         if (!decision.trade_allowed || decision.execution_mode === 'blocked') {
             this.publishState({
@@ -47,7 +57,7 @@ export class ExecutionIntelligenceEngine {
         if (this.idempotency.has(dedupeKey)) {
             return;
         }
-        this.idempotency.add(dedupeKey);
+        this.idempotency.set(dedupeKey, Date.now());
         const direction = decision.final_probability >= 0.5 ? 'YES' : 'NO';
         const safetyMode = decision.risk_level >= 75 ? 'safe-mode' : 'normal';
         const baselineSize = 150 * Math.max(0.02, Math.abs(decision.edge_score)) * Math.max(0.1, decision.confidence_score);
@@ -78,6 +88,7 @@ export class ExecutionIntelligenceEngine {
         this.emitPlanLifecycle(plan, 'constitutional-created');
     }
     handleRiskDecision(decision) {
+        this.pruneIdempotency();
         const executionId = this.buildExecutionId(decision);
         if (!decision.approved || decision.size <= 0) {
             this.publishState({
@@ -94,7 +105,7 @@ export class ExecutionIntelligenceEngine {
         if (this.idempotency.has(dedupeKey)) {
             return;
         }
-        this.idempotency.add(dedupeKey);
+        this.idempotency.set(dedupeKey, Date.now());
         const plan = this.buildPlanFromRiskDecision(decision, executionId);
         this.emitPlanLifecycle(plan, plan.routeReason);
     }
