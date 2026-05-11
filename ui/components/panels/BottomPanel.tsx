@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { cx } from '../../lib/cx';
 import type { SystemStateSnapshot } from '../../lib/types';
 import { heightPctClass, widthPctClass } from '../../lib/visual';
@@ -129,7 +130,7 @@ export function BottomPanel({ state }: Readonly<Props>) {
   );
 }
 
-function StateMachine({ currentPhase, isBlocked }: Readonly<{ currentPhase: ExecPhase; isBlocked: boolean }>) {
+const StateMachine = React.memo(function StateMachine({ currentPhase, isBlocked }: Readonly<{ currentPhase: ExecPhase; isBlocked: boolean }>) {
   const phases = isBlocked ? (['idle', 'blocked'] as const) : EXECUTION_PHASES;
 
   return (
@@ -150,9 +151,9 @@ function StateMachine({ currentPhase, isBlocked }: Readonly<{ currentPhase: Exec
       })}
     </div>
   );
-}
+});
 
-function FillRow({ label, value, color = '#E6EDF3' }: Readonly<{ label: string; value: string; color?: string }>) {
+const FillRow = React.memo(function FillRow({ label, value, color = '#E6EDF3' }: Readonly<{ label: string; value: string; color?: string }>) {
   const toneClass = colorToTextClass(color);
   return (
     <div className="flex items-center justify-between">
@@ -160,9 +161,9 @@ function FillRow({ label, value, color = '#E6EDF3' }: Readonly<{ label: string; 
       <span className={cx('font-mono text-2xs uppercase', toneClass)}>{value}</span>
     </div>
   );
-}
+});
 
-function SimStat({ label, value, color = '#E6EDF3' }: Readonly<{ label: string; value: string; color?: string }>) {
+const SimStat = React.memo(function SimStat({ label, value, color = '#E6EDF3' }: Readonly<{ label: string; value: string; color?: string }>) {
   const toneClass = colorToTextClass(color);
   return (
     <div className="flex items-center justify-between">
@@ -170,9 +171,9 @@ function SimStat({ label, value, color = '#E6EDF3' }: Readonly<{ label: string; 
       <span className={cx('font-mono text-xs', toneClass)}>{value}</span>
     </div>
   );
-}
+});
 
-function FactorBar({ label, value }: Readonly<{ label: string; value: number }>) {
+const FactorBar = React.memo(function FactorBar({ label, value }: Readonly<{ label: string; value: number }>) {
   const fillClass = factorFillClass(value);
   const toneClass = factorTextClass(value);
   return (
@@ -184,9 +185,9 @@ function FactorBar({ label, value }: Readonly<{ label: string; value: number }>)
       <span className={cx('font-mono text-2xs', toneClass)}>{(value * 100).toFixed(0)}</span>
     </div>
   );
-}
+});
 
-function PlaceholderBars() {
+const PlaceholderBars = React.memo(function PlaceholderBars() {
   const data: CandidatePlan[] = [
     { name: 'market aggressive', kl: 0.12, best: false },
     { name: 'passive patient', kl: 0.08, best: false },
@@ -195,7 +196,7 @@ function PlaceholderBars() {
   ];
 
   return <CandidateBars data={data} />;
-}
+});
 
 function CandidateBars({ data }: Readonly<{ data: CandidatePlan[] }>) {
   const maxKl = Math.max(...data.map((entry) => entry.kl), 0.0001);
