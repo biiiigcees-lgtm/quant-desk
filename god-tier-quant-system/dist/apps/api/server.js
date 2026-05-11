@@ -6,10 +6,12 @@ import { ReplayStorage } from '../../core/replay/storage.js';
 import { ExecutionJournal } from '../../core/execution/journal.js';
 import { ExecutionCoordinator } from '../../core/determinism/execution-coordinator.js';
 export class ApiServer {
-    constructor(bus, host, port) {
+    constructor(bus, host, port, riskGovernor, lineageTracer) {
         this.bus = bus;
         this.host = host;
         this.port = port;
+        this.riskGovernor = riskGovernor;
+        this.lineageTracer = lineageTracer;
         this.server = null;
         this.latest = {};
         this.orchestrationMetrics = [];
@@ -240,6 +242,32 @@ export class ApiServer {
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify(result));
                 });
+                return;
+            }
+            if (path === '/risk/mode') {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    mode: this.riskGovernor?.getMode() ?? 'NORMAL',
+                    canExecute: this.riskGovernor?.canExecute() ?? true,
+                    isLocked: this.riskGovernor?.isLocked() ?? false,
+                    lockedSince: this.riskGovernor?.lockedSince() ?? null,
+                }));
+                return;
+            }
+            if (path === '/lineage') {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    recent: this.lineageTracer?.getRecent(50) ?? [],
+                }));
+                return;
+            }
+            if (path.startsWith('/lineage/')) {
+                const contractId = decodeURIComponent(path.slice('/lineage/'.length));
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    contractId,
+                    chains: this.lineageTracer?.getLineage(contractId, 20) ?? [],
+                }));
                 return;
             }
             res.writeHead(404, { 'Content-Type': 'application/json' });

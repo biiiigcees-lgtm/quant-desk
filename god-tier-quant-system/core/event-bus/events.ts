@@ -50,4 +50,6 @@ export const EVENTS = {
   ADVERSARIAL_AUDIT: 'adversarial:audit',
   MARKET_MEMORY: 'market:memory',
   MULTI_TIMESCALE_VIEW: 'cognition:multiscale',
+  RISK_GOVERNANCE: 'risk:governance',
+  LINEAGE_CHAIN: 'lineage:chain',
 } as const;

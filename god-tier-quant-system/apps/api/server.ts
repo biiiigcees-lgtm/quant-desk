@@ -6,6 +6,8 @@ import { InvariantChecker } from '../../core/invariants/checker.js';
 import { ReplayStorage } from '../../core/replay/storage.js';
 import { ExecutionJournal } from '../../core/execution/journal.js';
 import { ExecutionCoordinator } from '../../core/determinism/execution-coordinator.js';
+import { RiskGovernor } from '../../core/risk/governor.js';
+import { EventLineageTracer } from '../../core/observability/lineage.js';
 
 export class ApiServer {
   private server: http.Server | null = null;
@@ -26,7 +28,13 @@ export class ApiServer {
   private readonly orchestrationFailures: Array<{ agent: string; error: string; timestamp: number }> = [];
   private readonly routingDecisions: Array<{ triggerEvent: string; agents: string[]; timestamp: number }> = [];
 
-  constructor(private readonly bus: EventBus, private readonly host: string, private readonly port: number) {
+  constructor(
+    private readonly bus: EventBus,
+    private readonly host: string,
+    private readonly port: number,
+    private readonly riskGovernor?: RiskGovernor,
+    private readonly lineageTracer?: EventLineageTracer,
+  ) {
     this.snapshotReducer = new SnapshotReducer();
     this.invariantChecker = new InvariantChecker();
     this.replayStorage = new ReplayStorage(process.env['REPLAY_LOG_PATH'] ?? '/tmp/quant-replay.log');
@@ -288,6 +296,35 @@ export class ApiServer {
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify(result));
         });
+        return;
+      }
+
+      if (path === '/risk/mode') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          mode: this.riskGovernor?.getMode() ?? 'NORMAL',
+          canExecute: this.riskGovernor?.canExecute() ?? true,
+          isLocked: this.riskGovernor?.isLocked() ?? false,
+          lockedSince: this.riskGovernor?.lockedSince() ?? null,
+        }));
+        return;
+      }
+
+      if (path === '/lineage') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          recent: this.lineageTracer?.getRecent(50) ?? [],
+        }));
+        return;
+      }
+
+      if (path.startsWith('/lineage/')) {
+        const contractId = decodeURIComponent(path.slice('/lineage/'.length));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          contractId,
+          chains: this.lineageTracer?.getLineage(contractId, 20) ?? [],
+        }));
         return;
       }
 
