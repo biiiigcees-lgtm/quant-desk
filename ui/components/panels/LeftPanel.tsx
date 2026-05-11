@@ -1,19 +1,11 @@
 'use client';
 
-import clsx from 'clsx';
-import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
-import type { SystemStateSnapshot, ParticipantType } from '@/lib/types';
-import { SEVERITY_COLOR } from '@/lib/tokens';
+import { cx } from '../../lib/cx';
+import type { SystemStateSnapshot, ParticipantType } from '../../lib/types';
+import { SEVERITY_COLOR } from '../../lib/tokens';
+import { heatOpacityClass, widthPctClass } from '../../lib/visual';
 
 interface Props { state: SystemStateSnapshot | null }
-
-const PARTICIPANT_COLORS: Record<ParticipantType, string> = {
-  'liquidity-provider': '#00E5A8',
-  'momentum':           '#3B82F6',
-  'panic-flow':         '#FF4D4D',
-  'arbitrage':          '#FFB020',
-  'trapped-trader':     '#FF8C00',
-};
 
 // Static mock price history until real history is streamed.
 function usePriceHistory(prob?: number) {
@@ -25,12 +17,13 @@ function usePriceHistory(prob?: number) {
   }));
 }
 
-export function LeftPanel({ state }: Props) {
+export function LeftPanel({ state }: Readonly<Props>) {
   const prob = state?.probability;
   const drift = state?.drift;
   const anomaly = state?.anomaly;
   const reality = state?.realitySnapshot;
   const pf = state?.participantFlow;
+  const uncertaintyTone = uncertaintyToneClass(reality?.uncertaintyState);
 
   const priceHistory = usePriceHistory(prob?.estimatedProbability);
   const obiValue = (reality?.beliefFactor ?? 0.5) * 2 - 1; // map 0-1 → -1..+1
@@ -49,30 +42,7 @@ export function LeftPanel({ state }: Props) {
           <span className="panel-header">kalshi implied</span>
           <span className="font-mono text-xs text-primary">{((prob?.marketImpliedProbability ?? 0) * 100).toFixed(1)}%</span>
         </div>
-        <ResponsiveContainer width="100%" height={48}>
-          <AreaChart data={priceHistory} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-            <defs>
-              <linearGradient id="probGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#00E5A8" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#00E5A8" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <Area
-              type="monotone"
-              dataKey="v"
-              stroke="#00E5A8"
-              strokeWidth={1.5}
-              fill="url(#probGrad)"
-              dot={false}
-              isAnimationActive={false}
-            />
-            <Tooltip
-              contentStyle={{ background: '#0F1629', border: '1px solid #1E2D42', fontSize: 10, fontFamily: 'JetBrains Mono' }}
-              labelFormatter={() => ''}
-              formatter={(v: number) => [`${(v * 100).toFixed(1)}%`, '']}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+        <ProbabilitySparkline data={priceHistory} />
       </div>
 
       {/* Probability divergence */}
@@ -82,7 +52,7 @@ export function LeftPanel({ state }: Props) {
         <ProbBar label="MKT" value={prob?.marketImpliedProbability ?? 0} color="#00E5A8" />
         <div className="flex items-center justify-between mt-1">
           <span className="font-mono text-2xs text-muted">edge</span>
-          <span className={clsx(
+          <span className={cx(
             'font-mono text-xs font-semibold',
             (prob?.edge ?? 0) > 0 ? 'text-green' : 'text-red',
           )}>
@@ -122,7 +92,7 @@ export function LeftPanel({ state }: Props) {
         {/* Uncertainty */}
         <div className="mt-2 flex items-center justify-between">
           <span className="font-mono text-2xs text-muted">uncertainty</span>
-          <span className={clsx('font-mono text-xs', reality?.uncertaintyState === 'extreme' ? 'text-red' : reality?.uncertaintyState === 'high' ? 'text-yellow' : 'text-green')}>
+          <span className={cx('font-mono text-xs', uncertaintyTone)}>
             {reality?.uncertaintyState ?? '—'}
           </span>
         </div>
@@ -134,10 +104,7 @@ export function LeftPanel({ state }: Props) {
         {pf ? (
           <>
             <div className="flex items-center gap-1.5 mb-1.5">
-              <span
-                className="text-2xs font-mono font-semibold uppercase px-1.5 py-0.5 rounded"
-                style={{ color: PARTICIPANT_COLORS[pf.dominant], border: `1px solid ${PARTICIPANT_COLORS[pf.dominant]}44` }}
-              >
+              <span className={cx('text-2xs font-mono font-semibold uppercase px-1.5 py-0.5 rounded border', participantPillClass(pf.dominant))}>
                 {pf.dominant}
               </span>
               {pf.trappedTraderSignal && (
@@ -158,23 +125,51 @@ export function LeftPanel({ state }: Props) {
   );
 }
 
-function ProbBar({ label, value, color }: { label: string; value: number; color: string }) {
+function ProbabilitySparkline({ data }: Readonly<{ data: Array<{ t: number; v: number }> }>) {
+  if (data.length < 2) {
+    return <div className="w-full h-12 bg-elevated rounded" />;
+  }
+
+  const lastIndex = data.length - 1;
+  const points = data
+    .map((point, index) => {
+      const x = (index / lastIndex) * 100;
+      const y = (1 - Math.max(0, Math.min(1, point.v))) * 100;
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    })
+    .join(' ');
+  const areaPoints = `0,100 ${points} 100,100`;
+
+  return (
+    <svg viewBox="0 0 100 100" className="w-full h-12">
+      <defs>
+        <linearGradient id="probGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="5%" stopColor="#00E5A8" stopOpacity="0.3" />
+          <stop offset="95%" stopColor="#00E5A8" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon points={areaPoints} fill="url(#probGrad)" />
+      <polyline points={points} fill="none" stroke="#00E5A8" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+function ProbBar({ label, value, color }: Readonly<{ label: string; value: number; color: string }>) {
+  const fillClass = color === '#3B82F6' ? 'bg-blue' : 'bg-green';
   return (
     <div className="flex items-center gap-2 mb-0.5">
       <span className="font-mono text-2xs text-muted w-6">{label}</span>
       <div className="flex-1 h-1.5 bg-elevated rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-300"
-          style={{ width: `${Math.round(value * 100)}%`, backgroundColor: color }}
-        />
+        <div className={cx('h-full rounded-full transition-all duration-300', widthPctClass(value), fillClass)} />
       </div>
       <span className="font-mono text-2xs text-primary w-10 text-right">{(value * 100).toFixed(1)}%</span>
     </div>
   );
 }
 
-function HeatRow({ label, value, intensity }: { label: string; value: number; intensity: number }) {
-  const hue = intensity >= 0 ? '#00E5A8' : '#FF4D4D';
+function HeatRow({ label, value, intensity }: Readonly<{ label: string; value: number; intensity: number }>) {
+  const activeCells = Math.round(Math.max(0, Math.min(1, value)) * 10);
+  const activeClass = intensity >= 0 ? 'bg-green' : 'bg-red';
   return (
     <div className="flex items-center gap-2 mb-0.5">
       <span className="font-mono text-2xs text-muted w-12">{label}</span>
@@ -182,11 +177,11 @@ function HeatRow({ label, value, intensity }: { label: string; value: number; in
         {Array.from({ length: 10 }, (_, i) => (
           <div
             key={i}
-            className="rounded-sm"
-            style={{
-              backgroundColor: i < Math.round(value * 10) ? hue : '#1E2D42',
-              opacity: i < Math.round(value * 10) ? 0.4 + (i / 10) * 0.6 : 0.3,
-            }}
+            className={cx(
+              'rounded-sm',
+              i < activeCells ? activeClass : 'bg-border opacity-30',
+              i < activeCells && heatOpacityClass(i),
+            )}
           />
         ))}
       </div>
@@ -195,26 +190,83 @@ function HeatRow({ label, value, intensity }: { label: string; value: number; in
   );
 }
 
-function Badge({ label, value, color }: { label: string; value: string; color: string }) {
+function Badge({ label, value, color }: Readonly<{ label: string; value: string; color: string }>) {
+  const toneClass = toneClassFromColor(color);
+
   return (
     <div className="flex flex-col items-center gap-0.5">
       <span className="panel-header">{label}</span>
-      <span className="font-mono text-2xs font-semibold uppercase" style={{ color }}>{value}</span>
+      <span className={cx('font-mono text-2xs font-semibold uppercase', toneClass)}>{value}</span>
     </div>
   );
 }
 
-function StackedBar({ distribution }: { distribution: Record<ParticipantType, number> }) {
+function StackedBar({ distribution }: Readonly<{ distribution: Record<ParticipantType, number> }>) {
   const types: ParticipantType[] = ['liquidity-provider', 'momentum', 'panic-flow', 'arbitrage', 'trapped-trader'];
   return (
     <div className="flex h-2 rounded-full overflow-hidden gap-px">
       {types.map((t) => (
         <div
           key={t}
-          style={{ width: `${Math.round((distribution[t] ?? 0) * 100)}%`, backgroundColor: PARTICIPANT_COLORS[t] }}
+          className={cx(widthPctClass(distribution[t] ?? 0), participantFillClass(t))}
           title={`${t}: ${((distribution[t] ?? 0) * 100).toFixed(0)}%`}
         />
       ))}
     </div>
   );
+}
+
+function participantPillClass(participant: ParticipantType): string {
+  switch (participant) {
+    case 'liquidity-provider':
+      return 'text-green border-green/30';
+    case 'momentum':
+      return 'text-blue border-blue/30';
+    case 'panic-flow':
+      return 'text-red border-red/30';
+    case 'arbitrage':
+      return 'text-yellow border-yellow/30';
+    default:
+      return 'text-[#FF8C00] border-[#FF8C00]/30';
+  }
+}
+
+function participantFillClass(participant: ParticipantType): string {
+  switch (participant) {
+    case 'liquidity-provider':
+      return 'bg-green';
+    case 'momentum':
+      return 'bg-blue';
+    case 'panic-flow':
+      return 'bg-red';
+    case 'arbitrage':
+      return 'bg-yellow';
+    default:
+      return 'bg-[#FF8C00]';
+  }
+}
+
+function uncertaintyToneClass(state: string | undefined): string {
+  if (state === 'extreme') {
+    return 'text-red';
+  }
+  if (state === 'high') {
+    return 'text-yellow';
+  }
+  return 'text-green';
+}
+
+function toneClassFromColor(color: string): string {
+  switch (color) {
+    case '#00E5A8':
+      return 'text-green';
+    case '#FFB020':
+      return 'text-yellow';
+    case '#FF8C00':
+      return 'text-[#FF8C00]';
+    case '#FF4D4D':
+      return 'text-red';
+    default:
+      return 'text-neutral';
+  }
 }

@@ -1,12 +1,12 @@
 'use client';
 
-import { useSystemState } from '@/lib/hooks/useSystemState';
-import { TopBar } from '@/components/TopBar';
-import { LeftPanel } from '@/components/panels/LeftPanel';
-import { CenterPanel } from '@/components/panels/CenterPanel';
-import { RightPanel } from '@/components/panels/RightPanel';
-import { BottomPanel } from '@/components/panels/BottomPanel';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { useSystemState } from '../lib/hooks/useSystemState';
+import { TopBar } from '../components/TopBar';
+import { LeftPanel } from '../components/panels/LeftPanel';
+import { CenterPanel } from '../components/panels/CenterPanel';
+import { RightPanel } from '../components/panels/RightPanel';
+import { BottomPanel } from '../components/panels/BottomPanel';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 export default function Page() {
   const { state, isLoading, isError } = useSystemState(500);

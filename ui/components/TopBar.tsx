@@ -1,15 +1,15 @@
 'use client';
 
-import clsx from 'clsx';
-import type { SystemStateSnapshot } from '@/lib/types';
-import { SYSTEM_STATE_COLOR } from '@/lib/tokens';
+import { cx } from '../lib/cx';
+import type { SystemStateSnapshot } from '../lib/types';
+import { widthPctClass } from '../lib/visual';
 
 interface Props {
   state: SystemStateSnapshot | null;
   isConnected: boolean;
 }
 
-export function TopBar({ state, isConnected }: Props) {
+export function TopBar({ state, isConnected }: Readonly<Props>) {
   const prob = state?.probability;
   const reality = state?.realitySnapshot;
   const systemState = reality?.systemState ?? 'nominal';
@@ -25,24 +25,22 @@ export function TopBar({ state, isConnected }: Props) {
     <header className="flex items-center px-3 h-8 bg-surface panel-border shrink-0 gap-4 overflow-hidden">
       {/* System state pill */}
       <div
-        className="flex items-center gap-1.5 px-2 py-0.5 rounded text-2xs font-mono font-semibold uppercase"
-        style={{ color: SYSTEM_STATE_COLOR[systemState], border: `1px solid ${SYSTEM_STATE_COLOR[systemState]}33` }}
+        className={cx(
+          'flex items-center gap-1.5 px-2 py-0.5 rounded text-2xs font-mono font-semibold uppercase border',
+          systemStatePillClass(systemState),
+        )}
       >
-        <span
-          className="w-1.5 h-1.5 rounded-full"
-          style={{ backgroundColor: SYSTEM_STATE_COLOR[systemState] }}
-        />
+        <span className={cx('w-1.5 h-1.5 rounded-full', systemStateDotClass(systemState))} />
         {systemState}
       </div>
 
       {/* Epistemic health grade badge */}
       {epistemicGrade && (
         <div
-          className="px-1.5 py-0.5 rounded font-mono text-2xs font-bold"
-          style={{
-            color: epistemicGrade === 'A' ? '#00E5A8' : epistemicGrade === 'B' ? '#3B82F6' : epistemicGrade === 'C' ? '#FFB020' : '#FF4D4D',
-            border: '1px solid currentColor',
-          }}
+          className={cx(
+            'px-1.5 py-0.5 rounded font-mono text-2xs font-bold border',
+            epistemicGradeClass(epistemicGrade),
+          )}
           title={`Epistemic health: ${epistemicGrade}`}
         >
           EH:{epistemicGrade}
@@ -54,11 +52,11 @@ export function TopBar({ state, isConnected }: Props) {
         <span className="panel-header">truth</span>
         <div className="w-16 h-1.5 bg-elevated rounded-full overflow-hidden">
           <div
-            className="h-full rounded-full transition-all duration-300"
-            style={{
-              width: `${Math.round(truthScore * 100)}%`,
-              backgroundColor: truthScore > 0.7 ? '#00E5A8' : truthScore > 0.45 ? '#FFB020' : '#FF4D4D',
-            }}
+            className={cx(
+              'h-full rounded-full transition-all duration-300',
+              widthPctClass(truthScore),
+              truthScoreClass(truthScore),
+            )}
           />
         </div>
         <span className="panel-header font-mono">{(truthScore * 100).toFixed(0)}%</span>
@@ -73,7 +71,7 @@ export function TopBar({ state, isConnected }: Props) {
         <span className="text-muted">vs</span>
         <span className="text-secondary">MKT</span>
         <span className="text-primary">{(marketProb * 100).toFixed(1)}%</span>
-        <span className={clsx('font-semibold', edge > 0 ? 'text-green' : edge < 0 ? 'text-red' : 'text-muted')}>
+        <span className={cx('font-semibold', edgeClass(edge))}>
           {edge > 0 ? '+' : ''}{(edge * 100).toFixed(2)}% edge
         </span>
       </div>
@@ -97,12 +95,72 @@ export function TopBar({ state, isConnected }: Props) {
 
       {/* Connection dot */}
       <div className="flex items-center gap-1.5 shrink-0">
-        <span
-          className={clsx('w-1.5 h-1.5 rounded-full', isConnected ? 'bg-green' : 'bg-red')}
-          style={{ boxShadow: isConnected ? '0 0 6px #00E5A8' : '0 0 6px #FF4D4D' }}
-        />
+        <span className={cx('w-1.5 h-1.5 rounded-full', isConnected ? 'bg-green shadow-glow-green' : 'bg-red shadow-glow-red')} />
         <span className="panel-header">{isConnected ? 'live' : 'offline'}</span>
       </div>
     </header>
   );
+}
+
+function systemStatePillClass(systemState: string): string {
+  switch (systemState) {
+    case 'nominal':
+      return 'text-green border-green/20';
+    case 'cautious':
+      return 'text-yellow border-yellow/20';
+    case 'degraded':
+      return 'text-[#FF8C00] border-[#FF8C00]/20';
+    case 'halted':
+      return 'text-red border-red/20';
+    default:
+      return 'text-neutral border-neutral/20';
+  }
+}
+
+function systemStateDotClass(systemState: string): string {
+  switch (systemState) {
+    case 'nominal':
+      return 'bg-green';
+    case 'cautious':
+      return 'bg-yellow';
+    case 'degraded':
+      return 'bg-[#FF8C00]';
+    case 'halted':
+      return 'bg-red';
+    default:
+      return 'bg-neutral';
+  }
+}
+
+function epistemicGradeClass(grade: string): string {
+  switch (grade) {
+    case 'A':
+      return 'text-green border-current';
+    case 'B':
+      return 'text-blue border-current';
+    case 'C':
+      return 'text-yellow border-current';
+    default:
+      return 'text-red border-current';
+  }
+}
+
+function truthScoreClass(score: number): string {
+  if (score > 0.7) {
+    return 'bg-green';
+  }
+  if (score > 0.45) {
+    return 'bg-yellow';
+  }
+  return 'bg-red';
+}
+
+function edgeClass(edge: number): string {
+  if (edge > 0) {
+    return 'text-green';
+  }
+  if (edge < 0) {
+    return 'text-red';
+  }
+  return 'text-muted';
 }

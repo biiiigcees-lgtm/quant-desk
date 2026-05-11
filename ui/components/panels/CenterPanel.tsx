@@ -1,12 +1,12 @@
 'use client';
 
-import clsx from 'clsx';
-import type { SystemStateSnapshot, CausalInsight } from '@/lib/types';
-import { SYSTEM_STATE_COLOR } from '@/lib/tokens';
+import { cx } from '../../lib/cx';
+import type { SystemStateSnapshot, CausalInsight } from '../../lib/types';
+import { leftPctClass, widthPctClass } from '../../lib/visual';
 
 interface Props { state: SystemStateSnapshot | null }
 
-export function CenterPanel({ state }: Props) {
+export function CenterPanel({ state }: Readonly<Props>) {
   const prob = state?.probability;
   const reality = state?.realitySnapshot;
   const calibration = state?.calibration;
@@ -24,9 +24,13 @@ export function CenterPanel({ state }: Props) {
   const uncertainty = prob?.uncertaintyScore ?? 0;
   const permission = reality?.executionPermission ?? false;
   const systemState = reality?.systemState ?? 'nominal';
-  const stateColor = SYSTEM_STATE_COLOR[systemState];
+  const stateTextClass = systemStateTextClass(systemState);
 
   const edgeScore = Math.round(Math.min(100, Math.max(0, Math.abs(edge) * 1000)));
+  const edgeScoreToneClass = scoreToneClass(edgeScore, 40, 20);
+  const uncertaintyToneClass = uncertaintyToneClassFromValue(uncertainty);
+  const epistemicScore = epistemicHealth?.epistemicHealthScore ?? 0;
+  const epistemicFillClass = fillToneClass(epistemicScore);
 
   return (
     <main className="flex flex-col flex-1 min-w-0 panel-border overflow-hidden bg-base">
@@ -40,10 +44,7 @@ export function CenterPanel({ state }: Props) {
       <div className="flex flex-col items-center justify-center py-6 panel-border shrink-0">
         <span className="panel-header mb-2">estimated probability</span>
         <div className="relative flex items-baseline gap-2">
-          <span
-            className="font-mono text-6xl font-semibold leading-none"
-            style={{ color: edge > 0.01 ? '#00E5A8' : edge < -0.01 ? '#FF4D4D' : '#E6EDF3' }}
-          >
+          <span className={cx('font-mono text-6xl font-semibold leading-none', edgeToneClass(edge))}>
             {(estProb * 100).toFixed(1)}
           </span>
           <span className="font-mono text-2xl text-muted">%</span>
@@ -57,25 +58,19 @@ export function CenterPanel({ state }: Props) {
         {/* CI bar */}
         <div className="relative w-40 h-1 bg-elevated rounded-full mt-2 overflow-visible">
           <div
-            className="absolute h-1 rounded-full opacity-30"
-            style={{
-              left: `${ciLow * 100}%`,
-              width: `${(ciHigh - ciLow) * 100}%`,
-              backgroundColor: '#3B82F6',
-            }}
+            className={cx('absolute h-1 rounded-full opacity-30 bg-blue', leftPctClass(ciLow), widthPctClass(ciHigh - ciLow))}
           />
           <div
-            className="absolute w-2 h-2 rounded-full -top-0.5 -translate-x-1/2"
-            style={{ left: `${estProb * 100}%`, backgroundColor: '#3B82F6' }}
+            className={cx('absolute w-2 h-2 rounded-full -top-0.5 -translate-x-1/2 bg-blue', leftPctClass(estProb))}
           />
         </div>
       </div>
 
       {/* Metrics grid */}
       <div className="grid grid-cols-3 divide-x divide-border panel-border shrink-0">
-        <Metric label="edge score" value={`${edgeScore}`} unit="/100" color={edgeScore > 40 ? '#00E5A8' : edgeScore > 20 ? '#FFB020' : '#FF4D4D'} />
-        <Metric label="uncertainty" value={`${(uncertainty * 100).toFixed(0)}`} unit="%" color={uncertainty < 0.3 ? '#00E5A8' : uncertainty < 0.6 ? '#FFB020' : '#FF4D4D'} />
-        <Metric label="truth score" value={`${((reality?.truthScore ?? 0) * 100).toFixed(0)}`} unit="%" color={stateColor} />
+        <Metric label="edge score" value={`${edgeScore}`} unit="/100" toneClass={edgeScoreToneClass} />
+        <Metric label="uncertainty" value={`${(uncertainty * 100).toFixed(0)}`} unit="%" toneClass={uncertaintyToneClass} />
+        <Metric label="truth score" value={`${((reality?.truthScore ?? 0) * 100).toFixed(0)}`} unit="%" toneClass={stateTextClass} />
       </div>
 
       {/* Uncertainty map */}
@@ -95,20 +90,14 @@ export function CenterPanel({ state }: Props) {
           <span className="panel-header">epistemic health</span>
           <div className="flex-1 h-1 bg-elevated rounded-full overflow-hidden">
             <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{
-                width: `${Math.round(epistemicHealth.epistemicHealthScore * 100)}%`,
-                backgroundColor: epistemicHealth.epistemicHealthScore > 0.7 ? '#00E5A8' : epistemicHealth.epistemicHealthScore > 0.4 ? '#FFB020' : '#FF4D4D',
-              }}
+              className={cx(
+                'h-full rounded-full transition-all duration-500',
+                widthPctClass(epistemicScore),
+                epistemicFillClass,
+              )}
             />
           </div>
-          <span
-            className="font-mono text-xs font-bold px-1.5 py-0.5 rounded"
-            style={{
-              color: epistemicHealth.healthGrade === 'A' ? '#00E5A8' : epistemicHealth.healthGrade === 'B' ? '#3B82F6' : epistemicHealth.healthGrade === 'C' ? '#FFB020' : '#FF4D4D',
-              border: `1px solid currentColor`,
-            }}
-          >
+          <span className={cx('font-mono text-xs font-bold px-1.5 py-0.5 rounded border border-current', healthGradeClass(epistemicHealth.healthGrade))}>
             {epistemicHealth.healthGrade}
           </span>
         </div>
@@ -133,8 +122,7 @@ export function CenterPanel({ state }: Props) {
             <span className="text-2xl">{permission ? '🔓' : '🔒'}</span>
             <div>
               <div
-                className="font-mono text-sm font-bold uppercase"
-                style={{ color: permission ? '#00E5A8' : '#FF4D4D' }}
+                className={cx('font-mono text-sm font-bold uppercase', permission ? 'text-green' : 'text-red')}
               >
                 {permission ? 'permitted' : 'blocked'}
               </div>
@@ -146,10 +134,7 @@ export function CenterPanel({ state }: Props) {
         </div>
         <div className="text-right">
           <span className="panel-header block mb-1">governance</span>
-          <div
-            className="font-mono text-xs font-semibold uppercase"
-            style={{ color: stateColor }}
-          >
+          <div className={cx('font-mono text-xs font-semibold uppercase', stateTextClass)}>
             {systemState}
           </div>
           <div className="font-mono text-2xs text-muted mt-0.5">
@@ -163,8 +148,8 @@ export function CenterPanel({ state }: Props) {
         <span className="panel-header block mb-2">causal world model</span>
         {causalInsights.length > 0 ? (
           <div className="space-y-1 overflow-y-auto max-h-full">
-            {causalInsights.map((insight, i) => (
-              <CausalRow key={i} insight={insight} />
+            {causalInsights.map((insight) => (
+              <CausalRow key={`${insight.contractId}-${insight.timestamp}-${insight.cause}-${insight.effect}`} insight={insight} />
             ))}
           </div>
         ) : (
@@ -175,36 +160,37 @@ export function CenterPanel({ state }: Props) {
   );
 }
 
-function Metric({ label, value, unit, color }: { label: string; value: string; unit: string; color: string }) {
+function Metric({ label, value, unit, toneClass }: Readonly<{ label: string; value: string; unit: string; toneClass: string }>) {
   return (
     <div className="flex flex-col items-center py-3 gap-0.5">
       <span className="panel-header">{label}</span>
       <div className="flex items-baseline gap-0.5">
-        <span className="font-mono text-2xl font-semibold" style={{ color }}>{value}</span>
+        <span className={cx('font-mono text-2xl font-semibold', toneClass)}>{value}</span>
         <span className="font-mono text-xs text-muted">{unit}</span>
       </div>
     </div>
   );
 }
 
-function UncertaintyCell({ label, value, invert }: { label: string; value: number; invert?: boolean }) {
+function UncertaintyCell({ label, value, invert }: Readonly<{ label: string; value: number; invert?: boolean }>) {
   const display = invert ? 1 - value : value;
-  const color = display > 0.7 ? '#00E5A8' : display > 0.4 ? '#FFB020' : '#FF4D4D';
+  const toneClass = textToneClass(display);
+  const fillClass = fillToneClass(display);
   return (
     <div className="bg-elevated rounded p-2 flex flex-col gap-1">
       <span className="panel-header">{label}</span>
       <div className="w-full h-1 bg-border rounded-full overflow-hidden">
-        <div className="h-full rounded-full" style={{ width: `${Math.round(display * 100)}%`, backgroundColor: color }} />
+        <div className={cx('h-full rounded-full', widthPctClass(display), fillClass)} />
       </div>
-      <span className="font-mono text-2xs" style={{ color }}>{(display * 100).toFixed(0)}%</span>
+      <span className={cx('font-mono text-2xs', toneClass)}>{(display * 100).toFixed(0)}%</span>
     </div>
   );
 }
 
-function CausalRow({ insight }: { insight: CausalInsight }) {
+function CausalRow({ insight }: Readonly<{ insight: CausalInsight }>) {
   const shortLabel = (s: string) => s.split(':')[1] ?? s;
   return (
-    <div className={clsx(
+    <div className={cx(
       'flex items-center gap-2 px-2 py-1 rounded text-2xs font-mono',
       insight.spurious ? 'bg-elevated opacity-50' : 'bg-elevated',
     )}>
@@ -212,10 +198,7 @@ function CausalRow({ insight }: { insight: CausalInsight }) {
       <span className="text-muted">→</span>
       <span className="text-blue">{shortLabel(insight.effect)}</span>
       <div className="flex-1 h-1 bg-border rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full"
-          style={{ width: `${Math.round(insight.causalStrength * 100)}%`, backgroundColor: '#3B82F6' }}
-        />
+        <div className={cx('h-full rounded-full bg-blue', widthPctClass(insight.causalStrength))} />
       </div>
       <span className="text-primary w-8 text-right">{(insight.causalStrength * 100).toFixed(0)}%</span>
       {insight.spurious && <span className="text-red">~</span>}
@@ -234,20 +217,105 @@ function CausalGraphPlaceholder() {
 
   return (
     <svg viewBox="0 0 100 100" className="w-full h-24 opacity-30">
-      {edges.map(([from, to], i) => (
-        <line
-          key={i}
-          x1={nodes[from]!.x} y1={nodes[from]!.y}
-          x2={nodes[to]!.x} y2={nodes[to]!.y}
-          stroke="#1E2D42" strokeWidth="1"
-        />
-      ))}
-      {nodes.map((n, i) => (
-        <g key={i}>
+      {edges.map(([from, to]) => {
+        const fromNode = nodes[from];
+        const toNode = nodes[to];
+        if (!fromNode || !toNode) {
+          return null;
+        }
+        return (
+          <line
+            key={`${from}-${to}`}
+            x1={fromNode.x} y1={fromNode.y}
+            x2={toNode.x} y2={toNode.y}
+            stroke="#1E2D42" strokeWidth="1"
+          />
+        );
+      })}
+      {nodes.map((n) => (
+        <g key={n.label}>
           <circle cx={n.x} cy={n.y} r="6" fill="#0F1629" stroke={n.color} strokeWidth="1" />
           <text x={n.x} y={n.y + 4} textAnchor="middle" fill={n.color} fontSize="4" fontFamily="JetBrains Mono">{n.label}</text>
         </g>
       ))}
     </svg>
   );
+}
+
+function edgeToneClass(edge: number): string {
+  if (edge > 0.01) {
+    return 'text-green';
+  }
+  if (edge < -0.01) {
+    return 'text-red';
+  }
+  return 'text-primary';
+}
+
+function textToneClass(value: number): string {
+  if (value > 0.7) {
+    return 'text-green';
+  }
+  if (value > 0.4) {
+    return 'text-yellow';
+  }
+  return 'text-red';
+}
+
+function fillToneClass(value: number): string {
+  if (value > 0.7) {
+    return 'bg-green';
+  }
+  if (value > 0.4) {
+    return 'bg-yellow';
+  }
+  return 'bg-red';
+}
+
+function healthGradeClass(grade: string): string {
+  switch (grade) {
+    case 'A':
+      return 'text-green';
+    case 'B':
+      return 'text-blue';
+    case 'C':
+      return 'text-yellow';
+    default:
+      return 'text-red';
+  }
+}
+
+function systemStateTextClass(systemState: string): string {
+  switch (systemState) {
+    case 'nominal':
+      return 'text-green';
+    case 'cautious':
+      return 'text-yellow';
+    case 'degraded':
+      return 'text-[#FF8C00]';
+    case 'halted':
+      return 'text-red';
+    default:
+      return 'text-neutral';
+  }
+}
+
+function scoreToneClass(score: number, strong: number, moderate: number): string {
+  if (score > strong) {
+    return 'text-green';
+  }
+  if (score > moderate) {
+    return 'text-yellow';
+  }
+  return 'text-red';
+}
+
+function uncertaintyToneClassFromValue(value: number): string {
+  if (value < 0.3) {
+    return 'text-green';
+  }
+  if (value < 0.6) {
+    return 'text-yellow';
+  }
+  return 'text-red';
 }

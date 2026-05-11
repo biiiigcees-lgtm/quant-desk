@@ -1,11 +1,13 @@
 'use client';
 
-import clsx from 'clsx';
-import type { SystemStateSnapshot } from '@/lib/types';
+import { cx } from '../../lib/cx';
+import type { SystemStateSnapshot } from '../../lib/types';
+import { widthPctClass } from '../../lib/visual';
 
 interface Props { state: SystemStateSnapshot | null }
 
 type AgentStatus = 'active' | 'idle' | 'error';
+type Direction = 1 | 0 | -1;
 
 interface AgentInfo {
   id: string;
@@ -30,31 +32,10 @@ function extractAgentMetrics(state: SystemStateSnapshot | null, agentId: string)
   const agentMetrics = state?.aiOrchestrationMetrics;
   const latest = agentMetrics?.find((m) => m.agent === agentId);
 
-  let confidence = 0.5;
-  let status: AgentStatus = 'idle';
-  let reasoning = 'awaiting trigger';
-
-  if (agentId === 'market-analyst' && metrics?.market_state) {
-    confidence = metrics.market_state.confidence;
-    status = 'active';
-    reasoning = metrics.market_state.narrative?.slice(0, 80) ?? '';
-  } else if (agentId === 'probability-calibration' && metrics?.probability_adjustment) {
-    confidence = metrics.probability_adjustment.calibrationScore;
-    status = 'active';
-    reasoning = `adj: ${(metrics.probability_adjustment.recommendedAdjustment > 0 ? '+' : '')}${(metrics.probability_adjustment.recommendedAdjustment * 100).toFixed(1)}%`;
-  } else if (agentId === 'risk-governor' && metrics?.risk_level) {
-    confidence = metrics.risk_level.confidence;
-    status = 'active';
-    reasoning = metrics.risk_level.recommendation?.slice(0, 80) ?? '';
-  } else if (agentId === 'execution-intelligence' && metrics?.execution_recommendation) {
-    confidence = metrics.execution_recommendation.confidence;
-    status = 'active';
-    reasoning = `${metrics.execution_recommendation.orderStyle} × ${metrics.execution_recommendation.slices} slices`;
-  } else if (agentId === 'anomaly-detection' && metrics?.anomaly_flags && metrics.anomaly_flags.length > 0) {
-    confidence = metrics.anomaly_flags[0]!.score;
-    status = 'active';
-    reasoning = `${metrics.anomaly_flags[0]!.type}: ${metrics.anomaly_flags[0]!.severity}`;
-  }
+  const signal = deriveAgentSignal(metrics, agentId);
+  let confidence = signal?.confidence ?? 0.5;
+  let status: AgentStatus = signal?.status ?? 'idle';
+  let reasoning = signal?.reasoning ?? 'awaiting trigger';
 
   if (latest) {
     status = latest.fallbackDepth > 0 ? 'error' : 'active';
@@ -63,7 +44,7 @@ function extractAgentMetrics(state: SystemStateSnapshot | null, agentId: string)
   return { confidence, status, reasoning, latencyMs: latest?.latencyMs };
 }
 
-export function RightPanel({ state }: Props) {
+export function RightPanel({ state }: Readonly<Props>) {
   const failures = state?.aiOrchestrationFailures;
 
   return (
@@ -117,41 +98,36 @@ export function RightPanel({ state }: Props) {
 
 function AgentNode({
   agent, confidence, status, reasoning, latencyMs,
-}: {
+}: Readonly<{
   agent: AgentInfo;
   confidence: number;
   status: AgentStatus;
   reasoning: string;
   latencyMs?: number;
-}) {
-  const statusColor = status === 'active' ? '#00E5A8' : status === 'error' ? '#FF4D4D' : '#4A5568';
-  const confColor = confidence > 0.7 ? '#00E5A8' : confidence > 0.4 ? '#FFB020' : '#FF4D4D';
+}>) {
+  const statusClass = statusDotClass(status);
+  const confidenceToneClass = confidenceTextClass(confidence);
+  const confidenceFillClass = confidenceFillClassFor(confidence);
 
   return (
     <div className="bg-elevated rounded p-2 flex flex-col gap-1">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: statusColor }} />
+          <span className={cx('w-1.5 h-1.5 rounded-full', statusClass)} />
           <span className="font-mono text-2xs text-primary font-semibold">{agent.label}</span>
         </div>
         <div className="flex items-center gap-1.5">
           {latencyMs !== undefined && (
             <span className="font-mono text-2xs text-muted">{latencyMs}ms</span>
           )}
-          <span
-            className="font-mono text-2xs font-semibold"
-            style={{ color: confColor }}
-          >
+          <span className={cx('font-mono text-2xs font-semibold', confidenceToneClass)}>
             {(confidence * 100).toFixed(0)}%
           </span>
         </div>
       </div>
       {/* Confidence bar */}
       <div className="h-0.5 w-full bg-border rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-500"
-          style={{ width: `${Math.round(confidence * 100)}%`, backgroundColor: confColor }}
-        />
+        <div className={cx('h-full rounded-full transition-all duration-500', widthPctClass(confidence), confidenceFillClass)} />
       </div>
       {/* Reasoning */}
       <p className="font-mono text-2xs text-muted leading-relaxed truncate">{reasoning}</p>
@@ -159,9 +135,9 @@ function AgentNode({
   );
 }
 
-function MultiTimescaleBar({ state }: { state: SystemStateSnapshot | null }) {
+function MultiTimescaleBar({ state }: Readonly<{ state: SystemStateSnapshot | null }>) {
   const mtv = state?.multiTimescaleView;
-  const scales: Array<{ label: string; dir: 1 | 0 | -1; strength: number }> = [
+  const scales: Array<{ label: string; dir: Direction; strength: number }> = [
     { label: 'tick',   dir: mtv?.tick?.direction   ?? 0, strength: mtv?.tick?.strength   ?? 0 },
     { label: 'local',  dir: mtv?.local?.direction  ?? 0, strength: mtv?.local?.strength  ?? 0 },
     { label: 'regime', dir: mtv?.regime?.direction ?? 0, strength: mtv?.regime?.strength ?? 0 },
@@ -169,40 +145,43 @@ function MultiTimescaleBar({ state }: { state: SystemStateSnapshot | null }) {
   ];
   const coherence = mtv?.coherenceScore ?? 0;
   const alignment = mtv?.temporalAlignment ?? 'divergent';
-  const alignColor = alignment === 'aligned' ? '#00E5A8' : alignment === 'mixed' ? '#FFB020' : '#FF4D4D';
+  const alignClass = alignmentTextClass(alignment);
+  const alignFillClass = alignmentFillClass(alignment);
 
   return (
     <div className="flex flex-col gap-1.5">
       <div className="grid grid-cols-4 gap-1">
         {scales.map(({ label, dir, strength }) => {
-          const color = dir === 1 ? '#00E5A8' : dir === -1 ? '#FF4D4D' : '#4A5568';
+          const toneClass = directionTextClass(dir);
+          const fillClass = directionFillClass(dir);
           return (
             <div key={label} className="flex flex-col items-center gap-0.5">
               <span className="font-mono text-2xs text-muted">{label}</span>
               <div className="h-3 w-full bg-elevated rounded-sm overflow-hidden flex items-center justify-center">
-                <div className="h-full rounded-sm transition-all duration-500" style={{ width: `${Math.round(strength * 100)}%`, backgroundColor: color }} />
+                <div className={cx('h-full rounded-sm transition-all duration-500', widthPctClass(strength), fillClass)} />
               </div>
-              <span className="font-mono text-2xs" style={{ color }}>{dir === 1 ? '▲' : dir === -1 ? '▼' : '—'}</span>
+              <span className={cx('font-mono text-2xs', toneClass)}>{directionGlyph(dir)}</span>
             </div>
           );
         })}
       </div>
       <div className="flex items-center gap-1.5">
         <div className="flex-1 h-1 bg-elevated rounded-full overflow-hidden">
-          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.round(coherence * 100)}%`, backgroundColor: alignColor }} />
+          <div className={cx('h-full rounded-full transition-all duration-500', widthPctClass(coherence), alignFillClass)} />
         </div>
-        <span className="font-mono text-2xs" style={{ color: alignColor }}>{alignment}</span>
+        <span className={cx('font-mono text-2xs', alignClass)}>{alignment}</span>
       </div>
     </div>
   );
 }
 
-function DisagreementMatrix({ state }: { state: SystemStateSnapshot | null }) {
+function DisagreementMatrix({ state }: Readonly<{ state: SystemStateSnapshot | null }>) {
   // Compute disagreement from strategy weights vs uniform expectation.
   const weights = state?.aiAggregatedIntelligence?.strategy_weights ?? {};
   const agentSample = ['MKT', 'CAL', 'RSK', 'MIC', 'STR', 'EXE'];
-  const FALLBACK_WEIGHTS = [0.18, 0.22, 0.15, 0.20, 0.12, 0.13];
+  const FALLBACK_WEIGHTS = [0.18, 0.22, 0.15, 0.2, 0.12, 0.13];
   const values = agentSample.map((_, i) => Object.values(weights)[i] ?? FALLBACK_WEIGHTS[i] ?? 0.1);
+  const disagreementClassByBucket = ['bg-red/5', 'bg-red/10', 'bg-red/20', 'bg-red/30', 'bg-red/40', 'bg-red/50'];
 
   return (
     <div className="grid grid-cols-6 gap-px">
@@ -210,12 +189,11 @@ function DisagreementMatrix({ state }: { state: SystemStateSnapshot | null }) {
         values.map((u, j) => {
           if (i === j) return <div key={`${i}-${j}`} className="h-4 rounded-sm bg-elevated" />;
           const diff = Math.abs(v - u);
-          const alpha = Math.round(diff * 255).toString(16).padStart(2, '0');
+          const bucket = Math.max(0, Math.min(5, Math.round(diff * 5)));
           return (
             <div
               key={`${i}-${j}`}
-              className="h-4 rounded-sm"
-              style={{ backgroundColor: `#FF4D4D${alpha}` }}
+              className={cx('h-4 rounded-sm', disagreementClassByBucket[bucket])}
               title={`${agentSample[i]} vs ${agentSample[j]}: ${(diff * 100).toFixed(0)}%`}
             />
           );
@@ -223,4 +201,133 @@ function DisagreementMatrix({ state }: { state: SystemStateSnapshot | null }) {
       )}
     </div>
   );
+}
+
+function deriveAgentSignal(metrics: SystemStateSnapshot['aiAggregatedIntelligence'], agentId: string): { confidence: number; status: AgentStatus; reasoning: string } | null {
+  if (!metrics) {
+    return null;
+  }
+
+  switch (agentId) {
+    case 'market-analyst':
+      if (!metrics.market_state) return null;
+      return {
+        confidence: metrics.market_state.confidence,
+        status: 'active',
+        reasoning: metrics.market_state.narrative?.slice(0, 80) ?? '',
+      };
+    case 'probability-calibration':
+      if (!metrics.probability_adjustment) return null;
+      return {
+        confidence: metrics.probability_adjustment.calibrationScore,
+        status: 'active',
+        reasoning: `adj: ${(metrics.probability_adjustment.recommendedAdjustment > 0 ? '+' : '')}${(metrics.probability_adjustment.recommendedAdjustment * 100).toFixed(1)}%`,
+      };
+    case 'risk-governor':
+      if (!metrics.risk_level) return null;
+      return {
+        confidence: metrics.risk_level.confidence,
+        status: 'active',
+        reasoning: metrics.risk_level.recommendation?.slice(0, 80) ?? '',
+      };
+    case 'execution-intelligence':
+      if (!metrics.execution_recommendation) return null;
+      return {
+        confidence: metrics.execution_recommendation.confidence,
+        status: 'active',
+        reasoning: `${metrics.execution_recommendation.orderStyle} × ${metrics.execution_recommendation.slices} slices`,
+      };
+    case 'anomaly-detection': {
+      const firstFlag = metrics.anomaly_flags?.[0];
+      if (!firstFlag) return null;
+      return {
+        confidence: firstFlag.score,
+        status: 'active',
+        reasoning: `${firstFlag.type}: ${firstFlag.severity}`,
+      };
+    }
+    default:
+      return null;
+  }
+}
+
+function directionGlyph(direction: Direction): string {
+  if (direction === 1) {
+    return '▲';
+  }
+  if (direction === -1) {
+    return '▼';
+  }
+  return '—';
+}
+
+function statusDotClass(status: AgentStatus): string {
+  switch (status) {
+    case 'active':
+      return 'bg-green';
+    case 'error':
+      return 'bg-red';
+    default:
+      return 'bg-neutral';
+  }
+}
+
+function confidenceTextClass(confidence: number): string {
+  if (confidence > 0.7) {
+    return 'text-green';
+  }
+  if (confidence > 0.4) {
+    return 'text-yellow';
+  }
+  return 'text-red';
+}
+
+function confidenceFillClassFor(confidence: number): string {
+  if (confidence > 0.7) {
+    return 'bg-green';
+  }
+  if (confidence > 0.4) {
+    return 'bg-yellow';
+  }
+  return 'bg-red';
+}
+
+function directionTextClass(direction: Direction): string {
+  if (direction === 1) {
+    return 'text-green';
+  }
+  if (direction === -1) {
+    return 'text-red';
+  }
+  return 'text-neutral';
+}
+
+function directionFillClass(direction: Direction): string {
+  if (direction === 1) {
+    return 'bg-green';
+  }
+  if (direction === -1) {
+    return 'bg-red';
+  }
+  return 'bg-neutral';
+}
+
+function alignmentTextClass(alignment: 'aligned' | 'mixed' | 'divergent'): string {
+  if (alignment === 'aligned') {
+    return 'text-green';
+  }
+  if (alignment === 'mixed') {
+    return 'text-yellow';
+  }
+  return 'text-red';
+}
+
+function alignmentFillClass(alignment: 'aligned' | 'mixed' | 'divergent'): string {
+  if (alignment === 'aligned') {
+    return 'bg-green';
+  }
+  if (alignment === 'mixed') {
+    return 'bg-yellow';
+  }
+  return 'bg-red';
 }

@@ -5,6 +5,7 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    "forceConsistentCasingInFileNames": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
@@ -12,8 +13,7 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "plugins": [{ "name": "next" }],
-    "paths": { "@/*": ["./*"] }
+    "plugins": [{ "name": "next" }]
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
