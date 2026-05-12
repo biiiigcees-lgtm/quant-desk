@@ -40,6 +40,7 @@ import { SystemConsciousnessService } from './services/system-consciousness/serv
 import { DigitalImmuneSystemService } from './services/digital-immune-system/service.js';
 import { StrategyGenomeService } from './services/strategy-genome/service.js';
 import { ReplayIntegrityService } from './services/replay-integrity/service.js';
+import { InvariantEngineService } from './services/invariant-engine/service.js';
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -90,6 +91,7 @@ async function main(): Promise<void> {
   const replayIntegrity = new ReplayIntegrityService(bus, replay, {
     minimumSampleSize: config.organism.replayValidationMinSamples,
   });
+  const invariantEngine = new InvariantEngineService(bus);
   const openRouterProvider = new OpenRouterProvider({
     apiKey: config.openRouter.apiKey,
     timeoutMs: config.openRouter.timeoutMs,
@@ -139,6 +141,7 @@ async function main(): Promise<void> {
   immuneSystem.start();
   strategyGenome.start();
   replayIntegrity.start();
+  invariantEngine.start();
   autonomousResearch.start();
   aiAggregation.start();
   snapshotSync.start();

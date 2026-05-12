@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { EventBus } from '../../core/event-bus/bus.js';
+import { LogicalClock, MonotonicLogicalClock } from '../../core/determinism/logical-clock.js';
 import { EVENTS } from '../../core/event-bus/events.js';
 import {
   AIState,
@@ -57,7 +58,11 @@ const REQUIRED_SOURCES: SnapshotSourceKind[] = [
 export class SnapshotSyncService {
   private readonly byContract = new Map<string, ContractSnapshotState>();
 
-  constructor(private readonly bus: EventBus, private readonly options: SnapshotSyncOptions) {}
+  constructor(
+    private readonly bus: EventBus,
+    private readonly options: SnapshotSyncOptions,
+    private readonly clock: LogicalClock = new MonotonicLogicalClock(),
+  ) {}
 
   start(): void {
     this.bus.on<MarketDataEvent>(EVENTS.MARKET_DATA, (event) => {
@@ -314,6 +319,7 @@ export class SnapshotSyncService {
     rejectedTimestamp: number,
     latestTimestamp: number,
   ): void {
+    const telemetryTimestamp = this.clock.observe(Math.max(rejectedTimestamp, latestTimestamp));
     this.bus.emit(EVENTS.TELEMETRY, {
       name: 'snapshot.stale-event-rejected',
       value: 1,
@@ -323,12 +329,12 @@ export class SnapshotSyncService {
         rejectedTimestamp: String(rejectedTimestamp),
         latestTimestamp: String(latestTimestamp),
       },
-      timestamp: Date.now(),
+      timestamp: telemetryTimestamp,
     }, {
       snapshotId: 'na',
       source: 'snapshot-sync',
       idempotencyKey: `snapshot-stale:${contractId}:${source}:${rejectedTimestamp}`,
-      timestamp: Date.now(),
+      timestamp: telemetryTimestamp,
     });
   }
 

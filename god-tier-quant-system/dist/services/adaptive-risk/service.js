@@ -1,12 +1,14 @@
+import { MonotonicLogicalClock } from '../../core/determinism/logical-clock.js';
 import { EVENTS } from '../../core/event-bus/events.js';
 export class AdaptiveRiskEngine {
-    constructor(bus, initialCapital, riskLimit) {
+    constructor(bus, initialCapital, riskLimit, clock = new MonotonicLogicalClock()) {
         this.bus = bus;
         this.riskLimit = riskLimit;
+        this.clock = clock;
         this.control = {
             mode: 'normal',
             reason: 'ready',
-            timestamp: Date.now(),
+            timestamp: 1,
         };
         this.executionDegradation = 0;
         this.aiRiskLevel = 50;
@@ -21,7 +23,7 @@ export class AdaptiveRiskEngine {
             byRegimeExposure: {},
             byStrategyExposure: {},
             positions: [],
-            timestamp: Date.now(),
+            timestamp: this.clock.now(),
         };
     }
     start() {
@@ -83,7 +85,7 @@ export class AdaptiveRiskEngine {
                 this.control = {
                     mode: 'hard-stop',
                     reason: 'execution-degradation',
-                    timestamp: Date.now(),
+                    timestamp: this.clock.tick(),
                 };
                 this.bus.emit(EVENTS.EXECUTION_CONTROL, this.control);
             }
@@ -99,7 +101,7 @@ export class AdaptiveRiskEngine {
                     contractId: event.contractId,
                     mode: 'safe-mode',
                     reason: 'ai-risk-caution',
-                    timestamp: event.timestamp ?? Date.now(),
+                    timestamp: this.clock.observe(Number(event.timestamp ?? this.clock.tick())),
                 };
                 this.bus.emit(EVENTS.EXECUTION_CONTROL, this.control);
             }
@@ -117,7 +119,7 @@ export class AdaptiveRiskEngine {
                     limitPrice: 0.5,
                     ruinProbability: 1,
                     safetyMode: this.control.mode,
-                    timestamp: Date.now(),
+                    timestamp: this.clock.tick(),
                 });
                 return;
             }
@@ -144,7 +146,7 @@ export class AdaptiveRiskEngine {
                 limitPrice: 0.5 + (signal.direction === 'YES' ? 0.02 : -0.02),
                 ruinProbability,
                 safetyMode: this.control.mode,
-                timestamp: Date.now(),
+                timestamp: this.clock.observe(signal.timestamp),
             };
             this.bus.emit(EVENTS.RISK_DECISION, decision);
         });

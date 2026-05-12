@@ -1,4 +1,5 @@
 import { EventBus } from '../../core/event-bus/bus.js';
+import { LogicalClock, MonotonicLogicalClock } from '../../core/determinism/logical-clock.js';
 import { EVENTS } from '../../core/event-bus/events.js';
 import { ReplayIntegrityEvent } from '../../core/schemas/events.js';
 import { ReplayEngine } from '../replay-engine/service.js';
@@ -13,6 +14,7 @@ export class ReplayIntegrityService {
     private readonly bus: EventBus,
     private readonly replayEngine: ReplayEngine,
     private readonly options: ReplayIntegrityOptions,
+    private readonly clock: LogicalClock = new MonotonicLogicalClock(),
   ) {}
 
   start(): void {
@@ -43,8 +45,9 @@ export class ReplayIntegrityService {
     const replayChecksum = hashRecords(sandboxReplay.getRecords());
     const deterministic = sourceChecksum === replayChecksum;
 
+    const timestamp = this.clock.tick();
     const payload: ReplayIntegrityEvent = {
-      timestamp: Date.now(),
+      timestamp,
       deterministic,
       sourceChecksum,
       replayChecksum,
@@ -60,6 +63,12 @@ export class ReplayIntegrityService {
     });
 
     if (!deterministic) {
+      this.bus.emit(EVENTS.EXECUTION_CONTROL, {
+        contractId: 'SYSTEM',
+        mode: 'hard-stop',
+        reason: 'replay-hash-mismatch',
+        timestamp: payload.timestamp,
+      });
       this.bus.emit(EVENTS.ANOMALY, {
         contractId: 'SYSTEM',
         type: 'strategy-instability',

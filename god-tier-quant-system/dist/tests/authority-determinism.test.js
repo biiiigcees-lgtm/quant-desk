@@ -41,4 +41,15 @@ new DriftEngine(busB).start();
 new AiMemoryService(busB).start();
 const seqB = feedSequence(busB, 'KXBTC-DEMO');
 assert.deepEqual(seqA, seqB);
+const acceptedWithoutTimestamp = busA.emit(EVENTS.MARKET_DATA, {
+    contractId: 'KXBTC-DEMO',
+    yesPrice: 0.5,
+    noPrice: 0.5,
+    spread: 0.01,
+    bidLevels: [[0.49, 10]],
+    askLevels: [[0.51, 10]],
+    volume: 10,
+});
+assert.equal(acceptedWithoutTimestamp, false, 'authoritative events without explicit timestamp must be rejected');
+assert.ok(busA.rejections(EVENTS.MARKET_DATA).some((event) => event.rejectionReason === 'missing-explicit-timestamp'), 'missing explicit timestamps should be recorded as deterministic ingress rejections');
 console.log('authority determinism test passed');

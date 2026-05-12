@@ -1,8 +1,10 @@
 import { ExecutionCoordinator } from '../../core/determinism/execution-coordinator.js';
+import { MonotonicLogicalClock } from '../../core/determinism/logical-clock.js';
 import { EVENTS } from '../../core/event-bus/events.js';
 export class ExecutionIntelligenceEngine {
-    constructor(bus) {
+    constructor(bus, clock = new MonotonicLogicalClock()) {
         this.bus = bus;
+        this.clock = clock;
         this.coordinator = new ExecutionCoordinator({
             leaseTtlMs: 5000,
             idempotencyTtlMs: 30000,
@@ -27,7 +29,7 @@ export class ExecutionIntelligenceEngine {
                 fillProbability: Math.max(0, Math.min(1, Number(exec.fillProbability ?? 0.5))),
                 confidence: Math.max(0, Math.min(1, Number(exec.confidence ?? 0))),
             };
-            this.latestAiExecutionAdvisoryTs = Date.now();
+            this.latestAiExecutionAdvisoryTs = this.clock.observe(Number(event.timestamp ?? this.clock.tick()));
         });
         this.bus.on(EVENTS.CONSTITUTIONAL_DECISION, (decision) => {
             this.handleConstitutionalDecision(decision);
@@ -40,6 +42,7 @@ export class ExecutionIntelligenceEngine {
         });
     }
     handleConstitutionalDecision(decision) {
+        const decisionTime = this.clock.observe(decision.timestamp);
         const executionId = `exec-${decision.contractId}-${decision.cycle_id}`;
         if (!decision.trade_allowed || decision.execution_mode === 'blocked') {
             this.publishState({
@@ -48,7 +51,7 @@ export class ExecutionIntelligenceEngine {
                 phase: 'blocked',
                 reason: 'constitutional-block',
                 safetyMode: 'hard-stop',
-                timestamp: Date.now(),
+                timestamp: decisionTime,
             });
             return;
         }
@@ -59,12 +62,12 @@ export class ExecutionIntelligenceEngine {
                 phase: 'blocked',
                 reason: 'stale-constitutional-snapshot',
                 safetyMode: 'safe-mode',
-                timestamp: Date.now(),
+                timestamp: decisionTime,
             });
             return;
         }
         const dedupeKey = `constitutional:${decision.contractId}:${decision.snapshot_id}`;
-        const lease = this.coordinator.acquire(decision.contractId, dedupeKey);
+        const lease = this.coordinator.acquire(decision.contractId, dedupeKey, decisionTime);
         if (!lease.acquired) {
             if (lease.reason === 'duplicate') {
                 return;
@@ -75,7 +78,7 @@ export class ExecutionIntelligenceEngine {
                 phase: 'blocked',
                 reason: 'execution-lock-contention',
                 safetyMode: 'safe-mode',
-                timestamp: Date.now(),
+                timestamp: decisionTime,
             });
             return;
         }
@@ -107,7 +110,7 @@ export class ExecutionIntelligenceEngine {
                 latencyBudgetMs: this.resolveLatencyBudget(orderStyle, safetyMode),
                 routeReason: 'constitutional-decision',
                 safetyMode,
-                timestamp: Date.now(),
+                timestamp: decisionTime,
             };
             this.emitPlanLifecycle(plan, 'constitutional-created');
             this.coordinator.release(decision.contractId, lease.token ?? '', true);
@@ -118,6 +121,7 @@ export class ExecutionIntelligenceEngine {
         }
     }
     handleRiskDecision(decision) {
+        const decisionTime = this.clock.observe(decision.timestamp);
         const executionId = this.buildExecutionId(decision);
         if (!decision.approved || decision.size <= 0) {
             this.publishState({
@@ -126,7 +130,7 @@ export class ExecutionIntelligenceEngine {
                 phase: 'blocked',
                 reason: decision.reason,
                 safetyMode: decision.safetyMode,
-                timestamp: Date.now(),
+                timestamp: decisionTime,
             });
             return;
         }
@@ -138,7 +142,7 @@ export class ExecutionIntelligenceEngine {
                 phase: 'blocked',
                 reason: 'stale-risk-decision',
                 safetyMode: decision.safetyMode,
-                timestamp: Date.now(),
+                timestamp: decisionTime,
             });
             return;
         }
@@ -152,7 +156,7 @@ export class ExecutionIntelligenceEngine {
             decision.limitPrice.toFixed(4),
             decision.size.toFixed(4),
         ].join(':');
-        const lease = this.coordinator.acquire(decision.contractId, dedupeKey);
+        const lease = this.coordinator.acquire(decision.contractId, dedupeKey, decisionTime);
         if (!lease.acquired) {
             if (lease.reason === 'duplicate') {
                 return;
@@ -163,7 +167,7 @@ export class ExecutionIntelligenceEngine {
                 phase: 'blocked',
                 reason: 'execution-lock-contention',
                 safetyMode: decision.safetyMode,
-                timestamp: Date.now(),
+                timestamp: decisionTime,
             });
             return;
         }
@@ -217,7 +221,7 @@ export class ExecutionIntelligenceEngine {
             latencyBudgetMs: this.resolveLatencyBudget(orderStyle, decision.safetyMode),
             routeReason: this.aiExecutionAdvisory ? `${routeReason}+ai-advisory` : routeReason,
             safetyMode: decision.safetyMode,
-            timestamp: Date.now(),
+            timestamp: this.clock.observe(decision.timestamp),
         };
     }
     handleOrderEvent(order) {
@@ -345,7 +349,7 @@ export class ExecutionIntelligenceEngine {
         return false;
     }
     buildExecutionId(decision) {
-        return `exec-${decision.contractId}-${decision.direction}-${Math.floor(decision.timestamp / 1000)}`;
+        return `exec-${decision.contractId}-${decision.direction}-${Math.floor(decision.timestamp)}`;
     }
     publishState(event) {
         this.states.set(event.executionId, event);

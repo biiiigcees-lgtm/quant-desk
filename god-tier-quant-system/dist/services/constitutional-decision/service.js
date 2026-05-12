@@ -1,8 +1,11 @@
+import { MonotonicLogicalClock } from '../../core/determinism/logical-clock.js';
 import { EVENTS } from '../../core/event-bus/events.js';
 export class ConstitutionalDecisionService {
-    constructor(bus) {
+    constructor(bus, clock = new MonotonicLogicalClock()) {
         this.bus = bus;
+        this.clock = clock;
         this.byContract = new Map();
+        this.currentRuleTimestamp = 1;
     }
     start() {
         this.bus.on(EVENTS.DECISION_SNAPSHOT, (event) => {
@@ -42,7 +45,8 @@ export class ConstitutionalDecisionService {
             executionMode: ai.execution_recommendation.orderStyle === 'market' ? 'market' : 'passive',
         };
         const snapshot = state.snapshot;
-        const now = Date.now();
+        const decisionTime = this.clock.observe(ai.timestamp);
+        this.currentRuleTimestamp = decisionTime;
         this.applySnapshotRules(snapshot, state.invalid, governanceLog, decisionState);
         this.applyHardRiskRule(state.executionControl, governanceLog, decisionState);
         const riskLevel = clamp(ai.risk_level.score, 0, 100);
@@ -107,7 +111,7 @@ export class ConstitutionalDecisionService {
         }
         const edgeScore = Number((finalProbability - marketImplied).toFixed(6));
         const decision = {
-            cycle_id: `${ai.contractId}:${state.sequence}:${now}`,
+            cycle_id: `${ai.contractId}:${state.sequence}:${decisionTime}`,
             snapshot_id: snapshot?.snapshot_id ?? `missing:${ai.contractId}`,
             market_state_hash: snapshot?.market_state_hash ?? 'missing',
             contractId: ai.contractId,
@@ -127,7 +131,7 @@ export class ConstitutionalDecisionService {
                 execution_confidence: ai.execution_recommendation.confidence,
                 calibration_score: ai.probability_adjustment.calibrationScore,
             },
-            timestamp: now,
+            timestamp: decisionTime,
         };
         return decision;
     }
@@ -274,7 +278,7 @@ export class ConstitutionalDecisionService {
             rule,
             outcome,
             detail,
-            timestamp: Date.now(),
+            timestamp: this.currentRuleTimestamp,
         };
     }
 }

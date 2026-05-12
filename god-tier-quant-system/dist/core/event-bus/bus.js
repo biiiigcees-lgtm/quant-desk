@@ -1,7 +1,9 @@
 import { EventEmitter } from 'node:events';
 import { EventSequencer } from '../determinism/sequencer.js';
+import { MonotonicLogicalClock } from '../determinism/logical-clock.js';
+import { EVENTS } from './events.js';
 export class EventBus {
-    constructor(maxListeners = 200, maxHistory = 5000, idempotencyTtlMs = 5 * 60 * 1000) {
+    constructor(maxListeners = 200, maxHistory = 5000, idempotencyTtlMs = 5 * 60 * 1000, clock = new MonotonicLogicalClock()) {
         this.emitter = new EventEmitter();
         this.eventHistory = [];
         this.rejectedHistory = [];
@@ -15,13 +17,20 @@ export class EventBus {
         this.maxHistory = Math.max(100, maxHistory);
         this.maxRejectedHistory = Math.max(100, Math.floor(this.maxHistory / 2));
         this.idempotencyTtlMs = Math.max(1000, idempotencyTtlMs);
+        this.clock = clock;
     }
     emit(event, payload, metadata) {
-        const timestamp = Number.isFinite(metadata?.timestamp) ? Number(metadata?.timestamp) : extractTimestamp(payload);
+        const timestamp = resolveTimestamp(payload, metadata, this.clock);
+        if (timestamp === null && REQUIRES_EXPLICIT_TIMESTAMP.has(event)) {
+            const envelope = this.sequencer.wrap(payload, metadata?.snapshotId ?? 'na', metadata?.source ?? event, 0);
+            this.recordRejected(event, envelope, 'missing-explicit-timestamp', metadata?.idempotencyKey);
+            return false;
+        }
+        const resolvedTimestamp = timestamp ?? this.clock.tick();
         const snapshotId = metadata?.snapshotId ?? extractSnapshotId(payload) ?? 'na';
         const source = metadata?.source ?? event;
         const idempotencyKey = metadata?.idempotencyKey;
-        const envelope = this.sequencer.wrap(payload, snapshotId, source, timestamp);
+        const envelope = this.sequencer.wrap(payload, snapshotId, source, resolvedTimestamp);
         const monotonic = this.sequencer.validateMonotonic(envelope);
         if (!monotonic) {
             this.recordRejected(event, envelope, 'non-monotonic-sequence', idempotencyKey);
@@ -41,28 +50,28 @@ export class EventBus {
             }
         }
         if (idempotencyKey) {
-            this.pruneIdempotency(timestamp);
+            this.pruneIdempotency(resolvedTimestamp);
             if (this.processedIdempotency.has(idempotencyKey)) {
                 this.recordRejected(event, envelope, 'duplicate-idempotency-key', idempotencyKey);
                 return false;
             }
-            this.processedIdempotency.set(idempotencyKey, timestamp);
+            this.processedIdempotency.set(idempotencyKey, resolvedTimestamp);
         }
         const enforceStaleOrdering = metadata?.source !== undefined || metadata?.snapshotId !== undefined;
         if (enforceStaleOrdering) {
             const staleScope = `${event}:${source}`;
             const previousTimestamp = this.lastAcceptedTimestampByScope.get(staleScope);
-            if (previousTimestamp !== undefined && timestamp < previousTimestamp) {
+            if (previousTimestamp !== undefined && resolvedTimestamp < previousTimestamp) {
                 this.recordRejected(event, envelope, 'stale-event', idempotencyKey);
                 return false;
             }
-            this.lastAcceptedTimestampByScope.set(staleScope, timestamp);
+            this.lastAcceptedTimestampByScope.set(staleScope, resolvedTimestamp);
         }
         const record = {
             sequence: envelope.sequence,
             event,
             payload,
-            timestamp,
+            timestamp: resolvedTimestamp,
             snapshotId,
             source,
             lineageId: envelope.lineageId,
@@ -179,7 +188,17 @@ function extractTimestamp(payload) {
             return candidate;
         }
     }
-    return Date.now();
+    return NaN;
+}
+function resolveTimestamp(payload, metadata, clock) {
+    if (metadata && Number.isFinite(metadata.timestamp) && Number(metadata.timestamp) > 0) {
+        return clock.observe(Number(metadata.timestamp));
+    }
+    const extracted = extractTimestamp(payload);
+    if (Number.isFinite(extracted) && extracted > 0) {
+        return clock.observe(extracted);
+    }
+    return null;
 }
 function extractSnapshotId(payload) {
     if (!payload || typeof payload !== 'object') {
@@ -199,3 +218,28 @@ function extractSnapshotId(payload) {
     }
     return null;
 }
+const REQUIRES_EXPLICIT_TIMESTAMP = new Set([
+    EVENTS.MARKET_DATA,
+    EVENTS.MICROSTRUCTURE,
+    EVENTS.FEATURES,
+    EVENTS.PROBABILITY,
+    EVENTS.CALIBRATION_UPDATE,
+    EVENTS.DRIFT_EVENT,
+    EVENTS.AGGREGATED_SIGNAL,
+    EVENTS.RISK_DECISION,
+    EVENTS.EXECUTION_CONTROL,
+    EVENTS.EXECUTION_PLAN,
+    EVENTS.EXECUTION_STATE,
+    EVENTS.ORDER_EVENT,
+    EVENTS.PORTFOLIO_UPDATE,
+    EVENTS.VALIDATION_RESULT,
+    EVENTS.DECISION_SNAPSHOT,
+    EVENTS.DECISION_SNAPSHOT_INVALID,
+    EVENTS.AI_AGENT_REQUEST,
+    EVENTS.AI_AGENT_RESPONSE,
+    EVENTS.AI_AGENT_FAILURE,
+    EVENTS.AI_ROUTING_DECISION,
+    EVENTS.AI_AGGREGATED_INTELLIGENCE,
+    EVENTS.CONSTITUTIONAL_DECISION,
+    EVENTS.REPLAY_INTEGRITY,
+]);
