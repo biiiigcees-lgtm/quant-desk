@@ -3,11 +3,14 @@ export class EventSequencer {
         this.nextSequence = 1;
         this.lastAcceptedSequence = 0;
     }
-    wrap(payload, snapshotId, timestamp = Date.now()) {
+    wrap(payload, snapshotId, source, timestamp = Date.now()) {
+        const sequence = this.nextSequence++;
         return {
-            sequence: this.nextSequence++,
+            sequence,
             timestamp,
             snapshotId,
+            source,
+            lineageId: `${source}:${snapshotId}:${sequence}`,
             payload,
         };
     }
@@ -20,6 +23,9 @@ export class EventSequencer {
     }
     currentSequence() {
         return this.lastAcceptedSequence;
+    }
+    peekNextSequence() {
+        return this.nextSequence;
     }
     reset(sequence = 0) {
         this.lastAcceptedSequence = Math.max(0, Math.floor(sequence));

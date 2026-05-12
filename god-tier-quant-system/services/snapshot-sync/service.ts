@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { EventBus } from '../../core/event-bus/bus.js';
 import { EVENTS } from '../../core/event-bus/events.js';
 import {
+  AIState,
   AnomalyEvent,
   CalibrationEvent,
   CanonicalDecisionSnapshot,
@@ -13,6 +14,7 @@ import {
   MarketDataEvent,
   MicrostructureEvent,
   ProbabilityEvent,
+  RiskState,
   SnapshotSourceKind,
   SnapshotSourceMeta,
 } from '../../core/schemas/events.js';
@@ -186,28 +188,57 @@ export class SnapshotSyncService {
 
     const marketStateHash = this.buildHash(contractId, state.sequence, sourceMeta, snapshotState);
     const snapshotId = this.buildSnapshotId(contractId, state.sequence, marketStateHash);
+    const aiState: AIState = {
+      probability,
+      calibration,
+      drift,
+      anomaly: snapshotState.anomaly,
+    };
+    const riskState: RiskState = snapshotState.executionPlan
+      ? {
+          executionPermission: snapshotState.executionPlan.safetyMode !== 'hard-stop',
+          safetyMode: snapshotState.executionPlan.safetyMode,
+          reason: snapshotState.executionPlan.routeReason,
+          riskLevel: snapshotState.executionPlan.safetyMode === 'hard-stop' ? 100 : 50,
+        }
+      : {
+          executionPermission: true,
+          safetyMode: 'normal',
+          reason: 'no-execution-plan',
+          riskLevel: 50,
+        };
+
     const canonicalSnapshot: CanonicalDecisionSnapshot = {
       snapshotId,
       contractId,
       sequence: state.sequence,
       timestamp: nowTs,
       hash: marketStateHash,
+      sourceMeta,
       market: marketData,
+      orderbook: {
+        yesPrice: marketData.yesPrice,
+        noPrice: marketData.noPrice,
+        spread: marketData.spread,
+        bidLevels: marketData.bidLevels,
+        askLevels: marketData.askLevels,
+        volume: marketData.volume,
+      },
       microstructure,
       indicators: features,
-      aiContext: {
-        probability,
-        calibration,
-        drift,
-        anomaly: snapshotState.anomaly,
-      },
+      ai: aiState,
+      aiContext: aiState,
+      risk: riskState,
+      riskState,
+      execution: snapshotState.executionPlan,
       executionState: snapshotState.executionPlan,
-      riskState: snapshotState.executionPlan
-        ? {
-            safetyMode: snapshotState.executionPlan.safetyMode,
-            reason: snapshotState.executionPlan.routeReason,
-          }
-        : null,
+      epistemic: {
+        uncertaintyScore: probability.uncertaintyScore,
+        calibrationError: probability.calibrationError,
+        driftSeverity: drift.severity,
+        anomalySeverity: snapshotState.anomaly?.severity ?? 'none',
+        truthScore: clamp(1 - probability.uncertaintyScore - probability.calibrationError, 0, 1),
+      },
     };
     const snapshot: DecisionSnapshotEvent = {
       snapshot_id: snapshotId,
@@ -218,10 +249,15 @@ export class SnapshotSyncService {
       eventSequence: state.sequence,
       sourceMeta,
       state: snapshotState,
-      canonical: canonicalSnapshot,
+      canonical: Object.freeze(canonicalSnapshot),
     };
 
-    this.bus.emit(EVENTS.DECISION_SNAPSHOT, snapshot);
+    this.bus.emit(EVENTS.DECISION_SNAPSHOT, Object.freeze(snapshot), {
+      snapshotId,
+      source: 'snapshot-sync',
+      idempotencyKey: `decision-snapshot:${snapshotId}`,
+      timestamp: nowTs,
+    });
   }
 
   private buildSourceMeta(state: ContractSnapshotState, nowTs: number): SnapshotSourceMeta[] {
@@ -288,6 +324,11 @@ export class SnapshotSyncService {
         latestTimestamp: String(latestTimestamp),
       },
       timestamp: Date.now(),
+    }, {
+      snapshotId: 'na',
+      source: 'snapshot-sync',
+      idempotencyKey: `snapshot-stale:${contractId}:${source}:${rejectedTimestamp}`,
+      timestamp: Date.now(),
     });
   }
 
@@ -310,7 +351,12 @@ export class SnapshotSyncService {
       staleSources: details.staleSources,
       driftMs: details.driftMs,
       timestamp,
-    } satisfies DecisionSnapshotInvalidEvent);
+    } satisfies DecisionSnapshotInvalidEvent, {
+      snapshotId: 'na',
+      source: 'snapshot-sync',
+      idempotencyKey: `decision-snapshot-invalid:${contractId}:${triggerEvent}:${timestamp}:${details.reason}`,
+      timestamp,
+    });
   }
 
   private getContractState(contractIdRaw: string): ContractSnapshotState {
@@ -326,4 +372,11 @@ export class SnapshotSyncService {
     this.byContract.set(contractId, next);
     return next;
   }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+  return Math.max(min, Math.min(max, value));
 }

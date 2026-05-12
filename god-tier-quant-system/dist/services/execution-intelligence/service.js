@@ -11,6 +11,7 @@ export class ExecutionIntelligenceEngine {
         this.latestConstitutionalSnapshotSeq = new Map();
         this.latestConstitutionalDecisionTs = new Map();
         this.latestRiskDecisionTs = new Map();
+        this.latestAiExecutionAdvisoryTs = 0;
         this.aiExecutionAdvisory = null;
     }
     start() {
@@ -26,6 +27,7 @@ export class ExecutionIntelligenceEngine {
                 fillProbability: Math.max(0, Math.min(1, Number(exec.fillProbability ?? 0.5))),
                 confidence: Math.max(0, Math.min(1, Number(exec.confidence ?? 0))),
             };
+            this.latestAiExecutionAdvisoryTs = Date.now();
         });
         this.bus.on(EVENTS.CONSTITUTIONAL_DECISION, (decision) => {
             this.handleConstitutionalDecision(decision);
@@ -84,7 +86,9 @@ export class ExecutionIntelligenceEngine {
             const size = clamp(baselineSize, 5, 800);
             const limitPrice = clamp(decision.final_probability, 0.01, 0.99);
             let orderStyle = decision.execution_mode === 'passive' ? 'passive' : 'market';
-            if (this.aiExecutionAdvisory && this.aiExecutionAdvisory.confidence >= 0.55) {
+            if (this.aiExecutionAdvisory
+                && this.aiExecutionAdvisory.confidence >= 0.55
+                && this.latestAiExecutionAdvisoryTs >= decision.timestamp) {
                 orderStyle = this.aiExecutionAdvisory.orderStyle;
             }
             const slices = this.resolveSlices(orderStyle);
@@ -249,7 +253,12 @@ export class ExecutionIntelligenceEngine {
             safetyMode: plan.safetyMode,
             timestamp: plan.timestamp,
         });
-        this.bus.emit(EVENTS.EXECUTION_PLAN, plan);
+        this.bus.emit(EVENTS.EXECUTION_PLAN, plan, {
+            snapshotId: plan.executionId,
+            source: 'execution-intelligence',
+            idempotencyKey: `execution-plan:${plan.executionId}:${plan.contractId}`,
+            timestamp: plan.timestamp,
+        });
     }
     resolveSlices(orderStyle) {
         if (this.aiExecutionAdvisory) {
@@ -340,7 +349,12 @@ export class ExecutionIntelligenceEngine {
     }
     publishState(event) {
         this.states.set(event.executionId, event);
-        this.bus.emit(EVENTS.EXECUTION_STATE, event);
+        this.bus.emit(EVENTS.EXECUTION_STATE, event, {
+            snapshotId: event.executionId,
+            source: 'execution-intelligence',
+            idempotencyKey: `execution-state:${event.executionId}:${event.phase}:${event.timestamp}`,
+            timestamp: event.timestamp,
+        });
     }
 }
 function clamp(value, min, max) {

@@ -18,6 +18,7 @@ export class ExecutionIntelligenceEngine {
   private readonly latestConstitutionalSnapshotSeq = new Map<string, number>();
   private readonly latestConstitutionalDecisionTs = new Map<string, number>();
   private readonly latestRiskDecisionTs = new Map<string, number>();
+  private latestAiExecutionAdvisoryTs = 0;
   private aiExecutionAdvisory: {
     orderStyle: 'market' | 'passive' | 'sliced';
     slices: number;
@@ -51,6 +52,7 @@ export class ExecutionIntelligenceEngine {
           fillProbability: Math.max(0, Math.min(1, Number(exec.fillProbability ?? 0.5))),
           confidence: Math.max(0, Math.min(1, Number(exec.confidence ?? 0))),
         };
+        this.latestAiExecutionAdvisoryTs = Date.now();
       },
     );
 
@@ -118,7 +120,11 @@ export class ExecutionIntelligenceEngine {
       const limitPrice = clamp(decision.final_probability, 0.01, 0.99);
 
       let orderStyle: ExecutionPlan['orderStyle'] = decision.execution_mode === 'passive' ? 'passive' : 'market';
-      if (this.aiExecutionAdvisory && this.aiExecutionAdvisory.confidence >= 0.55) {
+      if (
+        this.aiExecutionAdvisory
+        && this.aiExecutionAdvisory.confidence >= 0.55
+        && this.latestAiExecutionAdvisoryTs >= decision.timestamp
+      ) {
         orderStyle = this.aiExecutionAdvisory.orderStyle;
       }
 
@@ -292,7 +298,12 @@ export class ExecutionIntelligenceEngine {
       safetyMode: plan.safetyMode,
       timestamp: plan.timestamp,
     });
-    this.bus.emit(EVENTS.EXECUTION_PLAN, plan);
+    this.bus.emit(EVENTS.EXECUTION_PLAN, plan, {
+      snapshotId: plan.executionId,
+      source: 'execution-intelligence',
+      idempotencyKey: `execution-plan:${plan.executionId}:${plan.contractId}`,
+      timestamp: plan.timestamp,
+    });
   }
 
   private resolveSlices(orderStyle: ExecutionPlan['orderStyle']): number {
@@ -395,7 +406,12 @@ export class ExecutionIntelligenceEngine {
 
   private publishState(event: ExecutionStateEvent): void {
     this.states.set(event.executionId, event);
-    this.bus.emit(EVENTS.EXECUTION_STATE, event);
+    this.bus.emit(EVENTS.EXECUTION_STATE, event, {
+      snapshotId: event.executionId,
+      source: 'execution-intelligence',
+      idempotencyKey: `execution-state:${event.executionId}:${event.phase}:${event.timestamp}`,
+      timestamp: event.timestamp,
+    });
   }
 }
 
