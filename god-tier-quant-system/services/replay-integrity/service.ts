@@ -72,13 +72,42 @@ export class ReplayIntegrityService {
   }
 }
 
-function hashRecords(records: Array<{ event: string; payload: unknown }>): string {
+function hashRecords(
+  records: Array<{
+    event: string;
+    payload: unknown;
+    snapshotId?: string;
+    source?: string;
+    idempotencyKey?: string;
+  }>,
+): string {
   const hash = createHash('sha256');
   for (const record of records) {
     hash.update(record.event);
     hash.update(':');
-    hash.update(JSON.stringify(record.payload));
+    hash.update(stableStringify(record.payload));
+    hash.update('|');
+    hash.update(record.snapshotId ?? 'na');
+    hash.update('|');
+    hash.update(record.source ?? record.event);
+    hash.update('|');
+    hash.update(record.idempotencyKey ?? '');
     hash.update('\n');
   }
   return hash.digest('hex');
+}
+
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value);
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(',')}]`;
+  }
+
+  const obj = value as Record<string, unknown>;
+  const keys = Object.keys(obj).sort();
+  const entries = keys.map((key) => `${JSON.stringify(key)}:${stableStringify(obj[key])}`);
+  return `{${entries.join(',')}}`;
 }

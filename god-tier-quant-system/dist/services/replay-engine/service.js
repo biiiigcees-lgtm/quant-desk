@@ -28,7 +28,12 @@ export class ReplayEngine {
     replay(targetBus) {
         for (const record of this.getRecords()) {
             targetBus.emit(EVENTS.REPLAY_EVENT, record);
-            targetBus.emit(record.event, record.payload);
+            targetBus.emit(record.event, record.payload, {
+                timestamp: record.timestamp,
+                snapshotId: record.snapshotId,
+                source: record.source,
+                idempotencyKey: record.idempotencyKey,
+            });
         }
     }
     getRecords() {
@@ -37,14 +42,38 @@ export class ReplayEngine {
             event: record.event,
             payload: record.payload,
             timestamp: record.timestamp,
+            snapshotId: record.snapshotId,
+            source: record.source,
+            lineageId: record.lineageId,
+            idempotencyKey: record.idempotencyKey,
         }));
     }
     checksum() {
         const hash = createHash('sha256');
         for (const record of this.getRecords()) {
-            hash.update(JSON.stringify(record));
+            hash.update(record.event);
+            hash.update(':');
+            hash.update(stableStringify(record.payload));
+            hash.update('|');
+            hash.update(record.snapshotId);
+            hash.update('|');
+            hash.update(record.source);
+            hash.update('|');
+            hash.update(record.idempotencyKey ?? '');
             hash.update('\n');
         }
         return hash.digest('hex');
     }
+}
+function stableStringify(value) {
+    if (value === null || typeof value !== 'object') {
+        return JSON.stringify(value);
+    }
+    if (Array.isArray(value)) {
+        return `[${value.map((item) => stableStringify(item)).join(',')}]`;
+    }
+    const obj = value;
+    const keys = Object.keys(obj).sort();
+    const entries = keys.map((key) => `${JSON.stringify(key)}:${stableStringify(obj[key])}`);
+    return `{${entries.join(',')}}`;
 }
