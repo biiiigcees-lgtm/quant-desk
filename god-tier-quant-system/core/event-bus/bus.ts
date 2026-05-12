@@ -263,14 +263,14 @@ function extractTimestamp(payload: unknown): number {
   return NaN;
 }
 
-function resolveTimestamp(payload: unknown, metadata: EmitMetadata | undefined, clock: LogicalClock): number | null {
+function resolveTimestamp(payload: unknown, metadata: EmitMetadata | undefined, _clock: LogicalClock): number | null {
   if (metadata && Number.isFinite(metadata.timestamp) && Number(metadata.timestamp) > 0) {
-    return clock.observe(Number(metadata.timestamp));
+    return Number(metadata.timestamp);
   }
 
   const extracted = extractTimestamp(payload);
   if (Number.isFinite(extracted) && extracted > 0) {
-    return clock.observe(extracted);
+    return extracted;
   }
 
   return null;

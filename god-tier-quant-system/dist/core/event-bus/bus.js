@@ -190,13 +190,13 @@ function extractTimestamp(payload) {
     }
     return NaN;
 }
-function resolveTimestamp(payload, metadata, clock) {
+function resolveTimestamp(payload, metadata, _clock) {
     if (metadata && Number.isFinite(metadata.timestamp) && Number(metadata.timestamp) > 0) {
-        return clock.observe(Number(metadata.timestamp));
+        return Number(metadata.timestamp);
     }
     const extracted = extractTimestamp(payload);
     if (Number.isFinite(extracted) && extracted > 0) {
-        return clock.observe(extracted);
+        return extracted;
     }
     return null;
 }
