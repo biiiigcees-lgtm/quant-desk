@@ -60,7 +60,7 @@ export class MarketPhysicsService {
     }
 
     const driftSeverity = state.drift?.severity ?? 'low';
-    const driftPenalty = driftSeverity === 'high' ? 0.35 : driftSeverity === 'medium' ? 0.2 : 0.08;
+    const driftPenalty = resolveDriftPenalty(driftSeverity);
 
     const compression = clamp(
       (1 - state.micro.spreadExpansionScore) * 0.55 +
@@ -105,7 +105,7 @@ export class MarketPhysicsService {
     const liquidityConservation = clamp(
       1 - (
         state.micro.spreadExpansionScore * 0.55 +
-        (state.micro.liquidityRegime === 'vacuum' ? 0.35 : state.micro.liquidityRegime === 'thin' ? 0.18 : 0.05) +
+        resolveLiquidityRegimePenalty(state.micro.liquidityRegime) +
         state.micro.sweepProbability * 0.1
       ),
       0,
@@ -146,4 +146,24 @@ function clamp(value: number, min: number, max: number): number {
     return min;
   }
   return Math.max(min, Math.min(max, value));
+}
+
+function resolveDriftPenalty(driftSeverity: DriftEvent['severity']): number {
+  if (driftSeverity === 'high') {
+    return 0.35;
+  }
+  if (driftSeverity === 'medium') {
+    return 0.2;
+  }
+  return 0.08;
+}
+
+function resolveLiquidityRegimePenalty(liquidityRegime: MicrostructureEvent['liquidityRegime']): number {
+  if (liquidityRegime === 'vacuum') {
+    return 0.35;
+  }
+  if (liquidityRegime === 'thin') {
+    return 0.18;
+  }
+  return 0.05;
 }

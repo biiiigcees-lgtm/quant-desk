@@ -11,6 +11,8 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 
 export default function Page() {
   const { state, isLoading, isError } = useSystemState(500);
+  const hasConnectionIssue = isError || isLoading;
+  const isConnected = hasConnectionIssue === false;
 
   // Adaptive cognitive alert level derived from live system state.
   const systemAlert = useMemo((): 'critical' | 'warning' | 'nominal' => {
@@ -35,12 +37,14 @@ export default function Page() {
     .filter(Boolean)
     .join(' ');
 
+  const dataAlert = systemAlert === 'nominal' ? undefined : systemAlert;
+
   return (
     <div
       className="flex flex-col h-screen bg-base overflow-hidden"
-      data-alert={systemAlert !== 'nominal' ? systemAlert : undefined}
+      data-alert={dataAlert}
     >
-      <TopBar state={state} isConnected={!isError && !isLoading} />
+      <TopBar state={state} isConnected={isConnected} />
       <div className={mainContainerClass}>
         <ErrorBoundary><LeftPanel state={state} /></ErrorBoundary>
         <ErrorBoundary><CenterPanel state={state} /></ErrorBoundary>
