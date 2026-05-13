@@ -49,7 +49,7 @@ function PriceChartSection({ state }: Readonly<Props>) {
       </div>
       <ProbabilitySparkline data={history} />
       <div className="flex items-center gap-4 mt-2 flex-wrap">
-        <MobileProbBar label="SYS" value={estProb} fillClass="bg-blue" />
+        <MobileProbBar label="SYS" value={estProb} fillClass="bg-secondary" />
         <MobileProbBar label="MKT" value={mktProb} fillClass="bg-green" />
         <span className={cx(
           'ml-auto font-mono text-xs font-semibold',
@@ -72,12 +72,12 @@ function ProbabilitySparkline({ data }: Readonly<{ data: Array<{ t: number; v: n
     <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-16">
       <defs>
         <linearGradient id="mobGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="5%" stopColor="#00E5A8" stopOpacity="0.25" />
-          <stop offset="95%" stopColor="#00E5A8" stopOpacity="0" />
+          <stop offset="5%" stopColor="#9CA3AF" stopOpacity="0.16" />
+          <stop offset="95%" stopColor="#9CA3AF" stopOpacity="0" />
         </linearGradient>
       </defs>
       <polygon points={`0,100 ${pts} 100,100`} fill="url(#mobGrad)" />
-      <polyline points={pts} fill="none" stroke="#00E5A8" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+      <polyline points={pts} fill="none" stroke="#9CA3AF" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
@@ -87,7 +87,7 @@ function MobileProbBar({ label, value, fillClass }: Readonly<{ label: string; va
     <div className="flex items-center gap-1.5">
       <span className="font-mono text-2xs text-muted w-6">{label}</span>
       <div className="w-20 h-1.5 bg-elevated rounded-full overflow-hidden">
-        <div className={cx('h-full rounded-full transition-all duration-300', widthPctClass(value), fillClass)} />
+        <div className={cx('h-full rounded-full transition-calm', widthPctClass(value), fillClass)} />
       </div>
       <span className="font-mono text-2xs text-primary">{(value * 100).toFixed(1)}%</span>
     </div>
@@ -130,14 +130,14 @@ function DecisionSection({ state }: Readonly<Props>) {
       <div className="relative w-full h-1 bg-elevated rounded-full mb-4">
         <div
           className={cx(
-            'absolute h-1 rounded-full opacity-30 bg-blue',
+            'absolute h-1 rounded-full opacity-25 bg-secondary transition-calm',
             leftPctClass(ciLow),
             widthPctClass(ciHigh - ciLow),
           )}
         />
         <div
           className={cx(
-            'absolute w-2.5 h-2.5 rounded-full -top-[3px] -translate-x-1/2 bg-blue',
+            'absolute w-2.5 h-2.5 rounded-full -top-[3px] -translate-x-1/2 bg-primary transition-calm',
             leftPctClass(estProb),
           )}
         />
@@ -166,7 +166,7 @@ function DecisionSection({ state }: Readonly<Props>) {
           <span className="panel-header shrink-0">epistemic health</span>
           <div className="flex-1 h-1 bg-elevated rounded-full overflow-hidden">
             <div className={cx(
-              'h-full rounded-full transition-all duration-500',
+              'h-full rounded-full transition-calm',
               widthPctClass(ehScore),
               ehFillClass,
             )} />
@@ -212,7 +212,7 @@ function MarketStateSection({ state }: Readonly<Props>) {
       <div className="flex flex-wrap gap-2 mb-3">
         <RegimeBadge label="drift" value={drift?.severity ?? 'none'} color={SEVERITY_COLOR[drift?.severity ?? 'none'] ?? '#6B7C93'} />
         <RegimeBadge label="anomaly" value={anomaly?.severity ?? 'none'} color={SEVERITY_COLOR[anomaly?.severity ?? 'none'] ?? '#6B7C93'} />
-        <RegimeBadge label="regime" value={prob?.regime ?? '—'} color="#FFB020" />
+        <RegimeBadge label="regime" value={prob?.regime ?? '—'} color="#F59E0B" />
         <RegimeBadge
           label="meta"
           value={`${((meta?.compositeScore ?? 0) * 100).toFixed(0)}%`}
@@ -341,9 +341,9 @@ function CognitionSection({ state }: Readonly<Props>) {
               >
                 <span className="text-yellow truncate">{insight.cause.split(':')[1] ?? insight.cause}</span>
                 <span className="text-muted shrink-0">→</span>
-                <span className="text-blue truncate">{insight.effect.split(':')[1] ?? insight.effect}</span>
+                <span className="text-secondary truncate">{insight.effect.split(':')[1] ?? insight.effect}</span>
                 <div className="flex-1 h-1 bg-border rounded-full overflow-hidden shrink-0 w-10">
-                  <div className={cx('h-full rounded-full bg-blue', widthPctClass(insight.causalStrength))} />
+                  <div className={cx('h-full rounded-full bg-secondary transition-calm', widthPctClass(insight.causalStrength))} />
                 </div>
                 <span className="text-primary shrink-0">{(insight.causalStrength * 100).toFixed(0)}%</span>
               </div>
@@ -450,7 +450,7 @@ function DecisionButton({ label, active, tone }: Readonly<{
   const inactiveClass = decisionToneClass(tone, false);
   return (
     <div className={cx(
-      'flex-1 text-center font-mono text-xs uppercase py-2 rounded border transition-all duration-300',
+      'flex-1 text-center font-mono text-xs uppercase py-2 rounded border transition-calm',
       active ? activeClass : inactiveClass,
     )}>
       {label}
@@ -463,7 +463,7 @@ function DecisionButton({ label, active, tone }: Readonly<{
 function gradeClass(grade: string): string {
   switch (grade) {
     case 'A': return 'text-green border-current';
-    case 'B': return 'text-blue border-current';
+    case 'B': return 'text-secondary border-current';
     case 'C': return 'text-yellow border-current';
     default:  return 'text-red border-current';
   }
@@ -474,7 +474,7 @@ function hiddenStateClass(state: string): string {
     case 'momentum-continuation':   return 'text-green';
     case 'liquidity-fragility':     return 'text-yellow';
     case 'panic-feedback':          return 'text-red';
-    case 'mean-reversion-pressure': return 'text-blue';
+    case 'mean-reversion-pressure': return 'text-secondary';
     default:                        return 'text-neutral';
   }
 }
@@ -482,20 +482,20 @@ function hiddenStateClass(state: string): string {
 function participantPill(t: ParticipantType): string {
   switch (t) {
     case 'liquidity-provider': return 'text-green border-green/30';
-    case 'momentum':           return 'text-blue border-blue/30';
+    case 'momentum':           return 'text-secondary border-secondary/30';
     case 'panic-flow':         return 'text-red border-red/30';
     case 'arbitrage':          return 'text-yellow border-yellow/30';
-    default:                   return 'text-[#FF8C00] border-[#FF8C00]/30';
+    default:                   return 'text-yellow border-yellow/30';
   }
 }
 
 function participantFill(t: ParticipantType): string {
   switch (t) {
     case 'liquidity-provider': return 'bg-green';
-    case 'momentum':           return 'bg-blue';
+    case 'momentum':           return 'bg-secondary';
     case 'panic-flow':         return 'bg-red';
     case 'arbitrage':          return 'bg-yellow';
-    default:                   return 'bg-[#FF8C00]';
+    default:                   return 'bg-yellow';
   }
 }
 
@@ -538,9 +538,9 @@ function signedToneClass(value: number, neutralClass: string, deadzone = 0): str
 }
 
 function metaCompositeColor(value: number): string {
-  if (value > 0.7) return '#00E5A8';
-  if (value > 0.45) return '#FFB020';
-  return '#FF4D4D';
+  if (value > 0.7) return '#22C55E';
+  if (value > 0.45) return '#F59E0B';
+  return '#EF4444';
 }
 
 function uncertaintyStateClass(state: string | undefined): string {
@@ -553,10 +553,9 @@ function uncertaintyStateClass(state: string | undefined): string {
 
 function toneClassByColor(color: string): string {
   switch (color) {
-    case '#00E5A8': return 'text-green';
-    case '#FFB020': return 'text-yellow';
-    case '#FF8C00': return 'text-[#FF8C00]';
-    case '#FF4D4D': return 'text-red';
+    case '#22C55E': return 'text-green';
+    case '#F59E0B': return 'text-yellow';
+    case '#EF4444': return 'text-red';
     default: return 'text-neutral';
   }
 }

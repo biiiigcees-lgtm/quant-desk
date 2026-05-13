@@ -28,8 +28,8 @@ export default function Page() {
 
   const desktopMiddleClass = [
     'flex flex-1 min-h-0 overflow-hidden',
-    systemAlert === 'critical' ? 'ring-2 ring-red/50' : '',
-    systemAlert === 'warning' ? 'ring-1 ring-yellow/30' : '',
+    systemAlert === 'critical' ? 'ring-1 ring-red/30' : '',
+    systemAlert === 'warning' ? 'ring-1 ring-yellow/20' : '',
   ].filter(Boolean).join(' ');
 
   return (

@@ -46,7 +46,7 @@ export function BottomPanel({ state }: Readonly<Props>) {
   return (
     <footer className="flex h-[28%] bg-surface panel-border shrink-0 overflow-x-auto md:overflow-hidden divide-x divide-border">
       {/* Execution state machine */}
-      <div className="flex flex-col w-[22%] p-3 overflow-hidden">
+      <div className="flex flex-col w-[22%] p-3.5 overflow-hidden">
         <span className="panel-header mb-2">execution state machine</span>
         <div className="flex-1 flex flex-col justify-center">
           <StateMachine currentPhase={currentPhase} />
@@ -57,11 +57,11 @@ export function BottomPanel({ state }: Readonly<Props>) {
       </div>
 
       {/* Fill tracker */}
-      <div className="flex flex-col w-[22%] p-3 overflow-hidden">
+      <div className="flex flex-col w-[22%] p-3.5 overflow-hidden">
         <span className="panel-header mb-2">execution truth</span>
         <div className="space-y-1 overflow-y-auto flex-1">
           <FillRow label="mode" value={execControl?.mode ?? 'normal'} color={modeColor} />
-          <FillRow label="phase" value={execState?.phase === 'blocked' ? 'idle' : (execState?.phase ?? 'idle')} color="#E6EDF3" />
+          <FillRow label="phase" value={execState?.phase === 'blocked' ? 'idle' : (execState?.phase ?? 'idle')} color="#E5E7EB" />
           <FillRow label="safety" value={execState?.safetyMode ?? '—'} color="#6B7C93" />
         </div>
         <div className="mt-2 pt-2 border-t border-border">
@@ -82,7 +82,7 @@ export function BottomPanel({ state }: Readonly<Props>) {
       </div>
 
       {/* KL divergence bar chart */}
-      <div className="flex flex-col flex-1 p-3 overflow-hidden">
+      <div className="flex flex-col flex-1 p-3.5 overflow-hidden">
         <div className="flex items-baseline justify-between mb-2">
           <span className="panel-header">execution path divergence</span>
           {simUniverse?.bestCandidatePlan && (
@@ -97,14 +97,14 @@ export function BottomPanel({ state }: Readonly<Props>) {
       </div>
 
       {/* Simulation stats */}
-      <div className="flex flex-col w-[22%] p-3 overflow-hidden">
+      <div className="flex flex-col w-[22%] p-3.5 overflow-hidden">
         <span className="panel-header mb-2">simulation universe</span>
         <div className="space-y-1.5 flex-1">
           <SimStat label="scenarios" value={`${simUniverse?.scenarioCount ?? 0}`} />
-          <SimStat label="worst PnL" value={`$${(simUniverse?.worstCasePnl ?? 0).toFixed(2)}`} color={simUniverse && simUniverse.worstCasePnl < -10 ? '#FF4D4D' : '#FFB020'} />
+          <SimStat label="worst PnL" value={`$${(simUniverse?.worstCasePnl ?? 0).toFixed(2)}`} color={simUniverse && simUniverse.worstCasePnl < -10 ? '#EF4444' : '#F59E0B'} />
           <SimStat label="tail prob" value={`${((simUniverse?.tailProbability ?? 0) * 100).toFixed(2)}%`} />
           <SimStat label="path div" value={(simUniverse?.executionPathDivergence ?? 0).toFixed(4)} />
-          <SimStat label="branch vol" value={`${((scenario?.volatilityWeight ?? 0) * 100).toFixed(0)}%`} color={scenario?.invalidated ? '#FF4D4D' : '#E6EDF3'} />
+          <SimStat label="branch vol" value={`${((scenario?.volatilityWeight ?? 0) * 100).toFixed(0)}%`} color={scenario?.invalidated ? '#EF4444' : '#E5E7EB'} />
           <SimStat label="authority" value={`${((meta?.authorityDecay ?? 0) * 100).toFixed(0)}%`} color={authorityToneColor(meta?.authorityDecay ?? 0)} />
         </div>
         {simUniverse && (
@@ -115,7 +115,7 @@ export function BottomPanel({ state }: Readonly<Props>) {
       </div>
 
       {/* Reality factor decomposition */}
-      <div className="flex flex-col w-[18%] p-3 overflow-hidden">
+      <div className="flex flex-col w-[18%] p-3.5 overflow-hidden">
         <span className="panel-header mb-2">reality factors</span>
         <div className="space-y-1.5 flex-1">
           <FactorBar label="cal" value={state?.realitySnapshot?.calibrationFactor ?? 0} />
@@ -160,7 +160,7 @@ const StateMachine = React.memo(function StateMachine({ currentPhase }: Readonly
   );
 });
 
-const FillRow = React.memo(function FillRow({ label, value, color = '#E6EDF3' }: Readonly<{ label: string; value: string; color?: string }>) {
+const FillRow = React.memo(function FillRow({ label, value, color = '#E5E7EB' }: Readonly<{ label: string; value: string; color?: string }>) {
   const toneClass = colorToTextClass(color);
   return (
     <div className="flex items-center justify-between">
@@ -170,7 +170,7 @@ const FillRow = React.memo(function FillRow({ label, value, color = '#E6EDF3' }:
   );
 });
 
-const SimStat = React.memo(function SimStat({ label, value, color = '#E6EDF3' }: Readonly<{ label: string; value: string; color?: string }>) {
+const SimStat = React.memo(function SimStat({ label, value, color = '#E5E7EB' }: Readonly<{ label: string; value: string; color?: string }>) {
   const toneClass = colorToTextClass(color);
   return (
     <div className="flex items-center justify-between">
@@ -218,7 +218,7 @@ function CandidateBars({ data }: Readonly<{ data: CandidatePlan[] }>) {
             <div className="w-full flex-1 bg-elevated rounded-sm flex items-end overflow-hidden">
               <div
                 className={cx(
-                  'w-full rounded-sm transition-all duration-300',
+                  'w-full rounded-sm transition-calm',
                   heightPctClass(normalizedHeight),
                   entry.best ? 'bg-green' : 'bg-border',
                 )}
@@ -247,11 +247,11 @@ function truthScoreToneClass(score: number): string {
 
 function colorToTextClass(color: string): string {
   switch (color) {
-    case '#00E5A8':
+    case '#22C55E':
       return 'text-green';
-    case '#FFB020':
+    case '#F59E0B':
       return 'text-yellow';
-    case '#FF4D4D':
+    case '#EF4444':
       return 'text-red';
     case '#6B7C93':
       return 'text-neutral';
@@ -262,19 +262,19 @@ function colorToTextClass(color: string): string {
 
 function executionModeColor(mode: string | undefined): string {
   if (mode === 'hard-stop') {
-    return '#FF4D4D';
+    return '#EF4444';
   }
   if (mode === 'safe-mode') {
-    return '#FFB020';
+    return '#F59E0B';
   }
-  return '#00E5A8';
+  return '#22C55E';
 }
 
 function phaseMarkerClass(isActive: boolean, phase: ExecPhase): string {
   if (!isActive) {
     return 'bg-border';
   }
-  return 'bg-green shadow-glow-green ring-2 ring-green/40 ring-offset-1 ring-offset-base';
+  return 'bg-green ring-1 ring-green/35 ring-offset-1 ring-offset-base';
 }
 
 function phaseLabelClass(isActive: boolean, phase: ExecPhase): string {
@@ -306,10 +306,10 @@ function factorTextClass(value: number): string {
 
 function authorityToneColor(authorityDecay: number): string {
   if (authorityDecay > 0.75) {
-    return '#FF4D4D';
+    return '#EF4444';
   }
   if (authorityDecay > 0.55) {
-    return '#FFB020';
+    return '#F59E0B';
   }
-  return '#00E5A8';
+  return '#22C55E';
 }

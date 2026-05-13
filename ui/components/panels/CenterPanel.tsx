@@ -42,18 +42,18 @@ export function CenterPanel({ state }: Readonly<Props>) {
   const epistemicFillClass = fillToneClass(epistemicScore);
 
   return (
-    <main className="flex flex-col flex-1 min-w-0 panel-border overflow-hidden bg-base">
+    <main className="flex flex-col flex-1 min-w-0 panel-border overflow-hidden bg-surface">
       {/* Header */}
-      <div className="px-4 py-1.5 panel-border flex items-center justify-between shrink-0">
+      <div className="px-4 py-2 panel-border flex items-center justify-between shrink-0">
         <span className="panel-header">decision consciousness</span>
         <span className="font-mono text-2xs text-muted">{execControl?.mode ?? 'normal'}</span>
       </div>
 
       {/* Large belief display */}
-      <div className="flex flex-col items-center justify-center py-5 md:py-6 panel-border shrink-0 px-3">
+      <div className="flex flex-col items-center justify-center py-6 md:py-7 panel-border shrink-0 px-4">
         <span className="panel-header mb-2">estimated probability</span>
         <div className="relative flex items-baseline gap-2">
-          <span className={cx('font-mono text-5xl md:text-6xl font-semibold leading-none', edgeToneClass(edge))}>
+          <span className={cx('font-mono text-5xl md:text-6xl font-bold leading-none tracking-tight', edgeToneClass(edge))}>
             {(estProb * 100).toFixed(1)}
           </span>
           <span className="font-mono text-2xl text-muted">%</span>
@@ -66,11 +66,9 @@ export function CenterPanel({ state }: Readonly<Props>) {
         </div>
         {/* CI bar */}
         <div className="relative w-full max-w-[10rem] h-1 bg-elevated rounded-full mt-2 overflow-visible">
+          <div className={cx('absolute h-1 rounded-full opacity-25 bg-secondary transition-calm', leftPctClass(ciLow), widthPctClass(ciHigh - ciLow))} />
           <div
-            className={cx('absolute h-1 rounded-full opacity-30 bg-blue', leftPctClass(ciLow), widthPctClass(ciHigh - ciLow))}
-          />
-          <div
-            className={cx('absolute w-2 h-2 rounded-full -top-0.5 -translate-x-1/2 bg-blue', leftPctClass(estProb))}
+            className={cx('absolute w-2 h-2 rounded-full -top-0.5 -translate-x-1/2 bg-primary transition-calm', leftPctClass(estProb))}
           />
         </div>
       </div>
@@ -83,7 +81,7 @@ export function CenterPanel({ state }: Readonly<Props>) {
       </div>
 
       {/* Uncertainty map */}
-      <div className="px-4 py-3 panel-border shrink-0">
+      <div className="px-4 py-3.5 panel-border shrink-0">
         <span className="panel-header block mb-2">uncertainty decomposition</span>
         <div className="grid grid-cols-4 gap-2">
           <UncertaintyCell label="calibration" value={calibration?.ece ?? 0} invert />
@@ -100,7 +98,7 @@ export function CenterPanel({ state }: Readonly<Props>) {
           <div className="flex-1 h-1 bg-elevated rounded-full overflow-hidden">
             <div
               className={cx(
-                'h-full rounded-full transition-all duration-500',
+                'h-full rounded-full transition-calm',
                 widthPctClass(epistemicScore),
                 epistemicFillClass,
               )}
@@ -130,12 +128,12 @@ export function CenterPanel({ state }: Readonly<Props>) {
             </span>
           </div>
           {operatorAttention?.focus === 'critical' && (
-            <div className="mt-2 px-2 py-1 rounded border border-red/40 bg-elevated font-mono text-2xs text-red">
+            <div className="mt-2 px-2 py-1 rounded border border-red/30 bg-elevated/70 font-mono text-2xs text-red">
               operator attention critical: {operatorAttention?.contradictionHotspots?.join(', ') || 'hotspots unresolved'}
             </div>
           )}
           {marketExperience?.recurringFailureSignature && (
-            <div className="mt-1 px-2 py-1 rounded border border-yellow/40 bg-elevated font-mono text-2xs text-yellow">
+            <div className="mt-1 px-2 py-1 rounded border border-yellow/30 bg-elevated/70 font-mono text-2xs text-yellow">
               recurring failure archetype: {marketExperience?.archetype ?? 'unknown'} | trauma {((marketExperience?.traumaPenalty ?? 0) * 100).toFixed(0)}%
             </div>
           )}
@@ -154,12 +152,12 @@ export function CenterPanel({ state }: Readonly<Props>) {
       )}
 
       {/* Execution permission */}
-      <div className="px-4 py-4 panel-border shrink-0 flex items-center justify-between gap-3">
+      <div className="px-4 py-4 panel-border shrink-0 flex items-center justify-between gap-4">
         <div>
           <span className="panel-header block mb-1">execution permission</span>
           <div>
             <div
-              className={cx('font-mono text-sm font-bold uppercase', permission ? 'text-green' : 'text-yellow')}
+              className={cx('font-mono text-sm font-bold uppercase tracking-wide', permission ? 'text-green' : 'text-yellow')}
             >
               {permission ? 'permitted' : 'standby'}
             </div>
@@ -180,7 +178,7 @@ export function CenterPanel({ state }: Readonly<Props>) {
       </div>
 
       {/* Causal graph */}
-      <div className="px-4 py-3 flex-1 overflow-hidden">
+      <div className="px-4 py-3.5 flex-1 overflow-hidden">
         <span className="panel-header block mb-2">causal world model</span>
         {marketCausalState && (
           <div className="mb-2 px-2 py-1.5 rounded bg-elevated border border-border/60">
@@ -264,9 +262,9 @@ function CausalRow({ insight }: Readonly<{ insight: CausalInsight }>) {
     )}>
       <span className="text-yellow">{shortLabel(insight.cause)}</span>
       <span className="text-muted">→</span>
-      <span className="text-blue">{shortLabel(insight.effect)}</span>
+      <span className="text-secondary">{shortLabel(insight.effect)}</span>
       <div className="flex-1 h-1 bg-border rounded-full overflow-hidden">
-        <div className={cx('h-full rounded-full bg-blue', widthPctClass(insight.causalStrength))} />
+        <div className={cx('h-full rounded-full bg-secondary transition-calm', widthPctClass(insight.causalStrength))} />
       </div>
       <span className="text-primary w-8 text-right">{(insight.causalStrength * 100).toFixed(0)}%</span>
       {insight.spurious && <span className="text-red">~</span>}
@@ -276,10 +274,10 @@ function CausalRow({ insight }: Readonly<{ insight: CausalInsight }>) {
 
 function CausalGraphPlaceholder() {
   const nodes = [
-    { x: 50, y: 20, label: 'micro', color: '#00E5A8' },
-    { x: 20, y: 50, label: 'drift', color: '#FFB020' },
-    { x: 80, y: 50, label: 'prob', color: '#3B82F6' },
-    { x: 50, y: 80, label: 'exec', color: '#FF4D4D' },
+    { x: 50, y: 20, label: 'micro', color: '#22C55E' },
+    { x: 20, y: 50, label: 'drift', color: '#F59E0B' },
+    { x: 80, y: 50, label: 'prob', color: '#9CA3AF' },
+    { x: 50, y: 80, label: 'exec', color: '#EF4444' },
   ];
   const edges = [[0, 2], [1, 2], [2, 3]];
 
@@ -296,13 +294,13 @@ function CausalGraphPlaceholder() {
             key={`${from}-${to}`}
             x1={fromNode.x} y1={fromNode.y}
             x2={toNode.x} y2={toNode.y}
-            stroke="#1E2D42" strokeWidth="1"
+            stroke="#2A3441" strokeWidth="1"
           />
         );
       })}
       {nodes.map((n) => (
         <g key={n.label}>
-          <circle cx={n.x} cy={n.y} r="6" fill="#0F1629" stroke={n.color} strokeWidth="1" />
+          <circle cx={n.x} cy={n.y} r="6" fill="#11161D" stroke={n.color} strokeWidth="1" />
           <text x={n.x} y={n.y + 4} textAnchor="middle" fill={n.color} fontSize="4" fontFamily="JetBrains Mono">{n.label}</text>
         </g>
       ))}
@@ -345,7 +343,7 @@ function healthGradeClass(grade: string): string {
     case 'A':
       return 'text-green';
     case 'B':
-      return 'text-blue';
+      return 'text-secondary';
     case 'C':
       return 'text-yellow';
     default:
@@ -360,7 +358,7 @@ function systemStateTextClass(systemState: string): string {
     case 'cautious':
       return 'text-yellow';
     case 'degraded':
-      return 'text-[#FF8C00]';
+      return 'text-yellow';
     case 'halted':
       return 'text-red';
     default:
@@ -397,7 +395,7 @@ function hiddenStateToneClass(state: string): string {
     case 'panic-feedback':
       return 'text-red';
     case 'mean-reversion-pressure':
-      return 'text-blue';
+      return 'text-secondary';
     default:
       return 'text-neutral';
   }

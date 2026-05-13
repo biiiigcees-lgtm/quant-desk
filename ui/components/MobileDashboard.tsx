@@ -31,20 +31,20 @@ export function MobileDashboard({ state }: Readonly<Props>) {
   const syntheticDepth = clamp01(1 - (physics?.structuralStress ?? 0));
 
   return (
-    <div className="flex flex-col gap-2">
-      <section className="rounded border border-border bg-surface p-3">
+    <div className="flex flex-col gap-2.5">
+      <section className="terminal-card p-3.5">
         <div className="flex items-center justify-between mb-2">
           <span className="panel-header">price chart</span>
           <span className="font-mono text-xs text-primary">{(estProb * 100).toFixed(1)}%</span>
         </div>
         <ProbabilityChart data={chartPoints} />
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <MiniStat label="sys" value={`${(estProb * 100).toFixed(1)}%`} tone="text-blue" />
+        <div className="mt-2 grid grid-cols-2 gap-2.5">
+          <MiniStat label="sys" value={`${(estProb * 100).toFixed(1)}%`} tone="text-secondary" />
           <MiniStat label="mkt" value={`${(marketProb * 100).toFixed(1)}%`} tone="text-green" />
         </div>
       </section>
 
-      <section className="rounded border border-border bg-surface p-3">
+      <section className="terminal-card p-3.5">
         <div className="flex items-center justify-between mb-2">
           <span className="panel-header">p(above / below / no bet)</span>
           <span className={cx('font-mono text-xs font-semibold uppercase', decision.tone)}>{decision.label}</span>
@@ -56,7 +56,7 @@ export function MobileDashboard({ state }: Readonly<Props>) {
         </div>
       </section>
 
-      <section className="rounded border border-border bg-surface p-3">
+      <section className="terminal-card p-3.5">
         <span className="panel-header block mb-2">market state summary</span>
         <div className="grid grid-cols-2 gap-2">
           <MiniStat label="liquidity" value={`${(syntheticDepth * 100).toFixed(0)}%`} tone={toneByValue(syntheticDepth)} />
@@ -71,7 +71,7 @@ export function MobileDashboard({ state }: Readonly<Props>) {
           <BarRow label="bid pressure" value={syntheticBidPressure} fillClass="bg-green" />
           <BarRow label="ask pressure" value={syntheticAskPressure} fillClass="bg-red" />
           <BarRow label="spread stress" value={syntheticSpread} fillClass="bg-yellow" />
-          <BarRow label="depth stability" value={syntheticDepth} fillClass="bg-blue" />
+          <BarRow label="depth stability" value={syntheticDepth} fillClass="bg-secondary" />
         </div>
       </MobileCollapsible>
 
@@ -79,7 +79,7 @@ export function MobileDashboard({ state }: Readonly<Props>) {
         <div className="space-y-2">
           <BarRow label="confidence" value={confidence} fillClass={fillByValue(confidence)} />
           <BarRow label="ece health" value={clamp01(1 - (calibration?.ece ?? 0))} fillClass="bg-green" />
-          <BarRow label="brier health" value={clamp01(1 - (calibration?.brier ?? 0))} fillClass="bg-blue" />
+          <BarRow label="brier health" value={clamp01(1 - (calibration?.brier ?? 0))} fillClass="bg-secondary" />
           <BarRow label="uncertainty" value={uncertainty} fillClass="bg-yellow" />
         </div>
       </MobileCollapsible>
@@ -100,12 +100,12 @@ function ProbabilityChart({ data }: Readonly<{ data: Array<{ x: number; y: numbe
       <svg viewBox="0 0 100 100" className="h-24 w-full">
         <defs>
           <linearGradient id="mobileChartGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#00E5A8" stopOpacity="0.35" />
-            <stop offset="95%" stopColor="#00E5A8" stopOpacity="0" />
+            <stop offset="5%" stopColor="#9CA3AF" stopOpacity="0.18" />
+            <stop offset="95%" stopColor="#9CA3AF" stopOpacity="0" />
           </linearGradient>
         </defs>
         <polygon points={area} fill="url(#mobileChartGradient)" />
-        <polyline points={points} fill="none" stroke="#00E5A8" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+        <polyline points={points} fill="none" stroke="#9CA3AF" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
       </svg>
     </div>
   );
@@ -122,7 +122,7 @@ function DecisionCell({ label, value, active, tone }: Readonly<{ label: string; 
 
 function MiniStat({ label, value, tone }: Readonly<{ label: string; value: string; tone: string }>) {
   return (
-    <div className="rounded bg-elevated px-2 py-1.5">
+    <div className="terminal-subcard px-2.5 py-2">
       <span className="panel-header block">{label}</span>
       <span className={cx('font-mono text-xs font-semibold', tone)}>{value}</span>
     </div>

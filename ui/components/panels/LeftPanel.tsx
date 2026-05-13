@@ -34,13 +34,13 @@ export function LeftPanel({ state }: Readonly<Props>) {
   return (
     <aside className="hidden md:flex flex-col w-[26%] min-w-0 bg-surface panel-border overflow-hidden">
       {/* Header */}
-      <div className="px-3 py-1.5 panel-border flex items-center justify-between shrink-0">
+      <div className="px-3 py-2 panel-border flex items-center justify-between shrink-0">
         <span className="panel-header">reality layer</span>
         <span className="font-mono text-2xs text-muted">{prob?.contractId ?? 'KXBTC'}</span>
       </div>
 
       {/* Probability chart */}
-      <div className="px-3 pt-2 pb-1 shrink-0">
+      <div className="px-3 pt-2.5 pb-1.5 shrink-0">
         <div className="flex items-baseline justify-between mb-1">
           <span className="panel-header">kalshi implied</span>
           <span className="font-mono text-xs text-primary">{((prob?.marketImpliedProbability ?? 0) * 100).toFixed(1)}%</span>
@@ -49,10 +49,10 @@ export function LeftPanel({ state }: Readonly<Props>) {
       </div>
 
       {/* Probability divergence */}
-      <div className="px-3 py-2 panel-border shrink-0">
+      <div className="px-3 py-2.5 panel-border shrink-0">
         <span className="panel-header block mb-1.5">probability divergence</span>
-        <ProbBar label="SYS" value={prob?.estimatedProbability ?? 0} color="#3B82F6" />
-        <ProbBar label="MKT" value={prob?.marketImpliedProbability ?? 0} color="#00E5A8" />
+        <ProbBar label="SYS" value={prob?.estimatedProbability ?? 0} color="#9CA3AF" />
+        <ProbBar label="MKT" value={prob?.marketImpliedProbability ?? 0} color="#22C55E" />
         <div className="flex items-center justify-between mt-1">
           <span className="font-mono text-2xs text-muted">edge</span>
           <span className={cx(
@@ -65,7 +65,7 @@ export function LeftPanel({ state }: Readonly<Props>) {
       </div>
 
       {/* Liquidity heatmap */}
-      <div className="px-3 py-2 panel-border shrink-0">
+      <div className="px-3 py-2.5 panel-border shrink-0">
         <span className="panel-header block mb-1.5">liquidity signals</span>
         <HeatRow label="OBI" value={Math.abs(obiValue)} intensity={obiValue} />
         <HeatRow label="SPREAD" value={prob?.calibrationError ?? 0} intensity={-(prob?.calibrationError ?? 0)} />
@@ -74,7 +74,7 @@ export function LeftPanel({ state }: Readonly<Props>) {
       </div>
 
       {/* Drift & calibration */}
-      <div className="px-3 py-2 panel-border shrink-0">
+      <div className="px-3 py-2.5 panel-border shrink-0">
         <span className="panel-header block mb-1.5">regime state</span>
         <div className="flex gap-2">
           <Badge
@@ -90,7 +90,7 @@ export function LeftPanel({ state }: Readonly<Props>) {
           <Badge
             label="regime"
             value={prob?.regime ?? '—'}
-            color="#FFB020"
+            color="#F59E0B"
           />
           <Badge
             label="meta"
@@ -114,7 +114,7 @@ export function LeftPanel({ state }: Readonly<Props>) {
       </div>
 
       {/* Participant flow */}
-      <div className="px-3 py-2 flex-1 overflow-hidden">
+      <div className="px-3 py-2.5 flex-1 overflow-hidden">
         <span className="panel-header block mb-1.5">participant flow</span>
         {pf ? (
           <>
@@ -123,7 +123,7 @@ export function LeftPanel({ state }: Readonly<Props>) {
                 {pf.dominant}
               </span>
               {pf.trappedTraderSignal && (
-                <span className="text-2xs font-mono text-yellow">⚠ trapped</span>
+                  <span className="text-2xs font-mono text-yellow">warning</span>
               )}
             </div>
             <StackedBar distribution={pf.distribution} />
@@ -159,23 +159,23 @@ function ProbabilitySparkline({ data }: Readonly<{ data: Array<{ t: number; v: n
     <svg viewBox="0 0 100 100" className="w-full h-12">
       <defs>
         <linearGradient id="probGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="5%" stopColor="#00E5A8" stopOpacity="0.3" />
-          <stop offset="95%" stopColor="#00E5A8" stopOpacity="0" />
+          <stop offset="5%" stopColor="#9CA3AF" stopOpacity="0.14" />
+          <stop offset="95%" stopColor="#9CA3AF" stopOpacity="0" />
         </linearGradient>
       </defs>
       <polygon points={areaPoints} fill="url(#probGrad)" />
-      <polyline points={points} fill="none" stroke="#00E5A8" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+      <polyline points={points} fill="none" stroke="#9CA3AF" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
 
 function ProbBar({ label, value, color }: Readonly<{ label: string; value: number; color: string }>) {
-  const fillClass = color === '#3B82F6' ? 'bg-blue' : 'bg-green';
+  const fillClass = color === '#9CA3AF' ? 'bg-secondary' : 'bg-green';
   return (
     <div className="flex items-center gap-2 mb-0.5">
       <span className="font-mono text-2xs text-muted w-6">{label}</span>
       <div className="flex-1 h-1.5 bg-elevated rounded-full overflow-hidden">
-        <div className={cx('h-full rounded-full transition-all duration-300', widthPctClass(value), fillClass)} />
+        <div className={cx('h-full rounded-full transition-calm', widthPctClass(value), fillClass)} />
       </div>
       <span className="font-mono text-2xs text-primary w-10 text-right">{(value * 100).toFixed(1)}%</span>
     </div>
@@ -194,7 +194,7 @@ function HeatRow({ label, value, intensity }: Readonly<{ label: string; value: n
             key={i}
             className={cx(
               'rounded-sm',
-              i < activeCells ? activeClass : 'bg-border opacity-30',
+              i < activeCells ? activeClass : 'bg-border opacity-20',
               i < activeCells && heatOpacityClass(i),
             )}
           />
@@ -236,13 +236,13 @@ function participantPillClass(participant: ParticipantType): string {
     case 'liquidity-provider':
       return 'text-green border-green/30';
     case 'momentum':
-      return 'text-blue border-blue/30';
+      return 'text-secondary border-secondary/30';
     case 'panic-flow':
       return 'text-red border-red/30';
     case 'arbitrage':
       return 'text-yellow border-yellow/30';
     default:
-      return 'text-[#FF8C00] border-[#FF8C00]/30';
+      return 'text-yellow border-yellow/30';
   }
 }
 
@@ -251,13 +251,13 @@ function participantFillClass(participant: ParticipantType): string {
     case 'liquidity-provider':
       return 'bg-green';
     case 'momentum':
-      return 'bg-blue';
+      return 'bg-secondary';
     case 'panic-flow':
       return 'bg-red';
     case 'arbitrage':
       return 'bg-yellow';
     default:
-      return 'bg-[#FF8C00]';
+      return 'bg-yellow';
   }
 }
 
@@ -273,25 +273,23 @@ function uncertaintyToneClass(state: string | undefined): string {
 
 function toneClassFromColor(color: string): string {
   switch (color) {
-    case '#00E5A8':
+    case '#22C55E':
       return 'text-green';
-    case '#FFB020':
+    case '#F59E0B':
       return 'text-yellow';
-    case '#FF8C00':
-      return 'text-[#FF8C00]';
-    case '#FF4D4D':
+    case '#EF4444':
       return 'text-red';
     default:
-      return 'text-neutral';
+      return 'text-secondary';
   }
 }
 
 function metaToneColor(score: number): string {
   if (score > 0.7) {
-    return '#00E5A8';
+    return '#22C55E';
   }
   if (score > 0.45) {
-    return '#FFB020';
+    return '#F59E0B';
   }
-  return '#FF4D4D';
+  return '#EF4444';
 }

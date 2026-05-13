@@ -56,6 +56,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 .ws-source.coinbase{color:var(--cyan)}
 .ws-source.rest{color:var(--amber)}
 .system-status-pill{position:fixed;top:8px;right:10px;z-index:120;pointer-events:none;opacity:.9;padding:3px 8px;border-radius:999px;border:1px solid var(--border);font-size:8px;letter-spacing:.4px;font-weight:600;background:rgba(16,24,38,.86);color:var(--t2);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);max-width:52vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.system-status-pill.bottom-docked{top:auto;bottom:6px;right:8px;opacity:.72}
 .system-status-pill.stable{color:var(--green);border-color:rgba(0,230,118,.28);background:rgba(0,230,118,.08)}
 .system-status-pill.elevated{color:var(--amber);border-color:rgba(255,171,0,.32);background:rgba(255,171,0,.08)}
 .system-status-pill.instability{color:var(--red);border-color:rgba(255,77,77,.35);background:rgba(255,77,77,.1)}
@@ -359,6 +360,7 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
 @media (max-width:480px){
   #topbar{padding:4px 6px;gap:4px}
   .system-status-pill{top:6px;right:6px;font-size:7px;max-width:62vw;padding:2px 6px}
+  .system-status-pill.bottom-docked{top:auto;bottom:4px;right:4px;max-width:58vw}
   .tb-logo{font-size:11px;letter-spacing:1px}
   .tb-price{font-size:16px}
   .tb-stat,.tb-sep,.ws-latency,.clock-text{display:none}
@@ -1270,7 +1272,7 @@ function updateSystemStatusBanners() {
   const statusPill = document.getElementById('systemStatusPill');
   if (!statusPill) return;
 
-  statusPill.classList.remove('stable', 'elevated', 'instability');
+  statusPill.classList.remove('stable', 'elevated', 'instability', 'bottom-docked');
 
   const risk = String(marketStore.systemTruth?.riskLevel || 'MEDIUM').toUpperCase();
   const hasStaleWarning = Boolean(marketStore.staleWarning);
@@ -1279,7 +1281,7 @@ function updateSystemStatusBanners() {
   const highLatency = Number.isFinite(marketStore.wsLatency) && marketStore.wsLatency > 900;
 
   if (hasStaleWarning || !executionAllowed || risk === 'HIGH' || risk === 'CRITICAL') {
-    statusPill.classList.add('instability');
+    statusPill.classList.add('instability', 'bottom-docked');
     statusPill.textContent = '🔴 High Instability - Confidence Reduced';
     return;
   }

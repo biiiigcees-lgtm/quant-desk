@@ -112,13 +112,13 @@ export function RightPanel({ state }: Readonly<Props>) {
   return (
     <aside className="hidden md:flex flex-col w-[28%] min-w-0 bg-surface panel-border overflow-hidden">
       {/* Header */}
-      <div className="px-3 py-1.5 panel-border flex items-center justify-between shrink-0">
+      <div className="px-3 py-2 panel-border flex items-center justify-between shrink-0">
         <span className="panel-header">ai cognition network</span>
         <span className="font-mono text-2xs text-muted">{AGENTS.length} agents</span>
       </div>
 
       {/* Agent grid */}
-      <div className="flex-1 overflow-y-auto p-2 grid grid-cols-1 gap-1.5">
+      <div className="flex-1 overflow-y-auto p-2.5 grid grid-cols-1 gap-2">
         {AGENTS.map((agent) => {
           const { confidence, status, reasoning, latencyMs } = extractAgentMetrics(state, agent.id);
           const hasFailure = failures?.some((f) => f.agent === agent.id);
@@ -136,13 +136,13 @@ export function RightPanel({ state }: Readonly<Props>) {
       </div>
 
       {/* Disagreement matrix */}
-      <div className="px-3 py-2 panel-border shrink-0">
+      <div className="px-3 py-2.5 panel-border shrink-0">
         <span className="panel-header block mb-1.5">agent disagreement</span>
         <DisagreementMatrix state={state} />
       </div>
 
       {/* Orchestrator summary */}
-      <div className="px-3 py-2 panel-border shrink-0">
+      <div className="px-3 py-2.5 panel-border shrink-0">
         <span className="panel-header block mb-1">orchestrator</span>
         <p className="font-mono text-2xs text-secondary leading-relaxed line-clamp-3">
           {state?.aiAggregatedIntelligence?.market_state?.narrative ?? 'Meta-orchestrator idle. Awaiting market signal.'}
@@ -159,7 +159,7 @@ export function RightPanel({ state }: Readonly<Props>) {
       </div>
 
       {/* Multi-timescale coherence */}
-      <div className="px-3 py-2 shrink-0">
+      <div className="px-3 py-2.5 shrink-0">
         <span className="panel-header block mb-1.5">temporal alignment</span>
         <MultiTimescaleBar state={state} />
       </div>
@@ -181,11 +181,11 @@ function AgentNode({
   const confidenceFillClass = confidenceFillClassFor(confidence);
 
   return (
-    <div className="bg-elevated rounded p-2 flex flex-col gap-1">
+    <div className="terminal-subcard p-2.5 flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <span className={cx('w-1.5 h-1.5 rounded-full', statusClass)} />
-          <span className="font-mono text-2xs text-primary font-semibold">{agent.label}</span>
+          <span className={cx('w-1.5 h-1.5 rounded-full transition-calm', statusClass)} />
+          <span className="font-mono text-2xs text-primary font-semibold tracking-wide">{agent.label}</span>
         </div>
         <div className="flex items-center gap-1.5">
           {latencyMs !== undefined && (
@@ -198,10 +198,10 @@ function AgentNode({
       </div>
       {/* Confidence bar */}
       <div className="h-0.5 w-full bg-border rounded-full overflow-hidden">
-        <div className={cx('h-full rounded-full transition-all duration-500', widthPctClass(confidence), confidenceFillClass)} />
+        <div className={cx('h-full rounded-full transition-calm', widthPctClass(confidence), confidenceFillClass)} />
       </div>
       {/* Reasoning */}
-      <p className="font-mono text-2xs text-muted leading-relaxed truncate">{reasoning}</p>
+      <p className="font-mono text-2xs text-muted/90 leading-relaxed truncate">{reasoning}</p>
     </div>
   );
 }
@@ -229,7 +229,7 @@ function MultiTimescaleBar({ state }: Readonly<{ state: SystemStateSnapshot | nu
             <div key={label} className="flex flex-col items-center gap-0.5">
               <span className="font-mono text-2xs text-muted">{label}</span>
               <div className="h-3 w-full bg-elevated rounded-sm overflow-hidden flex items-center justify-center">
-                <div className={cx('h-full rounded-sm transition-all duration-500', widthPctClass(strength), fillClass)} />
+                <div className={cx('h-full rounded-sm transition-calm', widthPctClass(strength), fillClass)} />
               </div>
               <span className={cx('font-mono text-2xs', toneClass)}>{directionGlyph(dir)}</span>
             </div>
@@ -238,7 +238,7 @@ function MultiTimescaleBar({ state }: Readonly<{ state: SystemStateSnapshot | nu
       </div>
       <div className="flex items-center gap-1.5">
         <div className="flex-1 h-1 bg-elevated rounded-full overflow-hidden">
-          <div className={cx('h-full rounded-full transition-all duration-500', widthPctClass(coherence), alignFillClass)} />
+          <div className={cx('h-full rounded-full transition-calm', widthPctClass(coherence), alignFillClass)} />
         </div>
         <span className={cx('font-mono text-2xs', alignClass)}>{alignment}</span>
       </div>
@@ -252,7 +252,7 @@ function DisagreementMatrix({ state }: Readonly<{ state: SystemStateSnapshot | n
   const agentSample = ['MKT', 'CAL', 'RSK', 'MIC', 'STR', 'EXE'];
   const FALLBACK_WEIGHTS = [0.18, 0.22, 0.15, 0.2, 0.12, 0.13];
   const values = agentSample.map((_, i) => Object.values(weights)[i] ?? FALLBACK_WEIGHTS[i] ?? 0.1);
-  const disagreementClassByBucket = ['bg-red/5', 'bg-red/10', 'bg-red/20', 'bg-red/30', 'bg-red/40', 'bg-red/50'];
+  const disagreementClassByBucket = ['bg-red/5', 'bg-red/10', 'bg-red/15', 'bg-red/20', 'bg-red/25', 'bg-red/35'];
 
   return (
     <div className="grid grid-cols-6 gap-px">

@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
 * {
   box-sizing: border-box;
@@ -13,10 +13,11 @@ body {
   height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
-  background-color: #0A0F1C;
-  color: #E6EDF3;
-  font-family: 'Inter', system-ui, sans-serif;
+  background-color: #0B0F14;
+  color: #E5E7EB;
+  font-family: 'Inter', 'SF Pro Text', 'IBM Plex Sans', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 body {
@@ -28,15 +29,15 @@ body {
   height: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: #0F1629;
+  background: #11161D;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1E2D42;
+  background: #2A3441;
   border-radius: 2px;
 }
 
 .font-mono {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: 'IBM Plex Sans', 'Inter', 'SF Pro Text', system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
 }
 
@@ -45,19 +46,20 @@ details > summary::-webkit-details-marker {
 }
 
 details[open] .details-arrow {
-  color: #00E5A8;
+  color: #F59E0B;
 }
 
 @layer utilities {
   .panel-border {
-    border: 1px solid #1E2D42;
+    border: 1px solid #2A3441;
   }
   .panel-header {
     font-size: 0.625rem;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: #4A5568;
-    font-family: 'JetBrains Mono', monospace;
+    color: #6B7280;
+    font-family: 'Inter', 'SF Pro Text', 'IBM Plex Sans', system-ui, sans-serif;
+    font-weight: 500;
   }
 
   .w-pct-0 { width: 0%; }
@@ -97,10 +99,28 @@ details[open] .details-arrow {
   .left-pct-100 { left: 100%; }
 
   .shadow-glow-green {
-    box-shadow: 0 0 6px #00E5A8;
+    box-shadow: 0 0 2px rgba(34, 197, 94, 0.35);
   }
 
   .shadow-glow-red {
-    box-shadow: 0 0 6px #FF4D4D;
+    box-shadow: 0 0 2px rgba(239, 68, 68, 0.35);
+  }
+
+  .terminal-card {
+    background-color: #11161D;
+    border: 1px solid #2A3441;
+    border-radius: 0.5rem;
+  }
+
+  .terminal-subcard {
+    background-color: #161C23;
+    border: 1px solid rgba(156, 163, 175, 0.16);
+    border-radius: 0.5rem;
+  }
+
+  .transition-calm {
+    transition-property: color, background-color, border-color, opacity;
+    transition-duration: 160ms;
+    transition-timing-function: ease-out;
   }
 }

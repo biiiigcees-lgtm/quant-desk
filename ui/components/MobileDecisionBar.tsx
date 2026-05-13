@@ -17,11 +17,11 @@ export function MobileDecisionBar({ state }: Readonly<Props>) {
   const decision = deriveDecision(probability, edge);
 
   return (
-    <div className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border bg-surface/95 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-screen-sm items-center justify-between gap-2 px-3 py-2">
+    <div className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border bg-surface/98 backdrop-blur-sm">
+      <div className="mx-auto flex max-w-screen-sm items-center justify-between gap-2.5 px-3 py-2.5">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className={cx('font-mono text-xs font-bold uppercase', decision.tone)}>{decision.label}</span>
+            <span className={cx('font-mono text-xs font-bold uppercase tracking-wide', decision.tone)}>{decision.label}</span>
             <span className="font-mono text-2xs text-muted">{(probability * 100).toFixed(1)}%</span>
           </div>
           <div className="flex items-center gap-2 font-mono text-2xs text-secondary">
@@ -39,10 +39,16 @@ export function MobileDecisionBar({ state }: Readonly<Props>) {
   );
 }
 
+function getToneClass(tone: 'green' | 'red' | 'neutral'): string {
+  if (tone === 'green') return 'border-green text-green';
+  if (tone === 'red') return 'border-red text-red';
+  return 'border-neutral text-neutral';
+}
+
 function DecisionPill({ label, active, tone }: Readonly<{ label: string; active: boolean; tone: 'green' | 'red' | 'neutral' }>) {
-  const toneClass = tone === 'green' ? 'border-green text-green' : tone === 'red' ? 'border-red text-red' : 'border-neutral text-neutral';
+  const toneClass = getToneClass(tone);
   return (
-    <span className={cx('rounded border px-1.5 py-1', toneClass, active ? 'bg-elevated' : 'opacity-60')}>
+    <span className={cx('rounded border px-1.5 py-1 transition-calm', toneClass, active ? 'bg-elevated' : 'opacity-70')}>
       {label}
     </span>
   );

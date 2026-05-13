@@ -1,39 +1,39 @@
 export const tokens = {
   bg: {
-    base:    '#0A0F1C',
-    surface: '#0F1629',
-    elevated:'#152033',
-    border:  '#1E2D42',
+    base:    '#0B0F14',
+    surface: '#11161D',
+    elevated:'#1B222C',
+    border:  '#2A3441',
   },
   text: {
-    primary:  '#E6EDF3',
-    secondary:'#8B9CB8',
-    muted:    '#4A5568',
+    primary:  '#E5E7EB',
+    secondary:'#9CA3AF',
+    muted:    '#6B7280',
   },
   accent: {
-    green:   '#00E5A8',
-    yellow:  '#FFB020',
-    red:     '#FF4D4D',
-    blue:    '#3B82F6',
+    green:   '#22C55E',
+    yellow:  '#F59E0B',
+    red:     '#EF4444',
+    blue:    '#6B7280',
     neutral: '#6B7C93',
   },
   font: {
-    mono: '"JetBrains Mono", "Fira Code", monospace',
-    ui:   '"Inter", system-ui, sans-serif',
+    mono: '"IBM Plex Sans", "Inter", "SF Pro Text", system-ui, sans-serif',
+    ui:   '"Inter", "SF Pro Text", "IBM Plex Sans", system-ui, sans-serif',
   },
 } as const;
 
 export const SYSTEM_STATE_COLOR: Record<string, string> = {
-  nominal:  '#00E5A8',
-  cautious: '#FFB020',
-  degraded: '#FF8C00',
-  halted:   '#FF4D4D',
+  nominal:  '#22C55E',
+  cautious: '#F59E0B',
+  degraded: '#F59E0B',
+  halted:   '#EF4444',
 };
 
 export const SEVERITY_COLOR: Record<string, string> = {
-  low:      '#00E5A8',
-  medium:   '#FFB020',
-  high:     '#FF8C00',
-  critical: '#FF4D4D',
-  none:     '#6B7C93',
+  low:      '#22C55E',
+  medium:   '#F59E0B',
+  high:     '#F59E0B',
+  critical: '#EF4444',
+  none:     '#6B7280',
 };

@@ -14,13 +14,13 @@ export function MobileCollapsible({ title, defaultOpen = false, children, classN
   return (
     <details
       open={defaultOpen}
-      className={cx('rounded border border-border bg-surface overflow-hidden', className)}
+      className={cx('terminal-card overflow-hidden', className)}
     >
-      <summary className="list-none cursor-pointer px-3 py-2 flex items-center justify-between">
+      <summary className="list-none cursor-pointer px-3 py-2.5 flex items-center justify-between">
         <span className="panel-header">{title}</span>
-        <span className="font-mono text-xs text-secondary details-arrow">expand</span>
+        <span className="font-mono text-xs text-muted details-arrow">expand</span>
       </summary>
-      <div className="px-3 pb-3">{children}</div>
+      <div className="px-3.5 pb-3.5">{children}</div>
     </details>
   );
 }
