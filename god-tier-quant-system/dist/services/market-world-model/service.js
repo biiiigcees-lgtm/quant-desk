@@ -55,7 +55,7 @@ export class MarketWorldModelService {
             return;
         }
         const participantIntent = mapIntent(state.participant);
-        const globalLiquidityScore = state.global?.liquidity === 'abundant' ? 0.82 : state.global?.liquidity === 'normal' ? 0.6 : 0.35;
+        const globalLiquidityScore = resolveGlobalLiquidityScore(state.global?.liquidity);
         const syntheticLiquidityProbability = clamp(state.participant.distribution['liquidity-provider'] * 0.5 +
             globalLiquidityScore * 0.25 +
             (1 - state.causal.instabilityRisk) * 0.25, 0, 1);
@@ -110,4 +110,13 @@ function clamp(value, min, max) {
         return min;
     }
     return Math.max(min, Math.min(max, value));
+}
+function resolveGlobalLiquidityScore(liquidity) {
+    if (liquidity === 'abundant') {
+        return 0.82;
+    }
+    if (liquidity === 'normal') {
+        return 0.6;
+    }
+    return 0.35;
 }
