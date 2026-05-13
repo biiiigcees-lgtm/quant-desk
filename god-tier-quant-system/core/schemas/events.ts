@@ -24,6 +24,20 @@ export interface MarketDataEvent {
   timestamp: number;
 }
 
+export interface MarketDataIntegrityEvent {
+  contractId: string;
+  healthScore: number;
+  degraded: boolean;
+  reasons: string[];
+  observedGapMs: number;
+  staleAgeMs: number;
+  latencyMs: number;
+  sourceClockSkewMs: number;
+  packetGapCount: number;
+  corruptionCount: number;
+  timestamp: number;
+}
+
 export interface MicrostructureEvent {
   contractId: string;
   obi: number;

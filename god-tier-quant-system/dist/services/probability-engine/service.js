@@ -15,6 +15,7 @@ export class ProbabilityEngine {
         this.latestBelief = new Map();
         this.latestPhysics = new Map();
         this.latestScenario = new Map();
+        this.latestFeedIntegrity = new Map();
     }
     start() {
         this.bus.on(EVENTS.MICROSTRUCTURE, (event) => {
@@ -28,6 +29,9 @@ export class ProbabilityEngine {
         });
         this.bus.on(EVENTS.SCENARIO_BRANCH_STATE, (event) => {
             this.latestScenario.set(event.contractId, event);
+        });
+        this.bus.on(EVENTS.MARKET_DATA_INTEGRITY, (event) => {
+            this.latestFeedIntegrity.set(event.contractId, event);
         });
         this.bus.on(EVENTS.FEATURES, (feature) => {
             const micro = this.latestMicro.get(feature.contractId);
@@ -58,12 +62,17 @@ export class ProbabilityEngine {
                 const invalidationPenalty = scenario.invalidated ? 0.035 : 0;
                 scenarioAdjustment = clamp((dominantBranchScore - 0.5) * 0.05 - invalidationPenalty, -0.07, 0.07);
             }
-            const finalEstimate = clamp(constitutional + physicsAdjustment + scenarioAdjustment, 0.01, 0.99);
+            const rawEstimate = clamp(constitutional + physicsAdjustment + scenarioAdjustment, 0.01, 0.99);
+            const feedIntegrity = this.latestFeedIntegrity.get(feature.contractId);
+            const integrityPenalty = feedIntegrity ? clamp(1 - feedIntegrity.healthScore, 0, 0.45) : 0;
+            const finalEstimate = clamp(rawEstimate * (1 - integrityPenalty) + feature.impliedProbability * integrityPenalty, 0.01, 0.99);
             const uncertaintyBase = belief ? logistic.uncertainty * (1 - belief.graphConfidence * 0.2) : logistic.uncertainty;
             const uncertaintyScore = clamp(uncertaintyBase +
                 (physics?.structuralStress ?? 0) * 0.2 +
                 (scenario?.volatilityWeight ?? 0) * 0.25 +
-                (scenario?.invalidated ? 0.1 : 0), 0, 1);
+                (scenario?.invalidated ? 0.1 : 0) +
+                integrityPenalty * 0.5 +
+                (feedIntegrity?.degraded ? 0.08 : 0), 0, 1);
             const output = {
                 contractId: feature.contractId,
                 estimatedProbability: finalEstimate,

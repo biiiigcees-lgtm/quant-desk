@@ -23,6 +23,8 @@ export interface RecordedEvent<T = unknown> {
   sequence: number;
   event: string;
   payload: T;
+  sourceTimestamp: number;
+  receiveTimestamp: number;
   timestamp: number;
   snapshotId: string;
   source: string;
@@ -63,6 +65,7 @@ export class EventBus {
   }
 
   emit<T>(event: string, payload: T, metadata?: EmitMetadata): boolean {
+    const receiveTimestamp = this.clock.tick();
     const timestamp = resolveTimestamp(payload, metadata, this.clock);
     if (timestamp === null && REQUIRES_EXPLICIT_TIMESTAMP.has(event)) {
       this.rejectMissingExplicitTimestamp(event, payload, metadata);
@@ -95,6 +98,8 @@ export class EventBus {
       sequence: envelope.sequence,
       event,
       payload,
+      sourceTimestamp: resolvedTimestamp,
+      receiveTimestamp,
       timestamp: resolvedTimestamp,
       snapshotId,
       source,
@@ -194,6 +199,8 @@ export class EventBus {
       sequence: envelope.sequence,
       event,
       payload: envelope.payload,
+      sourceTimestamp: envelope.timestamp,
+      receiveTimestamp: this.clock.tick(),
       timestamp: envelope.timestamp,
       snapshotId: envelope.snapshotId,
       source: envelope.source,
@@ -361,6 +368,7 @@ function extractSnapshotId(payload: unknown): string | null {
 
 const REQUIRES_EXPLICIT_TIMESTAMP = new Set<string>([
   EVENTS.MARKET_DATA,
+  EVENTS.MARKET_DATA_INTEGRITY,
   EVENTS.MICROSTRUCTURE,
   EVENTS.FEATURES,
   EVENTS.PROBABILITY,

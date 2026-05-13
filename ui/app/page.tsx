@@ -8,7 +8,8 @@ import { CenterPanel } from '../components/panels/CenterPanel';
 import { RightPanel } from '../components/panels/RightPanel';
 import { BottomPanel } from '../components/panels/BottomPanel';
 import { ErrorBoundary } from '../components/ErrorBoundary';
-import { MobileContent, MobileDecisionBar } from '../components/MobileLayout';
+import { MobileDashboard } from '../components/MobileDashboard';
+import { MobileDecisionBar } from '../components/MobileDecisionBar';
 
 export default function Page() {
   const { state, isLoading, isError } = useSystemState(500);
@@ -32,34 +33,23 @@ export default function Page() {
   ].filter(Boolean).join(' ');
 
   return (
-    <>
-      {/* ── Mobile layout (< md) ─────────────────────────────────────────── */}
-      <div
-        className="md:hidden h-screen flex flex-col bg-base overflow-hidden"
-        data-alert={dataAlert}
-      >
-        <TopBar state={state} isConnected={isConnected} />
-        <div className="flex-1 overflow-y-auto min-h-0">
-          <ErrorBoundary>
-            <MobileContent state={state} />
-          </ErrorBoundary>
-        </div>
-        <MobileDecisionBar state={state} />
+    <div
+      className="flex min-h-screen flex-col bg-base overflow-x-hidden md:h-screen"
+      data-alert={dataAlert}
+    >
+      <TopBar state={state} isConnected={isConnected} />
+      <div className="md:hidden flex-1 overflow-y-auto px-2 py-2 pb-24">
+        <ErrorBoundary><MobileDashboard state={state} /></ErrorBoundary>
       </div>
-
-      {/* ── Desktop layout (≥ md) ────────────────────────────────────────── */}
-      <div
-        className="hidden md:flex flex-col h-screen bg-base overflow-hidden"
-        data-alert={dataAlert}
-      >
-        <TopBar state={state} isConnected={isConnected} />
-        <div className={desktopMiddleClass}>
-          <ErrorBoundary><LeftPanel state={state} /></ErrorBoundary>
-          <ErrorBoundary><CenterPanel state={state} /></ErrorBoundary>
-          <ErrorBoundary><RightPanel state={state} /></ErrorBoundary>
-        </div>
+      <div className={`${desktopMiddleClass} hidden md:flex`}>
+        <ErrorBoundary><LeftPanel state={state} /></ErrorBoundary>
+        <ErrorBoundary><CenterPanel state={state} /></ErrorBoundary>
+        <ErrorBoundary><RightPanel state={state} /></ErrorBoundary>
+      </div>
+      <div className="hidden md:block">
         <ErrorBoundary><BottomPanel state={state} /></ErrorBoundary>
       </div>
-    </>
+      <ErrorBoundary><MobileDecisionBar state={state} /></ErrorBoundary>
+    </div>
   );
 }

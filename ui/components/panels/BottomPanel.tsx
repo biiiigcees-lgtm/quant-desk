@@ -32,8 +32,7 @@ export function BottomPanel({ state }: Readonly<Props>) {
   const scenario = state?.scenarioBranchState;
   const meta = state?.metaCalibration;
   const world = state?.marketWorldState;
-  const currentPhase = mapPhaseToFlow(execState?.phase ?? (execState?.phase === 'blocked' ? 'idle' : undefined));
-  const isBlocked = execState?.phase === 'blocked' || execControl?.mode === 'hard-stop';
+  const currentPhase = mapPhaseToFlow(execState?.phase);
   const modeColor = executionModeColor(execControl?.mode);
 
   const candidateData = simUniverse?.candidateDivergences
@@ -50,7 +49,7 @@ export function BottomPanel({ state }: Readonly<Props>) {
       <div className="flex flex-col w-[22%] p-3 overflow-hidden">
         <span className="panel-header mb-2">execution state machine</span>
         <div className="flex-1 flex flex-col justify-center">
-          <StateMachine currentPhase={currentPhase} isBlocked={isBlocked} />
+          <StateMachine currentPhase={currentPhase} />
         </div>
         {execState && (
           <div className="mt-2 font-mono text-2xs text-muted truncate">{execState.reason}</div>
@@ -62,7 +61,7 @@ export function BottomPanel({ state }: Readonly<Props>) {
         <span className="panel-header mb-2">execution truth</span>
         <div className="space-y-1 overflow-y-auto flex-1">
           <FillRow label="mode" value={execControl?.mode ?? 'normal'} color={modeColor} />
-          <FillRow label="phase" value={execState?.phase ?? 'idle'} color="#E6EDF3" />
+          <FillRow label="phase" value={execState?.phase === 'blocked' ? 'idle' : (execState?.phase ?? 'idle')} color="#E6EDF3" />
           <FillRow label="safety" value={execState?.safetyMode ?? '—'} color="#6B7C93" />
         </div>
         <div className="mt-2 pt-2 border-t border-border">
@@ -138,13 +137,13 @@ export function BottomPanel({ state }: Readonly<Props>) {
   );
 }
 
-const StateMachine = React.memo(function StateMachine({ currentPhase, isBlocked }: Readonly<{ currentPhase: ExecPhase; isBlocked: boolean }>) {
-  const phases = isBlocked ? (['idle', 'blocked'] as const) : EXECUTION_PHASES;
+const StateMachine = React.memo(function StateMachine({ currentPhase }: Readonly<{ currentPhase: ExecPhase }>) {
+  const phases = EXECUTION_PHASES;
 
   return (
     <div className="flex flex-col gap-1">
       {phases.map((phase, i) => {
-        const isActive = phase === (isBlocked ? 'blocked' : currentPhase);
+        const isActive = phase === currentPhase;
         const markerClass = phaseMarkerClass(isActive, phase);
         const labelClass = phaseLabelClass(isActive, phase);
         return (
@@ -271,21 +270,18 @@ function executionModeColor(mode: string | undefined): string {
   return '#00E5A8';
 }
 
-function phaseMarkerClass(isActive: boolean, phase: ExecPhase | 'blocked'): string {
+function phaseMarkerClass(isActive: boolean, phase: ExecPhase): string {
   if (!isActive) {
     return 'bg-border';
-  }
-  if (phase === 'blocked') {
-    return 'bg-red shadow-glow-red ring-2 ring-red/40 ring-offset-1 ring-offset-base';
   }
   return 'bg-green shadow-glow-green ring-2 ring-green/40 ring-offset-1 ring-offset-base';
 }
 
-function phaseLabelClass(isActive: boolean, phase: ExecPhase | 'blocked'): string {
+function phaseLabelClass(isActive: boolean, phase: ExecPhase): string {
   if (!isActive) {
     return 'text-muted';
   }
-  return phase === 'blocked' ? 'text-red' : 'text-green';
+  return 'text-green';
 }
 
 function factorFillClass(value: number): string {

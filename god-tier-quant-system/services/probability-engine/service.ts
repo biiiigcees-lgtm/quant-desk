@@ -3,6 +3,7 @@ import { EVENTS } from '../../core/event-bus/events.js';
 import {
   BeliefGraphEvent,
   FeatureEvent,
+  MarketDataIntegrityEvent,
   MarketPhysicsEvent,
   MicrostructureEvent,
   ProbabilityEvent,
@@ -23,6 +24,7 @@ export class ProbabilityEngine {
   private readonly latestBelief: Map<string, BeliefGraphEvent> = new Map();
   private readonly latestPhysics: Map<string, MarketPhysicsEvent> = new Map();
   private readonly latestScenario: Map<string, ScenarioBranchStateEvent> = new Map();
+  private readonly latestFeedIntegrity: Map<string, MarketDataIntegrityEvent> = new Map();
 
   constructor(private readonly bus: EventBus) {}
 
@@ -41,6 +43,10 @@ export class ProbabilityEngine {
 
     this.bus.on<ScenarioBranchStateEvent>(EVENTS.SCENARIO_BRANCH_STATE, (event) => {
       this.latestScenario.set(event.contractId, event);
+    });
+
+    this.bus.on<MarketDataIntegrityEvent>(EVENTS.MARKET_DATA_INTEGRITY, (event) => {
+      this.latestFeedIntegrity.set(event.contractId, event);
     });
 
     this.bus.on<FeatureEvent>(EVENTS.FEATURES, (feature) => {
@@ -77,14 +83,24 @@ export class ProbabilityEngine {
         scenarioAdjustment = clamp((dominantBranchScore - 0.5) * 0.05 - invalidationPenalty, -0.07, 0.07);
       }
 
-      const finalEstimate = clamp(constitutional + physicsAdjustment + scenarioAdjustment, 0.01, 0.99);
+      const rawEstimate = clamp(constitutional + physicsAdjustment + scenarioAdjustment, 0.01, 0.99);
+
+      const feedIntegrity = this.latestFeedIntegrity.get(feature.contractId);
+      const integrityPenalty = feedIntegrity ? clamp(1 - feedIntegrity.healthScore, 0, 0.45) : 0;
+      const finalEstimate = clamp(
+        rawEstimate * (1 - integrityPenalty) + feature.impliedProbability * integrityPenalty,
+        0.01,
+        0.99,
+      );
 
       const uncertaintyBase = belief ? logistic.uncertainty * (1 - belief.graphConfidence * 0.2) : logistic.uncertainty;
       const uncertaintyScore = clamp(
         uncertaintyBase +
           (physics?.structuralStress ?? 0) * 0.2 +
           (scenario?.volatilityWeight ?? 0) * 0.25 +
-          (scenario?.invalidated ? 0.1 : 0),
+          (scenario?.invalidated ? 0.1 : 0) +
+          integrityPenalty * 0.5 +
+          (feedIntegrity?.degraded ? 0.08 : 0),
         0,
         1,
       );

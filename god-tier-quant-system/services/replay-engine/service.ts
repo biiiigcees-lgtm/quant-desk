@@ -6,6 +6,8 @@ export interface ReplayRecord {
   sequence: number;
   event: string;
   payload: unknown;
+  sourceTimestamp: number;
+  receiveTimestamp: number;
   timestamp: number;
   snapshotId: string;
   source: string;
@@ -67,6 +69,8 @@ export class ReplayEngine {
       sequence: record.sequence,
       event: record.event,
       payload: record.payload,
+      sourceTimestamp: record.sourceTimestamp,
+      receiveTimestamp: record.receiveTimestamp,
       timestamp: record.timestamp,
       snapshotId: record.snapshotId,
       source: record.source,

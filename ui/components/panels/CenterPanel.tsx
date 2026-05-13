@@ -50,10 +50,10 @@ export function CenterPanel({ state }: Readonly<Props>) {
       </div>
 
       {/* Large belief display */}
-      <div className="flex flex-col items-center justify-center py-6 panel-border shrink-0">
+      <div className="flex flex-col items-center justify-center py-5 md:py-6 panel-border shrink-0 px-3">
         <span className="panel-header mb-2">estimated probability</span>
         <div className="relative flex items-baseline gap-2">
-          <span className={cx('font-mono text-6xl font-semibold leading-none', edgeToneClass(edge))}>
+          <span className={cx('font-mono text-5xl md:text-6xl font-semibold leading-none', edgeToneClass(edge))}>
             {(estProb * 100).toFixed(1)}
           </span>
           <span className="font-mono text-2xl text-muted">%</span>
@@ -65,7 +65,7 @@ export function CenterPanel({ state }: Readonly<Props>) {
           <span className="font-mono text-2xs text-muted">{(ciHigh * 100).toFixed(1)}]</span>
         </div>
         {/* CI bar */}
-        <div className="relative w-40 h-1 bg-elevated rounded-full mt-2 overflow-visible">
+        <div className="relative w-full max-w-[10rem] h-1 bg-elevated rounded-full mt-2 overflow-visible">
           <div
             className={cx('absolute h-1 rounded-full opacity-30 bg-blue', leftPctClass(ciLow), widthPctClass(ciHigh - ciLow))}
           />
@@ -152,6 +152,32 @@ export function CenterPanel({ state }: Readonly<Props>) {
           <p className="font-mono text-2xs text-secondary line-clamp-2">{adversarialAudit.counterNarrative}</p>
         </div>
       )}
+
+      {/* Execution permission */}
+      <div className="px-4 py-4 panel-border shrink-0 flex items-center justify-between gap-3">
+        <div>
+          <span className="panel-header block mb-1">execution permission</span>
+          <div>
+            <div
+              className={cx('font-mono text-sm font-bold uppercase', permission ? 'text-green' : 'text-yellow')}
+            >
+              {permission ? 'permitted' : 'standby'}
+            </div>
+            <div className="font-mono text-2xs text-muted">
+              {execControl?.reason ?? 'no override active'}
+            </div>
+          </div>
+        </div>
+        <div className="text-right">
+          <span className="panel-header block mb-1">governance</span>
+          <div className={cx('font-mono text-xs font-semibold uppercase', stateTextClass)}>
+            {systemState}
+          </div>
+          <div className="font-mono text-2xs text-muted mt-0.5">
+            {reality?.actionableState ? 'actionable' : 'standby'}
+          </div>
+        </div>
+      </div>
 
       {/* Causal graph */}
       <div className="px-4 py-3 flex-1 overflow-hidden">

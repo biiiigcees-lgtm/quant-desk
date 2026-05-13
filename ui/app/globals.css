@@ -11,11 +11,16 @@
 html,
 body {
   height: 100%;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   background-color: #0A0F1C;
   color: #E6EDF3;
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+body {
+  width: 100%;
 }
 
 ::-webkit-scrollbar {
@@ -32,6 +37,15 @@ body {
 
 .font-mono {
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+details[open] .details-arrow {
+  color: #00E5A8;
 }
 
 @layer utilities {

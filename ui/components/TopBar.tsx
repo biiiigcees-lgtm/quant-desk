@@ -25,7 +25,7 @@ export function TopBar({ state, isConnected }: Readonly<Props>) {
   const edge = prob?.edge ?? 0;
 
   return (
-    <header className="flex items-center px-3 h-8 bg-surface panel-border shrink-0 gap-4 overflow-hidden">
+    <header className="flex min-h-10 md:h-8 items-center px-2 md:px-3 py-1 md:py-0 bg-surface panel-border shrink-0 gap-3 md:gap-4 overflow-x-auto overflow-y-hidden whitespace-nowrap">
       {/* System state pill */}
       <div
         className={cx(

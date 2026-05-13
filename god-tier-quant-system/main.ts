@@ -52,6 +52,7 @@ import { MarketPhysicsService } from './services/market-physics/service.js';
 import { MarketWorldModelService } from './services/market-world-model/service.js';
 import { MetaCalibrationService } from './services/meta-calibration/service.js';
 import { OperatorAttentionService } from './services/operator-attention/service.js';
+import { MarketDataIntegrityService } from './services/market-data-integrity/service.js';
 import { MemoryLifecycleManager } from './core/memory/lifecycle.js';
 import { OrderbookDeltaService } from './services/orderbook-delta/service.js';
 import { LiquidityGravityService } from './services/liquidity-gravity/service.js';
@@ -70,6 +71,7 @@ async function main(): Promise<void> {
   const tracer = new Tracer(bus, 'main');
 
   const marketData = new MarketDataService(bus, logger);
+  const marketDataIntegrity = new MarketDataIntegrityService(bus);
   const globalContext = new GlobalContextService(bus);
   const micro = new MicrostructureEngine(bus, logger);
   const features = new FeatureEngine(bus);
@@ -154,6 +156,7 @@ async function main(): Promise<void> {
   const researchLab = new ResearchLabServer(bus, config.apiHost, config.apiPort + 1);
 
   globalContext.start();
+  marketDataIntegrity.start();
   micro.start();
   features.start();
   featureIntelligence.start();

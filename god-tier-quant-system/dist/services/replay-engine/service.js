@@ -52,6 +52,8 @@ export class ReplayEngine {
             sequence: record.sequence,
             event: record.event,
             payload: record.payload,
+            sourceTimestamp: record.sourceTimestamp,
+            receiveTimestamp: record.receiveTimestamp,
             timestamp: record.timestamp,
             snapshotId: record.snapshotId,
             source: record.source,

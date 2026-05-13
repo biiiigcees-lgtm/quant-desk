@@ -55,6 +55,10 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter'
 .ws-source{font-size:8px;color:var(--t3);letter-spacing:.6px;text-transform:uppercase}
 .ws-source.coinbase{color:var(--cyan)}
 .ws-source.rest{color:var(--amber)}
+.system-status-pill{position:fixed;top:8px;right:10px;z-index:120;pointer-events:none;opacity:.9;padding:3px 8px;border-radius:999px;border:1px solid var(--border);font-size:8px;letter-spacing:.4px;font-weight:600;background:rgba(16,24,38,.86);color:var(--t2);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);max-width:52vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.system-status-pill.stable{color:var(--green);border-color:rgba(0,230,118,.28);background:rgba(0,230,118,.08)}
+.system-status-pill.elevated{color:var(--amber);border-color:rgba(255,171,0,.32);background:rgba(255,171,0,.08)}
+.system-status-pill.instability{color:var(--red);border-color:rgba(255,77,77,.35);background:rgba(255,77,77,.1)}
 .ws-toggle{background:var(--bg2);border:1px solid var(--border);color:var(--t3);font-size:7px;letter-spacing:.6px;padding:2px 6px;border-radius:2px;cursor:pointer}
 .ws-toggle:hover{color:var(--amber);border-color:rgba(255,171,0,.3)}
 .ws-toggle.active{color:var(--amber);border-color:rgba(255,171,0,.5)}
@@ -341,12 +345,10 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
   #topbar{align-items:flex-start}
   #oracleBar{align-items:flex-start}
   #sessionBar{align-items:flex-start}
-  #kTopTargetBar{position:relative;top:auto;padding:6px 8px}
+  #kTopTargetBar{position:sticky;top:0;padding:6px 8px}
   #app{height:auto;min-height:calc(100dvh - 128px);grid-template-columns:1fr}
   #chart-hdr{flex-wrap:wrap;gap:4px;padding:6px 8px}
   #canvasWrap{height:220px}
-  .system-banner-stack{top:128px;width:100%;padding:0 10px}
-  .system-banner{min-width:0;width:100%}
   #rsiWrap{height:48px}
   .k-top-target-input{min-width:0;max-width:none;width:100%}
   #sigs{grid-template-columns:repeat(5,1fr)}
@@ -356,16 +358,16 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
 }
 @media (max-width:480px){
   #topbar{padding:4px 6px;gap:4px}
+  .system-status-pill{top:6px;right:6px;font-size:7px;max-width:62vw;padding:2px 6px}
   .tb-logo{font-size:11px;letter-spacing:1px}
   .tb-price{font-size:16px}
   .tb-stat,.tb-sep,.ws-latency,.clock-text{display:none}
   #oracleBar,#sessionBar{padding:4px 6px;gap:4px}
   #oracleBar{height:auto}
   #sessionBar{height:auto}
-  #kTopTargetBar{padding:5px 6px}
+  #kTopTargetBar{position:sticky;top:0;padding:5px 6px}
   #chart-hdr .ema-legend,#chart-hdr .ema-legend-tight{display:none}
   #canvasWrap{height:180px}
-  .system-banner-stack{top:110px}
   #sigs{grid-template-columns:repeat(2,1fr)}
   #of-row{grid-template-columns:1fr}
   #signalAlert{top:64px}
@@ -397,7 +399,7 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
 #kbHint{font-size:7px;color:var(--t3);background:var(--bg2);border:1px solid var(--border);padding:1px 5px;border-radius:2px;letter-spacing:.5px;cursor:default}
 
 /* ── TOP KALSHI TARGET BAR ── */
-#kTopTargetBar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:34px;padding:6px 12px;background:linear-gradient(90deg,rgba(0,229,255,.08),rgba(255,171,0,.05) 46%,rgba(0,0,0,0));border-bottom:1px solid rgba(0,229,255,.14);position:sticky;top:74px;z-index:95;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+#kTopTargetBar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:34px;padding:6px 12px;background:linear-gradient(90deg,rgba(0,229,255,.08),rgba(255,171,0,.05) 46%,rgba(0,0,0,0));border-bottom:1px solid rgba(0,229,255,.14);position:sticky;top:0;z-index:95;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .k-top-target-title{font-size:8px;font-weight:700;letter-spacing:1px;color:var(--cyan);white-space:nowrap;padding:2px 6px;border-radius:2px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.2)}
 .k-top-target-hero{display:flex;align-items:center;gap:6px;flex-shrink:0;min-width:0}
 .k-top-target-pill{font-size:8px;letter-spacing:.7px;line-height:1;padding:2px 7px;border-radius:2px;border:1px solid var(--border);background:var(--bg3);color:var(--t2)}
@@ -422,12 +424,6 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
 /* ── SIGNAL ALERT ── */
 #signalAlert{position:fixed;top:76px;left:50%;transform:translateX(-50%);z-index:999;pointer-events:none;transition:opacity .3s;opacity:0}
 #signalAlert.show{opacity:1}
-.system-banner-stack{position:fixed;top:110px;left:50%;transform:translateX(-50%);z-index:998;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
-.system-banner{min-width:320px;max-width:min(86vw,760px);padding:10px 14px;border-radius:3px;border:1px solid var(--border);font-size:10px;font-weight:700;letter-spacing:.8px;box-shadow:0 8px 24px rgba(0,0,0,.28);transition:opacity .2s ease,transform .2s ease}
-.system-banner.hidden{display:none;opacity:0;transform:translateY(-6px)}
-.system-banner-detail{display:block;font-size:8px;font-weight:500;letter-spacing:.45px;color:rgba(255,255,255,.78);margin-top:3px}
-.system-banner-lock{background:rgba(213,0,0,.92);border-color:rgba(255,23,68,.65);color:#fff5f6}
-.system-banner-stale{background:rgba(255,171,0,.92);border-color:rgba(255,171,0,.55);color:#201400}
 @keyframes sa-drop{0%{transform:translateY(-8px);opacity:0}100%{transform:translateY(0);opacity:1}}
 .sa-inner{padding:7px 22px;border-radius:3px;font-weight:700;font-size:12px;letter-spacing:2px;animation:sa-drop .35s ease-out}
 .sa-above{background:rgba(0,230,118,.14);border:1px solid rgba(0,230,118,.55);color:var(--green);box-shadow:0 4px 28px rgba(0,230,118,.22)}
@@ -582,18 +578,9 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
   <span class="ws-stale-age" id="wsStaleAge">—</span>
   <span class="clock-text" id="clock">——</span>
 </div>
+<div class="system-status-pill elevated" id="systemStatusPill">🟡 Elevated Uncertainty</div>
 
 <div id="signalAlert"><div class="sa-inner sa-above" id="saInner">&#x26A1; SIGNAL ACTIVE</div></div>
-<div class="system-banner-stack" id="systemBannerStack">
-  <div class="system-banner system-banner-lock hidden" id="executionLockBanner">
-    <span id="executionLockText">🔒 EXECUTION LOCKED</span>
-    <span class="system-banner-detail" id="executionLockDetail">Risk conditions currently block execution.</span>
-  </div>
-  <div class="system-banner system-banner-stale hidden" id="staleDataBanner">
-    <span id="staleDataText">⚠️ STALE DATA</span>
-    <span class="system-banner-detail" id="staleDataDetail">Refreshing market state before retry.</span>
-  </div>
-</div>
 <div id="oracleBar">
   <div class="ob-src"><div class="ob-dot wait" id="obDotBnc"></div><span class="ob-src-label">CBT</span><span id="obPriceBnc" class="ob-src-price">—</span></div>
   <div class="ob-src"><div class="ob-dot wait" id="obDotKrk"></div><span class="ob-src-label">BOOK</span><span id="obPriceKrk" class="ob-src-price">—</span></div>
@@ -1015,7 +1002,7 @@ body.closing-phase #kCountdown{animation:countdown-pulse .5s ease-in-out infinit
       <div class="exec-card"><div class="exec-k">FLOW TOXICITY</div><div class="exec-v" id="exToxicity">—</div><div class="exec-note">Execution hazard</div></div>
       <div class="exec-card"><div class="exec-k">KELLY SIZE</div><div class="exec-v" id="exKelly">—</div><div class="exec-note">Sizing envelope</div></div>
       <div class="exec-card"><div class="exec-k">EV / $1</div><div class="exec-v" id="exEv">—</div><div class="exec-note">Decision economics</div></div>
-      <div class="exec-card"><div class="exec-k">RISK LOCK</div><div class="exec-v" id="exLock">—</div><div class="exec-note">Veto authority</div></div>
+      <div class="exec-card"><div class="exec-k">EXEC STATUS</div><div class="exec-v" id="exLock">—</div><div class="exec-note">System gate</div></div>
       <div class="exec-card"><div class="exec-k">ROUND PHASE</div><div class="exec-v" id="exPhase">—</div><div class="exec-note">Timing pressure</div></div>
     </div>
   </div>
@@ -1280,30 +1267,31 @@ function setStaleWarning(reason = '') {
 }
 
 function updateSystemStatusBanners() {
-  const lockBanner = document.getElementById('executionLockBanner');
-  const lockText = document.getElementById('executionLockText');
-  const lockDetail = document.getElementById('executionLockDetail');
-  const staleBanner = document.getElementById('staleDataBanner');
-  const staleText = document.getElementById('staleDataText');
-  const staleDetail = document.getElementById('staleDataDetail');
+  const statusPill = document.getElementById('systemStatusPill');
+  if (!statusPill) return;
 
-  if (lockBanner) {
-    const shouldShowLock = marketStore.systemTruthReady && !marketStore.systemTruth.executionAllowed && !!marketStore.executionLockReason;
-    lockBanner.classList.toggle('hidden', !shouldShowLock);
-    if (lockText) lockText.textContent = '🔒 EXECUTION LOCKED';
-    if (lockDetail) {
-      const belief = marketStore.systemTruth?.currentBelief?.direction || 'NEUTRAL';
-      const confidence = Number.isFinite(marketStore.systemTruth?.currentBelief?.confidence) ? marketStore.systemTruth.currentBelief.confidence.toFixed(0) : '0';
-      lockDetail.textContent = `${marketStore.executionLockReason} · belief ${belief} @ ${confidence}%`;
-    }
+  statusPill.classList.remove('stable', 'elevated', 'instability');
+
+  const risk = String(marketStore.systemTruth?.riskLevel || 'MEDIUM').toUpperCase();
+  const hasStaleWarning = Boolean(marketStore.staleWarning);
+  const executionAllowed = Boolean(marketStore.systemTruth?.executionAllowed);
+  const wsHealthy = marketStore.wsConnected && marketStore.wsSource !== 'rest';
+  const highLatency = Number.isFinite(marketStore.wsLatency) && marketStore.wsLatency > 900;
+
+  if (hasStaleWarning || !executionAllowed || risk === 'HIGH' || risk === 'CRITICAL') {
+    statusPill.classList.add('instability');
+    statusPill.textContent = '🔴 High Instability - Confidence Reduced';
+    return;
   }
 
-  if (staleBanner) {
-    const shouldShowStale = Boolean(marketStore.staleWarning);
-    staleBanner.classList.toggle('hidden', !shouldShowStale);
-    if (staleText) staleText.textContent = '⚠️ STALE DATA';
-    if (staleDetail) staleDetail.textContent = marketStore.staleWarning || 'Refreshing market state before retry.';
+  if (!wsHealthy || highLatency || risk === 'MEDIUM') {
+    statusPill.classList.add('elevated');
+    statusPill.textContent = '🟡 Elevated Uncertainty';
+    return;
   }
+
+  statusPill.classList.add('stable');
+  statusPill.textContent = '🟢 Market Stable';
 }
 
 async function publishSystemTruth(force = false) {
@@ -3753,7 +3741,7 @@ function renderAll(){ // NOSONAR
   setTxt('exToxicity', `${(s.flowToxicity || 0).toFixed(1)}%`);
   setTxt('exKelly', `${((s.kellyFull || 0) * 50 * 100).toFixed(1)}%`);
   setTxt('exEv', `${(marketStore.kalshiEV ?? 0) >= 0 ? '+' : ''}${((marketStore.kalshiEV ?? 0) * 100).toFixed(1)}¢`);
-  setTxt('exLock', execAllowedUi === 'ALLOW' ? 'OPEN' : 'LOCKED');
+  setTxt('exLock', execAllowedUi === 'ALLOW' ? 'OPEN' : 'STANDBY');
   setTxt('exPhase', String(kRoundNow.phase || 'open').toUpperCase());
 
   // Kelly
@@ -3911,6 +3899,7 @@ function renderAll(){ // NOSONAR
   // Flash & alert
   checkFlash(p);
   checkSignalAlert(verdictUi);
+  updateSystemStatusBanners();
   updateSessionBar();
 
   // Chart + heatmap + RSI strip + VP
@@ -4359,8 +4348,8 @@ Under 250 words. Pure institutional signal.`;
         marketStore.systemTruthReady = true;
         marketStore.executionLockReason = data.reason || 'EXECUTION_LOCKED: Execution disabled by system truth';
         updateSystemStatusBanners();
-        if (aiModelEl) aiModelEl.textContent = 'System Truth Gate · Locked';
-        out.innerHTML = '<span class="ai-status-error">Execution locked by system truth. AI call skipped.</span>';
+        if (aiModelEl) aiModelEl.textContent = 'System Truth Gate · Standby';
+        out.innerHTML = '<span class="ai-status-error">System truth gate is in standby. AI call skipped.</span>';
         return null;
       }
 

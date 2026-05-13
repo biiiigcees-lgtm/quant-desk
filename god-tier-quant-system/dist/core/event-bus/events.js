@@ -1,5 +1,6 @@
 export const EVENTS = {
     MARKET_DATA: 'market:data',
+    MARKET_DATA_INTEGRITY: 'market-data:integrity',
     GLOBAL_CONTEXT: 'global-context:update',
     MICROSTRUCTURE: 'microstructure:update',
     FEATURES: 'features:update',

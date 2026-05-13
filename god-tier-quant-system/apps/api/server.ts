@@ -7,6 +7,7 @@ import type {
   CausalInsight,
   CausalMarketStateEvent,
   CrossMarketCausalStateEvent,
+  MarketDataIntegrityEvent,
   MarketMemoryEvent,
   MarketPhysicsEvent,
   MarketWorldStateEvent,
@@ -71,6 +72,9 @@ export class ApiServer {
     });
     this.bus.on<RealitySnapshot>(EVENTS.REALITY_SNAPSHOT, (event) => {
       this.latest.realitySnapshot = event;
+    });
+    this.bus.on<MarketDataIntegrityEvent>(EVENTS.MARKET_DATA_INTEGRITY, (event) => {
+      this.latest.marketDataIntegrity = event;
     });
     this.bus.on<CausalInsight>(EVENTS.CAUSAL_INSIGHT, (event) => {
       this.causalInsights.unshift(event);

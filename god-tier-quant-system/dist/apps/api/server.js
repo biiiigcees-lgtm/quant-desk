@@ -44,6 +44,9 @@ export class ApiServer {
         this.bus.on(EVENTS.REALITY_SNAPSHOT, (event) => {
             this.latest.realitySnapshot = event;
         });
+        this.bus.on(EVENTS.MARKET_DATA_INTEGRITY, (event) => {
+            this.latest.marketDataIntegrity = event;
+        });
         this.bus.on(EVENTS.CAUSAL_INSIGHT, (event) => {
             this.causalInsights.unshift(event);
             if (this.causalInsights.length > 40) {

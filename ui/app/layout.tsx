@@ -13,7 +13,7 @@ export const metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className="bg-base text-primary overflow-hidden h-screen">{children}</body>
+      <body className="bg-base text-primary min-h-screen overflow-x-hidden">{children}</body>
     </html>
   );
 }

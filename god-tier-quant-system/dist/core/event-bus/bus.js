@@ -20,6 +20,7 @@ export class EventBus {
         this.clock = clock;
     }
     emit(event, payload, metadata) {
+        const receiveTimestamp = this.clock.tick();
         const timestamp = resolveTimestamp(payload, metadata, this.clock);
         if (timestamp === null && REQUIRES_EXPLICIT_TIMESTAMP.has(event)) {
             this.rejectMissingExplicitTimestamp(event, payload, metadata);
@@ -46,6 +47,8 @@ export class EventBus {
             sequence: envelope.sequence,
             event,
             payload,
+            sourceTimestamp: resolvedTimestamp,
+            receiveTimestamp,
             timestamp: resolvedTimestamp,
             snapshotId,
             source,
@@ -126,6 +129,8 @@ export class EventBus {
             sequence: envelope.sequence,
             event,
             payload: envelope.payload,
+            sourceTimestamp: envelope.timestamp,
+            receiveTimestamp: this.clock.tick(),
             timestamp: envelope.timestamp,
             snapshotId: envelope.snapshotId,
             source: envelope.source,
@@ -250,6 +255,7 @@ function extractSnapshotId(payload) {
 }
 const REQUIRES_EXPLICIT_TIMESTAMP = new Set([
     EVENTS.MARKET_DATA,
+    EVENTS.MARKET_DATA_INTEGRITY,
     EVENTS.MICROSTRUCTURE,
     EVENTS.FEATURES,
     EVENTS.PROBABILITY,
