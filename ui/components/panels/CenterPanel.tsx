@@ -131,12 +131,12 @@ export function CenterPanel({ state }: Readonly<Props>) {
           </div>
           {operatorAttention?.focus === 'critical' && (
             <div className="mt-2 px-2 py-1 rounded border border-red/40 bg-elevated font-mono text-2xs text-red">
-              operator attention critical: {operatorAttention.contradictionHotspots.join(', ') || 'hotspots unresolved'}
+              operator attention critical: {operatorAttention?.contradictionHotspots?.join(', ') || 'hotspots unresolved'}
             </div>
           )}
           {marketExperience?.recurringFailureSignature && (
             <div className="mt-1 px-2 py-1 rounded border border-yellow/40 bg-elevated font-mono text-2xs text-yellow">
-              recurring failure archetype: {marketExperience.archetype} | trauma {(marketExperience.traumaPenalty * 100).toFixed(0)}%
+              recurring failure archetype: {marketExperience?.archetype ?? 'unknown'} | trauma {((marketExperience?.traumaPenalty ?? 0) * 100).toFixed(0)}%
             </div>
           )}
         </div>

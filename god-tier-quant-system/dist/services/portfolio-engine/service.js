@@ -53,8 +53,10 @@ export class PortfolioEngine {
             return 0;
         let entropy = 0;
         for (const position of this.state.positions) {
+            if (position.size <= 0)
+                continue;
             const prob = position.size / total;
-            entropy -= prob * Math.log(prob + 1e-9);
+            entropy -= prob * Math.log(prob);
         }
         return entropy;
     }

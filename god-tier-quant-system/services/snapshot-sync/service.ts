@@ -156,6 +156,7 @@ export class SnapshotSyncService {
     const requiredTimestamps = REQUIRED_SOURCES
       .map((source) => state.sources[source]?.timestamp)
       .filter((value): value is number => Number.isFinite(value));
+    if (requiredTimestamps.length < REQUIRED_SOURCES.length) return;
     const minTs = Math.min(...requiredTimestamps);
     const maxTs = Math.max(...requiredTimestamps);
     const driftMs = Math.max(0, maxTs - minTs);
