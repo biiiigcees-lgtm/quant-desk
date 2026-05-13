@@ -263,8 +263,8 @@ function testLineageTracerPruneOlderThan() {
     const bus = new EventBus();
     const tracer = new EventLineageTracer(bus);
     tracer.start();
-    // Emit some events at a fake old timestamp (0ms epoch)
-    bus.emit(EVENTS.PROBABILITY, { ...makeProb('KXBTC-LT5'), timestamp: 0 });
+    // Emit some events at a fake old timestamp (1ms epoch — must be > 0 to pass bus validation)
+    bus.emit(EVENTS.PROBABILITY, { ...makeProb('KXBTC-LT5'), timestamp: 1 });
     bus.emit(EVENTS.PROBABILITY, makeProb('KXBTC-LT5')); // current time
     const beforePrune = tracer.getRecent(100).length;
     tracer.pruneOlderThan(60 * 1000); // prune older than 1 minute

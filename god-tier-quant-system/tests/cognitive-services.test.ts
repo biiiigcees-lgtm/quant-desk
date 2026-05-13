@@ -22,7 +22,7 @@ function makeMicro(contractId: string, obi: number, sweepProbability = 0.3, ts =
     contractId, obi, obiVelocity: obi * 0.1,
     liquidityPressureScore: 0.2, spreadExpansionScore: 0.1,
     sweepProbability, panicRepricing: false,
-    liquidityRegime: 'normal', aggressionScore: 0.3, timestamp: ts,
+    liquidityRegime: 'normal', aggressionScore: 0.3, timestamp: Math.max(1, ts),
   };
 }
 
@@ -37,7 +37,7 @@ function makeProb(contractId: string, estimatedProbability: number, edge: number
 }
 
 function makeCalibration(contractId: string, ece: number, ts = Date.now()) {
-  return { contractId, ece, brier: ece * 2, calibratedConfidence: 1 - ece, timestamp: ts };
+  return { contractId, ece, brier: ece * 2, calibratedConfidence: 1 - ece, timestamp: Math.max(1, ts) };
 }
 
 function makeDrift(contractId: string, severity: 'low' | 'medium' | 'high', ts = Date.now()) {
