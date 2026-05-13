@@ -2,7 +2,6 @@ import { loadConfig } from './core/config/system-config.js';
 import { EventBus } from './core/event-bus/bus.js';
 import { EVENTS } from './core/event-bus/events.js';
 import { Logger } from './core/telemetry/logger.js';
-import { installErrorTelemetryBus } from './core/errors/handler.js';
 import { MetricsRegistry } from './core/metrics/registry.js';
 import { Tracer } from './core/tracing/tracer.js';
 import { ApiServer } from './apps/api/server.js';
@@ -38,17 +37,22 @@ import { AiAgentRouterService } from './services/ai-orchestration/router/service
 import { AiAggregationService } from './services/ai-orchestration/aggregation/service.js';
 import { OpenRouterProvider } from './services/ai-orchestration/providers/openrouter.js';
 import { SystemConsciousnessService } from './services/system-consciousness/service.js';
+import { DigitalImmuneSystemService } from './services/digital-immune-system/service.js';
+import { StrategyGenomeService } from './services/strategy-genome/service.js';
+import { ReplayIntegrityService } from './services/replay-integrity/service.js';
+import { InvariantEngineService } from './services/invariant-engine/service.js';
+import { RealityLayerService } from './services/reality-layer/service.js';
+import { CausalWorldModelService } from './services/causal-world-model/service.js';
+import { MarketParticipantModelService } from './services/market-participant-model/service.js';
 import { EpistemicHealthService } from './services/epistemic-health/service.js';
 import { AdversarialAuditorService } from './services/adversarial-auditor/service.js';
 import { MarketMemoryService } from './services/market-memory/service.js';
 import { MultiTimescaleCognitionService } from './services/multiscale-cognition/service.js';
-import { DigitalImmuneSystemService } from './services/digital-immune-system/service.js';
-import { StrategyGenomeService } from './services/strategy-genome/service.js';
-import { ReplayIntegrityService } from './services/replay-integrity/service.js';
-import { LogicalClock } from './core/clock/clock.js';
-import { RiskGovernor } from './core/risk/governor.js';
+import { MarketPhysicsService } from './services/market-physics/service.js';
+import { MarketWorldModelService } from './services/market-world-model/service.js';
+import { MetaCalibrationService } from './services/meta-calibration/service.js';
+import { OperatorAttentionService } from './services/operator-attention/service.js';
 import { MemoryLifecycleManager } from './core/memory/lifecycle.js';
-import { EventLineageTracer } from './core/observability/lineage.js';
 import { OrderbookDeltaService } from './services/orderbook-delta/service.js';
 import { LiquidityGravityService } from './services/liquidity-gravity/service.js';
 import { RegimeTransitionService } from './services/regime-transition/service.js';
@@ -60,7 +64,6 @@ import { ShadowTradingService } from './services/shadow-trading/service.js';
 async function main() {
     const config = loadConfig();
     const bus = new EventBus();
-    installErrorTelemetryBus(bus);
     const logger = new Logger('god-tier-quant-system');
     const metrics = new MetricsRegistry();
     const tracer = new Tracer(bus, 'main');
@@ -99,10 +102,6 @@ async function main() {
     const consciousness = new SystemConsciousnessService(bus, {
         epistemicFloor: config.organism.epistemicFloor,
     });
-    const epistemicHealth = new EpistemicHealthService(bus);
-    const adversarialAuditor = new AdversarialAuditorService(bus);
-    const marketMemory = new MarketMemoryService(bus);
-    const multiTimescale = new MultiTimescaleCognitionService(bus);
     const immuneSystem = new DigitalImmuneSystemService(bus, {
         cooldownMs: config.organism.immuneCooldownMs,
     });
@@ -110,10 +109,19 @@ async function main() {
     const replayIntegrity = new ReplayIntegrityService(bus, replay, {
         minimumSampleSize: config.organism.replayValidationMinSamples,
     });
-    const clock = new LogicalClock();
-    const riskGovernor = new RiskGovernor(bus);
+    const invariantEngine = new InvariantEngineService(bus);
+    const realityLayer = new RealityLayerService(bus);
+    const causalWorldModel = new CausalWorldModelService(bus);
+    const participantModel = new MarketParticipantModelService(bus);
+    const epistemicHealth = new EpistemicHealthService(bus);
+    const adversarialAuditor = new AdversarialAuditorService(bus);
+    const marketMemory = new MarketMemoryService(bus);
+    const multiTimescale = new MultiTimescaleCognitionService(bus);
+    const marketPhysics = new MarketPhysicsService(bus);
+    const marketWorldModel = new MarketWorldModelService(bus);
+    const metaCalibration = new MetaCalibrationService(bus);
+    const operatorAttention = new OperatorAttentionService(bus);
     const memoryLifecycle = new MemoryLifecycleManager();
-    const lineageTracer = new EventLineageTracer(bus);
     const orderbookDelta = new OrderbookDeltaService(bus);
     const liquidityGravity = new LiquidityGravityService(bus);
     const regimeTransition = new RegimeTransitionService(bus);
@@ -140,7 +148,7 @@ async function main() {
             cooldownMs: config.orchestration.circuitBreaker.cooldownMs,
         },
     });
-    const api = new ApiServer(bus, config.apiHost, config.apiPort, riskGovernor, lineageTracer, unifiedMarketField);
+    const api = new ApiServer(bus, config.apiHost, config.apiPort, unifiedMarketField);
     const researchLab = new ResearchLabServer(bus, config.apiHost, config.apiPort + 1);
     globalContext.start();
     micro.start();
@@ -165,21 +173,27 @@ async function main() {
     ai.start();
     aiMemory.start();
     beliefGraph.start();
-    constitutionalDecision.start();
-    consciousness.start();
+    realityLayer.start();
+    causalWorldModel.start();
+    participantModel.start();
     epistemicHealth.start();
     adversarialAuditor.start();
     marketMemory.start();
     multiTimescale.start();
+    marketPhysics.start();
+    marketWorldModel.start();
+    metaCalibration.start();
+    operatorAttention.start();
+    constitutionalDecision.start();
+    consciousness.start();
     immuneSystem.start();
     strategyGenome.start();
     replayIntegrity.start();
+    invariantEngine.start();
     autonomousResearch.start();
     aiAggregation.start();
     snapshotSync.start();
     aiRouter.start();
-    riskGovernor.start();
-    lineageTracer.start();
     // Unified Causal Market Physics Engine — starts after all upstream services
     orderbookDelta.start();
     liquidityGravity.start();
@@ -189,7 +203,6 @@ async function main() {
     realityAlignment.start();
     unifiedMarketField.start();
     shadowTrading.start();
-    memoryLifecycle.register('lineage', () => lineageTracer.pruneOlderThan(30 * 60 * 1000));
     memoryLifecycle.start(5 * 60 * 1000);
     bus.on(EVENTS.TELEMETRY, (event) => {
         metrics.record(event);
@@ -205,12 +218,10 @@ async function main() {
         researchLab: `${config.apiHost}:${config.apiPort + 1}`,
         aiOrchestration: config.orchestration.enabled,
         aiOrchestrationShadowMode: config.orchestration.shadowMode,
-        logicalTick: clock.globalCurrent(),
     });
     const shutdown = async () => {
         logger.info('shutting down');
         const span = tracer.startSpan('shutdown');
-        memoryLifecycle.stop();
         marketData.stop();
         await api.stop();
         await researchLab.stop();

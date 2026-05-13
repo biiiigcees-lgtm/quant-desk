@@ -45,6 +45,39 @@ export class MicrostructureEngine {
     }
 
     const aggressionScore = Math.max(0, Math.min(1, Math.abs(obiVelocity) + Math.abs(obi) * 0.5));
+    const spoofProbability = Math.max(
+      0,
+      Math.min(
+        1,
+        sweepProbability * 0.55 +
+        spreadExpansionScore * 0.25 +
+        (liquidityRegime === 'vacuum' ? 0.2 : 0),
+      ),
+    );
+    const absorptionScore = Math.max(
+      0,
+      Math.min(
+        1,
+        (1 - spreadExpansionScore) * 0.45 +
+        Math.max(0, 1 - Math.abs(obiVelocity)) * 0.35 +
+        (liquidityRegime === 'normal' ? 0.2 : 0.08),
+      ),
+    );
+    let toxicityLiquidityComponent = 0.05;
+    if (liquidityRegime === 'vacuum') {
+      toxicityLiquidityComponent = 0.25;
+    } else if (liquidityRegime === 'thin') {
+      toxicityLiquidityComponent = 0.15;
+    }
+    const toxicityScore = Math.max(
+      0,
+      Math.min(
+        1,
+        spoofProbability * 0.5 +
+        sweepProbability * 0.25 +
+        toxicityLiquidityComponent,
+      ),
+    );
 
     return {
       contractId: event.contractId,
@@ -56,6 +89,9 @@ export class MicrostructureEngine {
       panicRepricing,
       liquidityRegime,
       aggressionScore,
+      spoofProbability,
+      absorptionScore,
+      toxicityScore,
       timestamp: event.timestamp,
     };
   }

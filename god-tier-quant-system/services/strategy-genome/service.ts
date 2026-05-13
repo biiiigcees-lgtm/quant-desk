@@ -1,6 +1,11 @@
 import { EventBus } from '../../core/event-bus/bus.js';
 import { EVENTS } from '../../core/event-bus/events.js';
-import { StrategyGenomeUpdateEvent, StrategyLifecycleEvent, ValidationResultEvent } from '../../core/schemas/events.js';
+import {
+  SelfImprovementEvent,
+  StrategyGenomeUpdateEvent,
+  StrategyLifecycleEvent,
+  ValidationResultEvent,
+} from '../../core/schemas/events.js';
 
 interface GenomeState {
   strategyId: string;
@@ -40,6 +45,31 @@ export class StrategyGenomeService {
       current.lifecycle = deriveLifecycle(current);
 
       this.genomes.set(current.strategyId, current);
+      this.publish();
+    });
+
+    this.bus.on<SelfImprovementEvent>(EVENTS.SELF_IMPROVEMENT, (event) => {
+      const optimizerGenome = this.getOrCreateGenome(event.strategyId);
+      optimizerGenome.validationCount += 1;
+      optimizerGenome.auditScore = clamp(
+        optimizerGenome.auditScore * 0.8 + (event.guarded ? 70 : 85) * 0.2,
+        0,
+        100,
+      );
+
+      optimizerGenome.mutationRate = clamp(
+        optimizerGenome.mutationRate * 0.75 + event.adaptationRate * 0.25,
+        0.02,
+        event.guarded ? 0.28 : 0.45,
+      );
+
+      if (event.guarded) {
+        optimizerGenome.lifecycle = optimizerGenome.lifecycle === 'extinction' ? 'extinction' : 'decay';
+      } else {
+        optimizerGenome.lifecycle = deriveLifecycleFromValidation(optimizerGenome);
+      }
+
+      this.genomes.set(optimizerGenome.strategyId, optimizerGenome);
       this.publish();
     });
   }

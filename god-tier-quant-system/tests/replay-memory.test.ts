@@ -18,6 +18,11 @@ function testReplayChecksumDeterminism(): void {
     askLevels: [[0.51, 100]],
     volume: 1000,
     timestamp: 1,
+  }, {
+    snapshotId: 'snapshot:test:1',
+    source: 'market-feed',
+    idempotencyKey: 'md-1',
+    timestamp: 1,
   });
 
   bus.emit(EVENTS.PROBABILITY, {
@@ -36,7 +41,11 @@ function testReplayChecksumDeterminism(): void {
   const checksumA = replay.checksum();
   const checksumB = replay.checksum();
   assert.equal(checksumA, checksumB, 'replay checksum should be stable for unchanged records');
-  assert.ok(replay.getRecords().length >= 2, 'replay should record tracked events');
+  const records = replay.getRecords();
+  assert.ok(records.length >= 2, 'replay should record tracked events');
+  assert.equal(records[0]?.snapshotId, 'snapshot:test:1', 'replay should preserve snapshot metadata');
+  assert.equal(records[0]?.source, 'market-feed', 'replay should preserve source metadata');
+  assert.equal(records[0]?.idempotencyKey, 'md-1', 'replay should preserve idempotency metadata');
 }
 
 function testAiTelemetryEmission(): void {

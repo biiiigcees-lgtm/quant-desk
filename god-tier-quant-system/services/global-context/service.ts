@@ -35,10 +35,25 @@ export class GlobalContextService {
         marketRegime,
         liquidity,
         stressIndex: Number(avgStress.toFixed(4)),
+        vix: Number((12 + avgStress * 36).toFixed(2)),
+        btcDominance: Number((0.44 + (0.5 - event.yesPrice) * 0.12).toFixed(4)),
+        dxy: Number((100 + avgStress * 4.2).toFixed(2)),
+        yieldSpread: Number((1.2 - avgStress * 1.5).toFixed(3)),
+        macroNarrative: macroNarrativeFromRegime(marketRegime),
         timestamp: event.timestamp,
       };
 
       this.bus.emit(EVENTS.GLOBAL_CONTEXT, context);
     });
   }
+}
+
+function macroNarrativeFromRegime(regime: GlobalContextEvent['marketRegime']): string {
+  if (regime === 'risk-off') {
+    return 'macro-defensive: volatility and dollar strength rising';
+  }
+  if (regime === 'risk-on') {
+    return 'macro-supportive: liquidity and risk appetite improving';
+  }
+  return 'macro-transition: mixed macro impulses and unstable correlation';
 }

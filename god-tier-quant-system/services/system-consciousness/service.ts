@@ -6,6 +6,9 @@ import {
   ConstitutionalDecisionEvent,
   DriftEvent,
   EpistemicHealthEvent,
+  MarketExperienceEvent,
+  MetaCalibrationEvent,
+  OperatorAttentionEvent,
   SystemConsciousnessEvent,
 } from '../../core/schemas/events.js';
 
@@ -18,6 +21,9 @@ export class SystemConsciousnessService {
   private latestDecision: ConstitutionalDecisionEvent | null = null;
   private latestCalibration: CalibrationEvent | null = null;
   private latestDrift: DriftEvent | null = null;
+  private latestMetaCalibration: MetaCalibrationEvent | null = null;
+  private latestAttention: OperatorAttentionEvent | null = null;
+  private latestMarketExperience: MarketExperienceEvent | null = null;
 
   constructor(
     private readonly bus: EventBus,
@@ -42,6 +48,21 @@ export class SystemConsciousnessService {
 
     this.bus.on<DriftEvent>(EVENTS.DRIFT_EVENT, (event) => {
       this.latestDrift = event;
+      this.publish();
+    });
+
+    this.bus.on<MetaCalibrationEvent>(EVENTS.META_CALIBRATION, (event) => {
+      this.latestMetaCalibration = event;
+      this.publish();
+    });
+
+    this.bus.on<OperatorAttentionEvent>(EVENTS.OPERATOR_ATTENTION, (event) => {
+      this.latestAttention = event;
+      this.publish();
+    });
+
+    this.bus.on<MarketExperienceEvent>(EVENTS.MARKET_EXPERIENCE, (event) => {
+      this.latestMarketExperience = event;
       this.publish();
     });
   }
@@ -74,9 +95,18 @@ export class SystemConsciousnessService {
       0,
       1,
     );
+    const authorityDecay = this.latestMetaCalibration?.authorityDecay ?? 0;
+    const attentionDensity = this.latestAttention?.density ?? 0;
+    const traumaPenalty = this.latestMarketExperience?.traumaPenalty ?? 0;
+    const trustDecay = clamp(
+      0.45 * aggregateStress + 0.3 * authorityDecay + 0.15 * traumaPenalty + 0.1 * attentionDensity,
+      0,
+      1,
+    );
+    const selfTrustScore = clamp(1 - trustDecay, 0, 1);
 
     const executionConfidence = clamp(
-      this.latestDecision.confidence_score * (1 - uncertaintyTopology) * (1 - aggregateStress * 0.5),
+      this.latestDecision.confidence_score * (1 - uncertaintyTopology) * (1 - aggregateStress * 0.5) * selfTrustScore,
       0,
       1,
     );
@@ -86,6 +116,7 @@ export class SystemConsciousnessService {
       contradictionDensity,
       tradeAllowed: this.latestDecision.trade_allowed,
       epistemicFloor: this.options.epistemicFloor,
+      trustDecay,
     });
 
     const contradictions = this.latestBelief.summary.contradictions.map((item) => ({
@@ -95,7 +126,16 @@ export class SystemConsciousnessService {
       detail: item.conflictReason,
     }));
 
-    const cognitiveStressState = cognitiveStressFromAggregate(aggregateStress);
+    const cognitiveStressState = cognitiveStressFromAggregate(Math.max(aggregateStress, trustDecay));
+    const timestamp = maxTimestamp([
+      this.latestBelief.timestamp,
+      this.latestDecision.timestamp,
+      this.latestCalibration?.timestamp,
+      this.latestDrift?.timestamp,
+      this.latestMetaCalibration?.timestamp,
+      this.latestAttention?.timestamp,
+      this.latestMarketExperience?.timestamp,
+    ]);
 
     const consciousness: SystemConsciousnessEvent = {
       contractId: this.latestDecision.contractId,
@@ -117,12 +157,14 @@ export class SystemConsciousnessService {
       contradictions,
       contradictionDensity,
       cognitiveStressState,
+      selfTrustScore,
+      trustDecay,
       invalidationPath,
-      timestamp: Date.now(),
+      timestamp,
     };
 
-    const status = healthStatusFromAggregate(aggregateStress);
-    const score = clamp(1 - aggregateStress, 0, 1);
+    const status = healthStatusFromAggregate(Math.max(aggregateStress, trustDecay));
+    const score = clamp(1 - Math.max(aggregateStress, trustDecay), 0, 1);
 
     const health: EpistemicHealthEvent = {
       contractId: this.latestDecision.contractId,
@@ -139,6 +181,7 @@ export class SystemConsciousnessService {
       driftHealth: clamp(1 - driftStress, 0, 1),
       anomalyHealth: clamp(1 - uncertaintyTopology, 0, 1),
       stabilityHealth: clamp(1 - contradictionStress, 0, 1),
+      metaCalibrationScore: this.latestMetaCalibration?.compositeScore,
       healthGrade: healthGradeFromScore(score),
       timestamp: consciousness.timestamp,
     };
@@ -159,9 +202,13 @@ function buildInvalidationPath(input: {
   contradictionDensity: number;
   tradeAllowed: boolean;
   epistemicFloor: number;
+  trustDecay: number;
 }): string {
   if (!input.tradeAllowed) {
     return 'Constitutional decision blocks execution; await governance pass.';
+  }
+  if (input.trustDecay > 0.72) {
+    return 'Self-trust degraded; trigger authority decay containment and recalibration cycle.';
   }
   if (input.stress > 1 - input.epistemicFloor) {
     return 'Epistemic stress breached floor; require recalibration and fresh snapshot.';
@@ -215,4 +262,12 @@ function healthStatusFromAggregate(stress: number): EpistemicHealthEvent['status
     return 'degraded';
   }
   return 'stable';
+}
+
+function maxTimestamp(values: Array<number | undefined>): number {
+  const finite = values.filter((value): value is number => Number.isFinite(value));
+  if (finite.length === 0) {
+    return Date.now();
+  }
+  return Math.max(...finite);
 }

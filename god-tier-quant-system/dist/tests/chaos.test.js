@@ -99,15 +99,30 @@ function testEventBusHistoryBound() {
 // ---------------------------------------------------------------------------
 function testEventSequencerMonotonicReject() {
     const seq = new EventSequencer();
+    const source = 'chaos-test';
     // Advance the sequencer to seq 5 by accepting an envelope with sequence 5
     seq.reset(4); // lastAccepted = 4, nextSequence = 5
-    const e5 = seq.wrap({ data: 'a' }, 'snap-1');
+    const e5 = seq.wrap({ data: 'a' }, 'snap-1', source);
     assert.equal(e5.sequence, 5, 'wrap should produce sequence 5');
     assert.equal(seq.validateMonotonic(e5), true, 'sequence 5 should be accepted');
     // Now try to validate an envelope with sequence <= current (5)
-    const staleEnvelope = { sequence: 5, timestamp: Date.now(), snapshotId: 'snap-1', payload: {} };
+    const staleEnvelope = {
+        sequence: 5,
+        timestamp: Date.now(),
+        snapshotId: 'snap-1',
+        source,
+        lineageId: `${source}:snap-1:5`,
+        payload: {},
+    };
     assert.equal(seq.validateMonotonic(staleEnvelope), false, 'sequence equal to lastAccepted should be rejected');
-    const olderEnvelope = { sequence: 3, timestamp: Date.now(), snapshotId: 'snap-1', payload: {} };
+    const olderEnvelope = {
+        sequence: 3,
+        timestamp: Date.now(),
+        snapshotId: 'snap-1',
+        source,
+        lineageId: `${source}:snap-1:3`,
+        payload: {},
+    };
     assert.equal(seq.validateMonotonic(olderEnvelope), false, 'sequence less than lastAccepted should be rejected');
 }
 // ---------------------------------------------------------------------------
@@ -115,8 +130,9 @@ function testEventSequencerMonotonicReject() {
 // ---------------------------------------------------------------------------
 function testEventSequencerMonotonicAccept() {
     const seq = new EventSequencer();
+    const source = 'chaos-test';
     for (let i = 1; i <= 10; i++) {
-        const env = seq.wrap({ tick: i }, 'snap-mono');
+        const env = seq.wrap({ tick: i }, 'snap-mono', source);
         assert.equal(env.sequence, i, `envelope sequence should be ${i}`);
         assert.equal(seq.validateMonotonic(env), true, `sequence ${i} should be accepted`);
     }
@@ -127,15 +143,30 @@ function testEventSequencerMonotonicAccept() {
 // ---------------------------------------------------------------------------
 function testStaleEventRejection() {
     const seq = new EventSequencer();
+    const source = 'chaos-test';
     // Build and accept envelope at sequence 5
     seq.reset(4);
-    const env5 = seq.wrap({ data: 'payload' }, 'snap-stale');
+    const env5 = seq.wrap({ data: 'payload' }, 'snap-stale', source);
     assert.equal(seq.validateMonotonic(env5), true);
     // Stale: sequence 3
-    const stale3 = { sequence: 3, timestamp: Date.now(), snapshotId: 'snap-stale', payload: {} };
+    const stale3 = {
+        sequence: 3,
+        timestamp: Date.now(),
+        snapshotId: 'snap-stale',
+        source,
+        lineageId: `${source}:snap-stale:3`,
+        payload: {},
+    };
     assert.equal(seq.validateMonotonic(stale3), false, 'stale sequence 3 should be rejected');
     // Fresh: sequence 6
-    const fresh6 = { sequence: 6, timestamp: Date.now(), snapshotId: 'snap-stale', payload: {} };
+    const fresh6 = {
+        sequence: 6,
+        timestamp: Date.now(),
+        snapshotId: 'snap-stale',
+        source,
+        lineageId: `${source}:snap-stale:6`,
+        payload: {},
+    };
     assert.equal(seq.validateMonotonic(fresh6), true, 'fresh sequence 6 should be accepted');
 }
 // ---------------------------------------------------------------------------

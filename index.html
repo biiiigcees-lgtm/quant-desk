@@ -1107,6 +1107,13 @@ var marketStore = {
   // WS meta
   wsConnected: false, wsLatency: 0, lastMsgTs: 0,
   wsSource: 'coinbase', manualFallback: false, manualRest: false,
+  feedQueueDepth: 0,
+  feedDroppedStale: 0,
+  feedDroppedDuplicate: 0,
+  feedCommitCount: 0,
+  feedMaxQueueDepth: 0,
+  feedCommitLatencyMs: 0,
+  feedFlushDurationMs: 0,
   msgCount: 0, reconnectCount: 0,
 
   // Adaptive calibration + feed quality metrics
@@ -3310,13 +3317,79 @@ function hydrateSignalLog(){
 }
 
 // ─────────────────────────────────────────────
-// UI RENDER — throttled to 4 fps via rAF
+// UI RENDER — adaptive, queue-aware scheduler
 // ─────────────────────────────────────────────
 let renderScheduled=false;
-function scheduleRender(){
+let renderPriority='normal';
+let lastRender=0;
+
+function scheduleRender(options={}){
+  const nextPriority=options?.priority||deriveRenderPriority();
+  renderPriority=promoteRenderPriority(renderPriority,nextPriority);
   if(renderScheduled) return;
   renderScheduled=true;
-  requestAnimationFrame(()=>{renderScheduled=false; renderAll();});
+  requestAnimationFrame(runRenderFrame);
+}
+
+function runRenderFrame(ts){
+  renderScheduled=false;
+  const activePriority=renderPriority;
+  renderPriority='normal';
+  const interval=resolveRenderIntervalMs(activePriority);
+
+  if(lastRender&&ts-lastRender<interval){
+    scheduleRender({priority:activePriority});
+    return;
+  }
+
+  lastRender=ts;
+  try {
+    computeIndicators();
+  } catch(e) {
+    console.error('[renderFrame] computeIndicators:', e);
+  }
+  try {
+    renderAll();
+  } catch(e) {
+    console.error('[renderFrame] renderAll:', e);
+  }
+  scheduleSystemTruthPublish();
+}
+
+function deriveRenderPriority(){
+  const source=marketStore.wsSource||'coinbase';
+  const queueDepth=Number.isFinite(marketStore.feedQueueDepth)?marketStore.feedQueueDepth:0;
+  const commitLatency=Number.isFinite(marketStore.feedCommitLatencyMs)?marketStore.feedCommitLatencyMs:0;
+  const flushMs=Number.isFinite(marketStore.feedFlushDurationMs)?marketStore.feedFlushDurationMs:0;
+  const lastTs=Number.isFinite(marketStore.lastMsgTs)?marketStore.lastMsgTs:0;
+  const ageMs=lastTs>0?Math.max(0,Date.now()-lastTs):0;
+
+  if(source==='rest'||ageMs>=20000) return 'idle';
+  if(queueDepth>=64||commitLatency>=220||flushMs>=12) return 'critical';
+  if(queueDepth>=24||commitLatency>=120||flushMs>=6||ageMs>=8000) return 'high';
+  return 'normal';
+}
+
+function resolveRenderIntervalMs(priority='normal'){
+  const intervals={idle:300,normal:170,high:120,critical:85};
+  let ms=intervals[priority]??intervals.normal;
+
+  const rv=Number.isFinite(marketStore.realizedVol)?marketStore.realizedVol:0;
+  const adx=Number.isFinite(marketStore.adxVal)?marketStore.adxVal:0;
+  if(rv>=65||adx>=35) ms-=18;
+  else if(rv<=20&&adx<=15) ms+=20;
+
+  const queueDepth=Number.isFinite(marketStore.feedQueueDepth)?marketStore.feedQueueDepth:0;
+  if(queueDepth>=48) ms-=15;
+
+  return clamp(ms,70,360);
+}
+
+function promoteRenderPriority(current,next){
+  const rank={idle:0,normal:1,high:2,critical:3};
+  const curRank=rank[current]??rank.normal;
+  const nextRank=rank[next]??rank.normal;
+  return nextRank>curRank?next:current;
 }
 
 function renderAll(){ // NOSONAR
@@ -4341,23 +4414,13 @@ Under 250 words. Pure institutional signal.`;
 function setTxt(id,v){const el=document.getElementById(id);if(el)el.textContent=v;}
 
 // ─────────────────────────────────────────────
-// RENDER LOOP — rAF throttled at ~4fps
+// RENDER LOOP — queue-aware fallback scheduler
 // ─────────────────────────────────────────────
-let lastRender=0;
 function renderLoop(ts){
-  if(ts-lastRender>=100){  // ~10fps max for chart, UI
-    lastRender=ts;
-    try {
-      computeIndicators();
-    } catch(e) {
-      console.error('[renderLoop] computeIndicators:', e);
-    }
-    try {
-      renderAll();
-    } catch(e) {
-      console.error('[renderLoop] renderAll:', e);
-    }
-    scheduleSystemTruthPublish();
+  const priority=deriveRenderPriority();
+  const interval=resolveRenderIntervalMs(priority);
+  if(!lastRender||ts-lastRender>=interval){
+    scheduleRender({priority});
   }
   requestAnimationFrame(renderLoop);
 }
@@ -4458,6 +4521,13 @@ async function init(){
     ms.wsSource     = state.wsSource    ?? ms.wsSource;
     ms.manualFallback = state.manualFallbackEnabled ?? ms.manualFallback;
     ms.manualRest   = state.manualRestEnabled ?? ms.manualRest;
+    ms.feedQueueDepth = state.feedQueueDepth ?? ms.feedQueueDepth;
+    ms.feedDroppedStale = state.feedDroppedStale ?? ms.feedDroppedStale;
+    ms.feedDroppedDuplicate = state.feedDroppedDuplicate ?? ms.feedDroppedDuplicate;
+    ms.feedCommitCount = state.feedCommitCount ?? ms.feedCommitCount;
+    ms.feedMaxQueueDepth = state.feedMaxQueueDepth ?? ms.feedMaxQueueDepth;
+    ms.feedCommitLatencyMs = state.feedCommitLatencyMs ?? ms.feedCommitLatencyMs;
+    ms.feedFlushDurationMs = state.feedFlushDurationMs ?? ms.feedFlushDurationMs;
     ms.imbalance    = state.imbalance   ?? ms.imbalance;
     ms.cvd          = state.cvd         ?? ms.cvd;
     ms.tradeDeltaBuy  = state.tradeDeltaBuy  ?? ms.tradeDeltaBuy;
@@ -4501,6 +4571,10 @@ async function init(){
           _bridgeUpdating = false;
         }
       }
+    }
+
+    if (typeof scheduleRender === 'function') {
+      scheduleRender({ reason: 'feed-update' });
     }
   });
 

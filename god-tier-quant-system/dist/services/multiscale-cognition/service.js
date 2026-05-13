@@ -10,7 +10,13 @@ function pushWindow(arr, item, max) {
         arr.shift();
 }
 function sign(val, threshold = 0.005) {
-    return val > threshold ? 1 : val < -threshold ? -1 : 0;
+    if (val > threshold) {
+        return 1;
+    }
+    if (val < -threshold) {
+        return -1;
+    }
+    return 0;
 }
 export class MultiTimescaleCognitionService {
     constructor(bus) {
@@ -49,13 +55,16 @@ export class MultiTimescaleCognitionService {
         return this.latest.get(contractId);
     }
     getOrCreate(contractId) {
-        if (!this.states.has(contractId)) {
-            this.states.set(contractId, {
-                tickWindow: [], localWindow: [], regimeWindow: [],
-                macroWindow: [], latestContractId: contractId,
-            });
+        const existing = this.states.get(contractId);
+        if (existing) {
+            return existing;
         }
-        return this.states.get(contractId);
+        const created = {
+            tickWindow: [], localWindow: [], regimeWindow: [],
+            macroWindow: [], latestContractId: contractId,
+        };
+        this.states.set(contractId, created);
+        return created;
     }
     tickView(events) {
         if (events.length === 0)
@@ -70,8 +79,13 @@ export class MultiTimescaleCognitionService {
     localView(events) {
         if (events.length < 2)
             return { direction: 0, strength: 0 };
-        const first = events[0].estimatedProbability;
-        const last = events[events.length - 1].estimatedProbability;
+        const firstEvent = events.at(0);
+        const lastEvent = events.at(-1);
+        if (!firstEvent || !lastEvent) {
+            return { direction: 0, strength: 0 };
+        }
+        const first = firstEvent.estimatedProbability;
+        const last = lastEvent.estimatedProbability;
         const delta = last - first;
         const avgEdge = events.reduce((s, e) => s + Math.abs(e.edge), 0) / events.length;
         return {
@@ -82,7 +96,7 @@ export class MultiTimescaleCognitionService {
     regimeView(events) {
         if (events.length === 0)
             return { direction: 0, strength: 0 };
-        const sevMap = { low: 0.2, medium: 0.6, high: 1.0 };
+        const sevMap = { low: 0.2, medium: 0.6, high: 1 };
         const avgSev = events.reduce((s, e) => s + (sevMap[e.severity] ?? 0.2), 0) / events.length;
         const avgKl = events.reduce((s, e) => s + e.kl, 0) / events.length;
         // High drift severity = adverse = bearish signal
@@ -94,9 +108,11 @@ export class MultiTimescaleCognitionService {
     macroView(events) {
         if (events.length === 0)
             return { direction: 0, strength: 0 };
-        const last = events[events.length - 1];
-        const dir = last.marketRegime === 'risk-on' ? 1 :
-            last.marketRegime === 'risk-off' ? -1 : 0;
+        const last = events.at(-1);
+        if (!last) {
+            return { direction: 0, strength: 0 };
+        }
+        const dir = macroDirection(last.marketRegime);
         const avgStress = events.reduce((s, e) => s + e.stressIndex, 0) / events.length;
         return {
             direction: dir,
@@ -118,8 +134,21 @@ export class MultiTimescaleCognitionService {
         const regime = this.regimeView(s.regimeWindow);
         const macro = this.macroView(this.macroWindow);
         const coherenceScore = this.computeCoherence([tick, local, regime, macro]);
-        const temporalAlignment = coherenceScore >= 0.75 ? 'aligned' :
-            coherenceScore >= 0.5 ? 'mixed' : 'divergent';
+        const temporalAlignment = deriveTemporalAlignment(coherenceScore);
+        const macroStress = this.macroWindow.length > 0
+            ? this.macroWindow.reduce((sum, item) => sum + item.stressIndex, 0) / this.macroWindow.length
+            : 0.5;
+        const macroToLocal = clamp(Math.abs(macro.direction - local.direction) * 0.35 + macroStress * 0.45, 0, 1);
+        const liquidityToDrift = clamp((1 - liquidityScore(this.macroWindow.at(-1)?.liquidity)) * 0.5 + regime.strength * 0.5, 0, 1);
+        const sentimentCoupling = clamp(coherenceScore * 0.6 + Math.abs(tick.direction - local.direction) * 0.2 + Math.abs(local.direction - regime.direction) * 0.2, 0, 1);
+        const riskTransmissionScore = clamp(macroToLocal * 0.4 + liquidityToDrift * 0.35 + sentimentCoupling * 0.25, 0, 1);
+        const dominantDriver = pickDominantDriver(macroToLocal, liquidityToDrift, sentimentCoupling);
+        const timestamp = latestTimestamp([
+            s.tickWindow.at(-1)?.timestamp,
+            s.localWindow.at(-1)?.timestamp,
+            s.regimeWindow.at(-1)?.timestamp,
+            this.macroWindow.at(-1)?.timestamp,
+        ]);
         const event = {
             contractId,
             tick,
@@ -128,9 +157,70 @@ export class MultiTimescaleCognitionService {
             macro,
             coherenceScore,
             temporalAlignment,
-            timestamp: Date.now(),
+            timestamp,
+        };
+        const crossMarket = {
+            contractId,
+            riskTransmissionScore: Number(riskTransmissionScore.toFixed(4)),
+            correlationBreakdown: {
+                macroToLocal: Number(macroToLocal.toFixed(4)),
+                liquidityToDrift: Number(liquidityToDrift.toFixed(4)),
+                sentimentCoupling: Number(sentimentCoupling.toFixed(4)),
+            },
+            dominantDriver,
+            timestamp,
         };
         this.latest.set(contractId, event);
         this.bus.emit(EVENTS.MULTI_TIMESCALE_VIEW, event);
+        this.bus.emit(EVENTS.CROSS_MARKET_CAUSAL_STATE, crossMarket);
     }
+}
+function latestTimestamp(values) {
+    const filtered = values.filter((value) => typeof value === 'number' && Number.isFinite(value) && value > 0);
+    if (filtered.length === 0) {
+        return 1;
+    }
+    return Math.max(...filtered);
+}
+function macroDirection(regime) {
+    if (regime === 'risk-on') {
+        return 1;
+    }
+    if (regime === 'risk-off') {
+        return -1;
+    }
+    return 0;
+}
+function deriveTemporalAlignment(coherenceScore) {
+    if (coherenceScore >= 0.75) {
+        return 'aligned';
+    }
+    if (coherenceScore >= 0.5) {
+        return 'mixed';
+    }
+    return 'divergent';
+}
+function liquidityScore(liquidity) {
+    if (liquidity === 'abundant') {
+        return 1;
+    }
+    if (liquidity === 'normal') {
+        return 0.65;
+    }
+    return 0.35;
+}
+function pickDominantDriver(macroToLocal, liquidityToDrift, sentimentCoupling) {
+    if (macroToLocal >= liquidityToDrift && macroToLocal >= sentimentCoupling) {
+        return 'macro-to-local';
+    }
+    if (liquidityToDrift >= sentimentCoupling) {
+        return 'liquidity-to-drift';
+    }
+    return 'sentiment-coupling';
+}
+function clamp(value, min, max) {
+    if (!Number.isFinite(value)) {
+        return min;
+    }
+    return Math.max(min, Math.min(max, value));
 }

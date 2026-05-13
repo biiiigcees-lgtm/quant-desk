@@ -34,6 +34,9 @@ export interface MicrostructureEvent {
   panicRepricing: boolean;
   liquidityRegime: 'normal' | 'thin' | 'vacuum';
   aggressionScore: number;
+  spoofProbability?: number;
+  absorptionScore?: number;
+  toxicityScore?: number;
   timestamp: number;
 }
 
@@ -216,6 +219,11 @@ export interface GlobalContextEvent {
   marketRegime: 'risk-on' | 'risk-off' | 'neutral';
   liquidity: 'thin' | 'normal' | 'abundant';
   stressIndex: number;
+  vix?: number;
+  btcDominance?: number;
+  dxy?: number;
+  yieldSpread?: number;
+  macroNarrative?: string;
   timestamp: number;
 }
 
@@ -331,6 +339,130 @@ export interface CausalInsight {
   timestamp: number;
 }
 
+export interface CausalEdgeState {
+  cause: string;
+  effect: string;
+  opportunities: number;
+  transitions: number;
+  causalStrength: number;
+  reverseStrength: number;
+  confidence: number;
+  spurious: boolean;
+}
+
+export interface CausalMarketStateEvent {
+  contractId: string;
+  hiddenState:
+    | 'momentum-continuation'
+    | 'liquidity-fragility'
+    | 'panic-feedback'
+    | 'mean-reversion-pressure'
+    | 'neutral';
+  confidence: number;
+  instabilityRisk: number;
+  causalEntropy: number;
+  topDriver: { cause: string; effect: string; strength: number } | null;
+  activeEdges: CausalEdgeState[];
+  timestamp: number;
+}
+
+export interface EpistemicMemoryRevisionEvent {
+  contractId: string;
+  revisionId: string;
+  hypothesisId: string;
+  previousConfidence: number;
+  nextConfidence: number;
+  reason: string;
+  lineage: string[];
+  contradictionCount: number;
+  timestamp: number;
+}
+
+export interface MarketPhysicsEvent {
+  contractId: string;
+  compression: number;
+  expansion: number;
+  inertia: number;
+  exhaustion: number;
+  entropyExpansion: number;
+  liquidityConservation: number;
+  structuralStress: number;
+  timestamp: number;
+}
+
+export interface ScenarioBranchStateEvent {
+  contractId: string;
+  invalidated: boolean;
+  branchScores: Record<string, number>;
+  dominantBranch: string;
+  volatilityWeight: number;
+  timestamp: number;
+}
+
+export interface CrossMarketCausalStateEvent {
+  contractId: string;
+  riskTransmissionScore: number;
+  correlationBreakdown: {
+    macroToLocal: number;
+    liquidityToDrift: number;
+    sentimentCoupling: number;
+  };
+  dominantDriver: string;
+  timestamp: number;
+}
+
+export interface MarketWorldStateEvent {
+  contractId: string;
+  participantIntent: 'accumulation' | 'distribution' | 'hedging' | 'liquidation' | 'neutral';
+  syntheticLiquidityProbability: number;
+  forcedPositioningPressure: number;
+  reflexivityAcceleration: number;
+  worldConfidence: number;
+  scenarioDominantBranch: string;
+  hiddenState: CausalMarketStateEvent['hiddenState'];
+  timestamp: number;
+}
+
+export interface SelfImprovementEvent {
+  strategyId: string;
+  contractId: string;
+  adaptationRate: number;
+  guarded: boolean;
+  reason: string;
+  updatedWeights: Record<string, number>;
+  timestamp: number;
+}
+
+export interface MarketExperienceEvent {
+  contractId: string;
+  archetype: string;
+  recurringFailureSignature: boolean;
+  traumaPenalty: number;
+  retrievalConfidence: number;
+  timestamp: number;
+}
+
+export interface MetaCalibrationEvent {
+  contractId: string;
+  signalCalibration: number;
+  aiCalibration: number;
+  executionCalibration: number;
+  regimeCalibration: number;
+  uncertaintyCalibration: number;
+  compositeScore: number;
+  authorityDecay: number;
+  timestamp: number;
+}
+
+export interface OperatorAttentionEvent {
+  contractId: string;
+  focus: 'normal' | 'focused' | 'critical';
+  priority: string[];
+  contradictionHotspots: string[];
+  density: number;
+  timestamp: number;
+}
+
 export type ParticipantType =
   | 'liquidity-provider'
   | 'momentum'
@@ -408,26 +540,65 @@ export interface SnapshotSourceMeta {
   required: boolean;
 }
 
-export interface CanonicalDecisionSnapshot {
+export type MarketState = MarketDataEvent;
+
+export interface OrderbookState {
+  yesPrice: number;
+  noPrice: number;
+  spread: number;
+  bidLevels: Array<[number, number]>;
+  askLevels: Array<[number, number]>;
+  volume: number;
+}
+
+export type IndicatorState = FeatureEvent;
+
+export interface AIState {
+  probability: ProbabilityEvent;
+  calibration: CalibrationEvent;
+  drift: DriftEvent;
+  anomaly: AnomalyEvent | null;
+}
+
+export interface RiskState {
+  executionPermission: boolean;
+  safetyMode: ExecutionMode;
+  reason: string;
+  riskLevel: number;
+}
+
+export type ExecutionState = ExecutionPlan | null;
+
+export interface EpistemicState {
+  uncertaintyScore: number;
+  calibrationError: number;
+  driftSeverity: DriftSeverity;
+  anomalySeverity: AnomalyEvent['severity'] | 'none';
+  truthScore: number;
+}
+
+export interface Snapshot {
   snapshotId: string;
+  timestamp: number;
+  market: MarketState;
+  orderbook: OrderbookState;
+  indicators: IndicatorState;
+  ai: AIState;
+  risk: RiskState;
+  execution: ExecutionState;
+  epistemic: EpistemicState;
+}
+
+export interface CanonicalDecisionSnapshot extends Snapshot {
   contractId: string;
   sequence: number;
-  timestamp: number;
   hash: string;
-  market: MarketDataEvent;
+  sourceMeta: SnapshotSourceMeta[];
   microstructure: MicrostructureEvent;
-  indicators: FeatureEvent;
-  aiContext: {
-    probability: ProbabilityEvent;
-    calibration: CalibrationEvent;
-    drift: DriftEvent;
-    anomaly: AnomalyEvent | null;
-  };
-  executionState: ExecutionPlan | null;
-  riskState: {
-    safetyMode: ExecutionMode;
-    reason: string;
-  } | null;
+  // Compatibility aliases retained while services migrate to Snapshot fields.
+  aiContext: AIState;
+  executionState: ExecutionState;
+  riskState: RiskState;
 }
 
 export interface DecisionSnapshotEvent {
@@ -448,7 +619,7 @@ export interface DecisionSnapshotEvent {
     anomaly: AnomalyEvent | null;
     executionPlan: ExecutionPlan | null;
   };
-  canonical?: CanonicalDecisionSnapshot;
+  canonical: CanonicalDecisionSnapshot;
 }
 
 export interface DecisionSnapshotInvalidEvent {
@@ -570,6 +741,16 @@ export interface ExecutionRecommendationIntelligence {
   confidence: number;
 }
 
+export interface CanonicalAIOutput {
+  bias: 'LONG' | 'SHORT' | 'WAIT';
+  confidence: number;
+  uncertainty: number;
+  riskLevel: number;
+  reasoning: string[];
+  invalidation: string[];
+  executionRecommendation: 'EXECUTE' | 'WAIT' | 'BLOCK';
+}
+
 export interface AnomalyFlagIntelligence {
   type: string;
   severity: string;
@@ -658,6 +839,8 @@ export interface SystemConsciousnessEvent {
   }>;
   contradictionDensity: number;
   cognitiveStressState: 'stable' | 'elevated' | 'critical';
+  selfTrustScore?: number;
+  trustDecay?: number;
   invalidationPath: string;
   timestamp: number;
 }
@@ -679,6 +862,7 @@ export interface EpistemicHealthEvent {
   anomalyHealth: number;
   stabilityHealth: number;
   healthGrade: 'A' | 'B' | 'C' | 'D' | 'F';
+  metaCalibrationScore?: number;
   timestamp: number;
 }
 

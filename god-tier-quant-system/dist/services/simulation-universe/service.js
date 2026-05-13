@@ -2,19 +2,23 @@ import { EVENTS } from '../../core/event-bus/events.js';
 // Candidate plan profiles used to generate alternative execution paths.
 const CANDIDATE_PROFILES = ['market-aggressive', 'passive-patient', 'sliced-vwap', 'reduced-half'];
 const CANDIDATE_SPECS = {
-    'market-aggressive': { style: 'market', slices: 1, sizeFraction: 1.0, expectedSlippage: 0.004, fillProbability: 0.97, latencyBudgetMs: 60 },
-    'passive-patient': { style: 'passive', slices: 1, sizeFraction: 1.0, expectedSlippage: 0.001, fillProbability: 0.72, latencyBudgetMs: 110 },
-    'sliced-vwap': { style: 'sliced', slices: 4, sizeFraction: 1.0, expectedSlippage: 0.002, fillProbability: 0.88, latencyBudgetMs: 80 },
-    'reduced-half': { style: 'passive', slices: 1, sizeFraction: 0.5, expectedSlippage: 0.001, fillProbability: 0.80, latencyBudgetMs: 110 },
+    'market-aggressive': { style: 'market', slices: 1, sizeFraction: 1, expectedSlippage: 0.004, fillProbability: 0.97, latencyBudgetMs: 60 },
+    'passive-patient': { style: 'passive', slices: 1, sizeFraction: 1, expectedSlippage: 0.001, fillProbability: 0.72, latencyBudgetMs: 110 },
+    'sliced-vwap': { style: 'sliced', slices: 4, sizeFraction: 1, expectedSlippage: 0.002, fillProbability: 0.88, latencyBudgetMs: 80 },
+    'reduced-half': { style: 'passive', slices: 1, sizeFraction: 0.5, expectedSlippage: 0.001, fillProbability: 0.8, latencyBudgetMs: 110 },
 };
 export class SimulationUniverseService {
     constructor(bus) {
         this.bus = bus;
         this.latestPlan = new Map();
+        this.latestPhysics = new Map();
     }
     start() {
         this.bus.on(EVENTS.EXECUTION_PLAN, (plan) => {
             this.latestPlan.set(plan.contractId, plan);
+        });
+        this.bus.on(EVENTS.MARKET_PHYSICS, (event) => {
+            this.latestPhysics.set(event.contractId, event);
         });
         this.bus.on(EVENTS.STRATEGY_SIGNAL, (signal) => {
             const walkForwardScore = Number((signal.confidence * 100 - Math.abs(signal.expectedValue) * 40).toFixed(2));
@@ -69,9 +73,23 @@ export class SimulationUniverseService {
             });
         });
         this.bus.on(EVENTS.AGGREGATED_SIGNAL, (event) => {
+            const physics = this.latestPhysics.get(event.contractId);
             const scenarioCount = 256;
-            const tailProbability = Number(Math.max(0.01, 1 - event.agreement).toFixed(4));
+            const tailProbability = Number(clamp(Math.max(0.01, 1 - event.agreement) * 0.7 + (physics?.structuralStress ?? 0.25) * 0.3, 0.01, 0.99).toFixed(4));
             const worstCasePnl = Number((-Math.abs(event.score) * 220 * tailProbability).toFixed(2));
+            const branchScores = buildBranchScores(event, physics);
+            const dominantBranch = Object.entries(branchScores).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'balanced-range';
+            const volatilityWeight = clamp(tailProbability * 0.7 + (physics?.entropyExpansion ?? 0.2) * 0.3, 0, 1);
+            const invalidated = volatilityWeight > 0.78 || Math.abs(worstCasePnl) > 55;
+            const branchEvent = {
+                contractId: event.contractId,
+                invalidated,
+                branchScores,
+                dominantBranch,
+                volatilityWeight: Number(volatilityWeight.toFixed(4)),
+                timestamp: event.timestamp,
+            };
+            this.bus.emit(EVENTS.SCENARIO_BRANCH_STATE, branchEvent);
             const { candidateDivergences, bestCandidatePlan, klDivergence, mirrorConfidence } = this.computeExecutionPathMirror(event.contractId, event.timestamp);
             const payload = {
                 scenarioCount,
@@ -91,7 +109,7 @@ export class SimulationUniverseService {
         // If no actual plan has arrived yet, return neutral defaults.
         if (!actual) {
             const uniform = Object.fromEntries(CANDIDATE_PROFILES.map((k) => [k, 0.25]));
-            return { candidateDivergences: uniform, bestCandidatePlan: 'sliced-vwap', klDivergence: 0.25, mirrorConfidence: 0.0 };
+            return { candidateDivergences: uniform, bestCandidatePlan: 'sliced-vwap', klDivergence: 0.25, mirrorConfidence: 0 };
         }
         const candidateDivergences = {};
         let minDivergence = Infinity;
@@ -133,7 +151,26 @@ export class SimulationUniverseService {
         const klQP = p2 * Math.log(p2 / p1) + q2 * Math.log(q2 / q1);
         const symmetricKl = (klPQ + klQP) / 2;
         // Add a style mismatch penalty.
-        const styleMismatch = actual.orderStyle !== candidate.style ? 0.15 : 0;
+        const styleMismatch = actual.orderStyle === candidate.style ? 0 : 0.15;
         return Math.max(0, symmetricKl + styleMismatch);
     }
+}
+function buildBranchScores(signal, physics) {
+    const score = clamp(Math.abs(signal.score), 0, 1);
+    const agreement = clamp(signal.agreement, 0, 1);
+    const structuralStress = physics?.structuralStress ?? 0.25;
+    const compression = physics?.compression ?? 0.45;
+    const expansion = physics?.expansion ?? 0.4;
+    return {
+        'trend-continuation': Number(clamp(score * 0.5 + agreement * 0.35 + expansion * 0.15 - structuralStress * 0.2, 0, 1).toFixed(4)),
+        'mean-reversion': Number(clamp((1 - agreement) * 0.35 + compression * 0.4 + structuralStress * 0.25, 0, 1).toFixed(4)),
+        'liquidity-shock': Number(clamp(structuralStress * 0.55 + (physics?.entropyExpansion ?? 0.2) * 0.3 + (1 - compression) * 0.15, 0, 1).toFixed(4)),
+        'balanced-range': Number(clamp((1 - Math.abs(score - 0.5)) * 0.4 + compression * 0.3 + (1 - structuralStress) * 0.3, 0, 1).toFixed(4)),
+    };
+}
+function clamp(value, min, max) {
+    if (!Number.isFinite(value)) {
+        return min;
+    }
+    return Math.max(min, Math.min(max, value));
 }

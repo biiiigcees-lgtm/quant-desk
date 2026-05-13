@@ -3,6 +3,7 @@
 export type SystemState = 'nominal' | 'cautious' | 'degraded' | 'halted';
 export type ParticipantType = 'liquidity-provider' | 'momentum' | 'panic-flow' | 'arbitrage' | 'trapped-trader';
 export type Regime = 'trending' | 'choppy' | 'panic' | 'low-liquidity' | 'reversal-prone' | 'momentum-ignition' | 'compression' | 'expansion';
+export type DirectionScore = 1 | 0 | -1;
 
 export interface RealitySnapshot {
   contractId: string;
@@ -27,6 +28,33 @@ export interface CausalInsight {
   reverseStrength: number;
   confidence: number;
   spurious: boolean;
+  timestamp: number;
+}
+
+export interface CausalEdgeState {
+  cause: string;
+  effect: string;
+  opportunities: number;
+  transitions: number;
+  causalStrength: number;
+  reverseStrength: number;
+  confidence: number;
+  spurious: boolean;
+}
+
+export interface MarketCausalState {
+  contractId: string;
+  hiddenState:
+    | 'momentum-continuation'
+    | 'liquidity-fragility'
+    | 'panic-feedback'
+    | 'mean-reversion-pressure'
+    | 'neutral';
+  confidence: number;
+  instabilityRisk: number;
+  causalEntropy: number;
+  topDriver: { cause: string; effect: string; strength: number } | null;
+  activeEdges: CausalEdgeState[];
   timestamp: number;
 }
 
@@ -122,6 +150,103 @@ export interface AgentIntelligence {
   timestamp: number;
 }
 
+export interface MarketPhysicsState {
+  contractId: string;
+  compression: number;
+  expansion: number;
+  inertia: number;
+  exhaustion: number;
+  entropyExpansion: number;
+  liquidityConservation: number;
+  structuralStress: number;
+  timestamp: number;
+}
+
+export interface ScenarioBranchState {
+  contractId: string;
+  invalidated: boolean;
+  branchScores: Record<string, number>;
+  dominantBranch: string;
+  volatilityWeight: number;
+  timestamp: number;
+}
+
+export interface CrossMarketCausalState {
+  contractId: string;
+  riskTransmissionScore: number;
+  correlationBreakdown: {
+    macroToLocal: number;
+    liquidityToDrift: number;
+    sentimentCoupling: number;
+  };
+  dominantDriver: string;
+  timestamp: number;
+}
+
+export interface MarketWorldState {
+  contractId: string;
+  participantIntent: 'accumulation' | 'distribution' | 'hedging' | 'liquidation' | 'neutral';
+  syntheticLiquidityProbability: number;
+  forcedPositioningPressure: number;
+  reflexivityAcceleration: number;
+  worldConfidence: number;
+  scenarioDominantBranch: string;
+  hiddenState: MarketCausalState['hiddenState'];
+  timestamp: number;
+}
+
+export interface MarketExperienceState {
+  contractId: string;
+  archetype: string;
+  recurringFailureSignature: boolean;
+  traumaPenalty: number;
+  retrievalConfidence: number;
+  timestamp: number;
+}
+
+export interface MetaCalibrationState {
+  contractId: string;
+  signalCalibration: number;
+  aiCalibration: number;
+  executionCalibration: number;
+  regimeCalibration: number;
+  uncertaintyCalibration: number;
+  compositeScore: number;
+  authorityDecay: number;
+  timestamp: number;
+}
+
+export interface OperatorAttentionState {
+  contractId: string;
+  focus: 'normal' | 'focused' | 'critical';
+  priority: string[];
+  contradictionHotspots: string[];
+  density: number;
+  timestamp: number;
+}
+
+export interface SelfImprovementState {
+  strategyId: string;
+  contractId: string;
+  adaptationRate: number;
+  guarded: boolean;
+  reason: string;
+  updatedWeights: Record<string, number>;
+  timestamp: number;
+}
+
+export interface EpistemicMemoryRevisionState {
+  contractId: string;
+  revisionId: string;
+  hypothesisId: string;
+  previousConfidence: number;
+  nextConfidence: number;
+  reason: string;
+  lineage: string[];
+  contradictionCount: number;
+  timestamp: number;
+}
+
 export interface SimulationUniverseState {
   scenarioCount: number;
   worstCasePnl: number;
@@ -145,21 +270,46 @@ export interface OrchestratorMetric {
 
 export interface SystemConsciousnessState {
   contractId: string;
-  beliefState: { probability: number; confidence: number; beliefAdjustment: number };
-  uncertaintyTopology: { calibration: number; drift: number; anomaly: number; belief: number; composite: number };
+  cycleId: string;
+  snapshotId: string;
+  beliefTopology: {
+    topHypotheses: Array<{ nodeId: string; evidence: number; uncertainty: number }>;
+    contradictionCount: number;
+    contradictionDensity: number;
+    uncertaintyTopology: number;
+  };
+  epistemicStress: {
+    driftStress: number;
+    calibrationStress: number;
+    contradictionStress: number;
+    aggregate: number;
+  };
+  executionConfidence: number;
   contradictionDensity: number;
-  contradictions: Array<{ source: string; target: string; description: string }>;
-  cognitiveStressState: 'stable' | 'stressed' | 'critical';
+  contradictions: Array<{ source: string; target: string; severity: 'low' | 'medium' | 'high'; detail: string }>;
+  cognitiveStressState: 'stable' | 'elevated' | 'critical';
+  selfTrustScore?: number;
+  trustDecay?: number;
+  invalidationPath: string;
   timestamp: number;
 }
 
 export interface EpistemicHealthState {
   contractId: string;
+  score: number;
+  status: 'stable' | 'degraded' | 'critical';
+  components: {
+    contradiction: number;
+    calibration: number;
+    drift: number;
+    anomaly: number;
+  };
   epistemicHealthScore: number;
   calibrationHealth: number;
   driftHealth: number;
   anomalyHealth: number;
   stabilityHealth: number;
+  metaCalibrationScore?: number;
   healthGrade: 'A' | 'B' | 'C' | 'D' | 'F';
   timestamp: number;
 }
@@ -188,10 +338,10 @@ export interface MarketMemoryState {
 
 export interface MultiTimescaleViewState {
   contractId: string;
-  tick:   { direction: 1 | 0 | -1; strength: number };
-  local:  { direction: 1 | 0 | -1; strength: number };
-  regime: { direction: 1 | 0 | -1; strength: number };
-  macro:  { direction: 1 | 0 | -1; strength: number };
+  tick:   { direction: DirectionScore; strength: number };
+  local:  { direction: DirectionScore; strength: number };
+  regime: { direction: DirectionScore; strength: number };
+  macro:  { direction: DirectionScore; strength: number };
   coherenceScore: number;
   temporalAlignment: 'aligned' | 'mixed' | 'divergent';
   timestamp: number;
@@ -210,6 +360,7 @@ export interface SystemStateSnapshot {
   simulationUniverse?: SimulationUniverseState;
   realitySnapshot?: RealitySnapshot;
   causalInsights?: CausalInsight[];
+  marketCausalState?: MarketCausalState;
   participantFlow?: ParticipantFlow;
   aiOrchestrationMetrics?: OrchestratorMetric[];
   aiOrchestrationFailures?: Array<{ agent: string; error: string }>;
@@ -218,4 +369,13 @@ export interface SystemStateSnapshot {
   adversarialAudit?: AdversarialAuditState;
   marketMemory?: MarketMemoryState;
   multiTimescaleView?: MultiTimescaleViewState;
+  marketPhysics?: MarketPhysicsState;
+  scenarioBranchState?: ScenarioBranchState;
+  crossMarketCausalState?: CrossMarketCausalState;
+  marketWorldState?: MarketWorldState;
+  marketExperience?: MarketExperienceState;
+  metaCalibration?: MetaCalibrationState;
+  operatorAttention?: OperatorAttentionState;
+  selfImprovement?: SelfImprovementState;
+  epistemicMemoryRevision?: EpistemicMemoryRevisionState;
 }

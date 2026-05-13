@@ -18,8 +18,13 @@ import { safeHandler } from '../core/errors/handler.js';
 // ---------------------------------------------------------------------------
 // Note: SnapshotReducer tests require core/snapshot/reducer.ts
 type SnapshotReducerCtor = new () => {
-  apply(field: string, data: Record<string, unknown>): Record<string, unknown>;
+  apply(field: string, data: Record<string, unknown>): ChaosSnapshot;
 };
+
+interface ChaosSnapshot extends Record<string, unknown> {
+  probability?: Record<string, unknown>;
+  aiOrchestrationMetrics?: unknown[];
+}
 
 let SnapshotReducer: SnapshotReducerCtor | null = null;
 
@@ -40,9 +45,12 @@ function testDuplicateIdempotencyRejection(): void {
 
   const first = coord.acquire('CONTRACT-A', 'key-dup-1', now);
   assert.equal(first.acquired, true, 'first acquire should succeed');
+  if (!first.token) {
+    assert.fail('first acquire should return a token');
+  }
 
   // Release so contract lock is gone — only idempotency key remains
-  coord.release('CONTRACT-A', first.token!, true);
+  coord.release('CONTRACT-A', first.token, true);
 
   const second = coord.acquire('CONTRACT-A', 'key-dup-1', now + 100);
   assert.equal(second.acquired, false, 'second acquire with same key should fail');
@@ -96,7 +104,10 @@ function testIdempotencyTTLExpiry(): void {
 
   const r1 = coord.acquire('CONTRACT-D', 'key-idem-ttl', t0);
   assert.equal(r1.acquired, true);
-  coord.release('CONTRACT-D', r1.token!, true);
+  if (!r1.token) {
+    assert.fail('initial acquire should return a token');
+  }
+  coord.release('CONTRACT-D', r1.token, true);
 
   // Still within idempotency window — should be rejected as duplicate
   const r2 = coord.acquire('CONTRACT-D', 'key-idem-ttl', t0 + idempotencyTtlMs - 1);
@@ -131,22 +142,37 @@ function testEventBusHistoryBound(): void {
 // ---------------------------------------------------------------------------
 function testEventSequencerMonotonicReject(): void {
   const seq = new EventSequencer();
+  const source = 'chaos-test';
 
   // Advance the sequencer to seq 5 by accepting an envelope with sequence 5
   seq.reset(4); // lastAccepted = 4, nextSequence = 5
-  const e5 = seq.wrap({ data: 'a' }, 'snap-1');
+  const e5 = seq.wrap({ data: 'a' }, 'snap-1', source);
   assert.equal(e5.sequence, 5, 'wrap should produce sequence 5');
   assert.equal(seq.validateMonotonic(e5), true, 'sequence 5 should be accepted');
 
   // Now try to validate an envelope with sequence <= current (5)
-  const staleEnvelope = { sequence: 5, timestamp: Date.now(), snapshotId: 'snap-1', payload: {} };
+  const staleEnvelope = {
+    sequence: 5,
+    timestamp: Date.now(),
+    snapshotId: 'snap-1',
+    source,
+    lineageId: `${source}:snap-1:5`,
+    payload: {},
+  };
   assert.equal(
     seq.validateMonotonic(staleEnvelope),
     false,
     'sequence equal to lastAccepted should be rejected',
   );
 
-  const olderEnvelope = { sequence: 3, timestamp: Date.now(), snapshotId: 'snap-1', payload: {} };
+  const olderEnvelope = {
+    sequence: 3,
+    timestamp: Date.now(),
+    snapshotId: 'snap-1',
+    source,
+    lineageId: `${source}:snap-1:3`,
+    payload: {},
+  };
   assert.equal(
     seq.validateMonotonic(olderEnvelope),
     false,
@@ -159,9 +185,10 @@ function testEventSequencerMonotonicReject(): void {
 // ---------------------------------------------------------------------------
 function testEventSequencerMonotonicAccept(): void {
   const seq = new EventSequencer();
+  const source = 'chaos-test';
 
   for (let i = 1; i <= 10; i++) {
-    const env = seq.wrap({ tick: i }, 'snap-mono');
+    const env = seq.wrap({ tick: i }, 'snap-mono', source);
     assert.equal(env.sequence, i, `envelope sequence should be ${i}`);
     assert.equal(seq.validateMonotonic(env), true, `sequence ${i} should be accepted`);
   }
@@ -174,18 +201,33 @@ function testEventSequencerMonotonicAccept(): void {
 // ---------------------------------------------------------------------------
 function testStaleEventRejection(): void {
   const seq = new EventSequencer();
+  const source = 'chaos-test';
 
   // Build and accept envelope at sequence 5
   seq.reset(4);
-  const env5 = seq.wrap({ data: 'payload' }, 'snap-stale');
+  const env5 = seq.wrap({ data: 'payload' }, 'snap-stale', source);
   assert.equal(seq.validateMonotonic(env5), true);
 
   // Stale: sequence 3
-  const stale3 = { sequence: 3, timestamp: Date.now(), snapshotId: 'snap-stale', payload: {} };
+  const stale3 = {
+    sequence: 3,
+    timestamp: Date.now(),
+    snapshotId: 'snap-stale',
+    source,
+    lineageId: `${source}:snap-stale:3`,
+    payload: {},
+  };
   assert.equal(seq.validateMonotonic(stale3), false, 'stale sequence 3 should be rejected');
 
   // Fresh: sequence 6
-  const fresh6 = { sequence: 6, timestamp: Date.now(), snapshotId: 'snap-stale', payload: {} };
+  const fresh6 = {
+    sequence: 6,
+    timestamp: Date.now(),
+    snapshotId: 'snap-stale',
+    source,
+    lineageId: `${source}:snap-stale:6`,
+    payload: {},
+  };
   assert.equal(seq.validateMonotonic(fresh6), true, 'fresh sequence 6 should be accepted');
 }
 
@@ -290,9 +332,12 @@ function testReleaseThenReacquire(): void {
   // First acquire
   const r1 = coord.acquire('CONTRACT-E', 'key-rel-1', t0);
   assert.equal(r1.acquired, true, 'initial acquire should succeed');
+  if (!r1.token) {
+    assert.fail('initial acquire should return a token');
+  }
 
   // Release it
-  coord.release('CONTRACT-E', r1.token!, true);
+  coord.release('CONTRACT-E', r1.token, true);
 
   // Acquire again with a new key (old key was marked processed)
   const r2 = coord.acquire('CONTRACT-E', 'key-rel-2', t0 + 100);
@@ -324,7 +369,11 @@ function testSnapshotReducerImmutability(): void {
   );
 
   // The nested probability object is stored under snapshot.probability
-  const probField = (snapshot as Record<string, unknown>)['probability'] as Record<string, unknown>;
+  const probField = snapshot.probability;
+  assert.ok(probField, 'probability field should exist on snapshot');
+  if (!probField) {
+    return;
+  }
   assert.ok(
     Object.isFrozen(probField),
     'nested probability object must also be frozen',
@@ -342,7 +391,7 @@ function testSnapshotReducerImmutability(): void {
   // Either way, the snapshot value must be unchanged
   assert.equal(probField['estimatedProbability'], 0.6, 'frozen snapshot field must not be mutatable');
   // mutationThrew being true or false both valid depending on strict mode
-  void mutationThrew;
+  assert.equal(typeof mutationThrew, 'boolean', 'mutation flag should remain a boolean');
 }
 
 // ---------------------------------------------------------------------------
@@ -355,20 +404,23 @@ function testSnapshotReducerBoundedArrays(): void {
   }
 
   const reducer = new SnapshotReducer();
-  let snapshot: Record<string, unknown> = {};
+  let snapshot: ChaosSnapshot = {};
 
   for (let i = 0; i < 150; i++) {
     snapshot = reducer.apply('aiOrchestrationMetrics', {
       tick: i,
       value: Math.random(),
-    }) as Record<string, unknown>;
+    });
   }
 
-  const metrics = snapshot['aiOrchestrationMetrics'];
+  const metrics = snapshot.aiOrchestrationMetrics;
   assert.ok(Array.isArray(metrics), 'aiOrchestrationMetrics should be an array');
+  if (!Array.isArray(metrics)) {
+    return;
+  }
   assert.ok(
-    (metrics as unknown[]).length <= 100,
-    `aiOrchestrationMetrics array should be bounded at 100, got ${(metrics as unknown[]).length}`,
+    metrics.length <= 100,
+    `aiOrchestrationMetrics array should be bounded at 100, got ${metrics.length}`,
   );
 }
 
@@ -419,13 +471,13 @@ async function testJournalSuccessfulExecution(): Promise<void> {
   assert.ok(result.durationMs >= 0, 'durationMs should be non-negative');
 
   const history = journal.getHistory();
-  const phases = history.map((e) => e.phase);
-  assert.ok(phases.includes('LOCK'), 'history should include LOCK');
-  assert.ok(phases.includes('VALIDATE_SNAPSHOT'), 'history should include VALIDATE_SNAPSHOT');
-  assert.ok(phases.includes('EXECUTE'), 'history should include EXECUTE');
-  assert.ok(phases.includes('CONFIRM'), 'history should include CONFIRM');
-  assert.ok(phases.includes('COMMIT'), 'history should include COMMIT');
-  assert.ok(phases.includes('LOG'), 'history should include LOG');
+  const phases = new Set(history.map((e) => e.phase));
+  assert.ok(phases.has('LOCK'), 'history should include LOCK');
+  assert.ok(phases.has('VALIDATE_SNAPSHOT'), 'history should include VALIDATE_SNAPSHOT');
+  assert.ok(phases.has('EXECUTE'), 'history should include EXECUTE');
+  assert.ok(phases.has('CONFIRM'), 'history should include CONFIRM');
+  assert.ok(phases.has('COMMIT'), 'history should include COMMIT');
+  assert.ok(phases.has('LOG'), 'history should include LOG');
 }
 
 async function testJournalStaleSnapshotRejection(): Promise<void> {
@@ -524,7 +576,7 @@ function testInvariantCheckerViolationSummary(): void {
   const reducer = new SnapshotReducer2();
   // Multiple out-of-range probabilities
   for (let i = 0; i < 3; i++) {
-    const snap = reducer.apply('probability', { estimatedProbability: 2.0 });
+    const snap = reducer.apply('probability', { estimatedProbability: 2 });
     checker.check(snap);
   }
   const summary = checker.violationSummary();
@@ -565,7 +617,9 @@ async function run(): Promise<void> {
   process.stdout.write('chaos-ok\n');
 }
 
-run().catch((err) => {
+try {
+  await run();
+} catch (err) {
   console.error(err);
   process.exit(1);
-});
+}

@@ -1,12 +1,14 @@
 import { EventBus } from '../../core/event-bus/bus.js';
+import { MonotonicLogicalClock } from '../../core/determinism/logical-clock.js';
 import { EVENTS } from '../../core/event-bus/events.js';
 import { ReplayEngine } from '../replay-engine/service.js';
 import { createHash } from 'node:crypto';
 export class ReplayIntegrityService {
-    constructor(bus, replayEngine, options) {
+    constructor(bus, replayEngine, options, clock = new MonotonicLogicalClock()) {
         this.bus = bus;
         this.replayEngine = replayEngine;
         this.options = options;
+        this.clock = clock;
     }
     start() {
         this.bus.on(EVENTS.RECONCILIATION, () => {
@@ -30,8 +32,9 @@ export class ReplayIntegrityService {
         const sourceChecksum = hashRecords(sourceRecords);
         const replayChecksum = hashRecords(sandboxReplay.getRecords());
         const deterministic = sourceChecksum === replayChecksum;
+        const timestamp = this.clock.tick();
         const payload = {
-            timestamp: Date.now(),
+            timestamp,
             deterministic,
             sourceChecksum,
             replayChecksum,
@@ -45,6 +48,12 @@ export class ReplayIntegrityService {
             timestamp: payload.timestamp,
         });
         if (!deterministic) {
+            this.bus.emit(EVENTS.EXECUTION_CONTROL, {
+                contractId: 'SYSTEM',
+                mode: 'hard-stop',
+                reason: 'replay-hash-mismatch',
+                timestamp: payload.timestamp,
+            });
             this.bus.emit(EVENTS.ANOMALY, {
                 contractId: 'SYSTEM',
                 type: 'strategy-instability',
@@ -61,8 +70,26 @@ function hashRecords(records) {
     for (const record of records) {
         hash.update(record.event);
         hash.update(':');
-        hash.update(JSON.stringify(record.payload));
+        hash.update(stableStringify(record.payload));
+        hash.update('|');
+        hash.update(record.snapshotId ?? 'na');
+        hash.update('|');
+        hash.update(record.source ?? record.event);
+        hash.update('|');
+        hash.update(record.idempotencyKey ?? '');
         hash.update('\n');
     }
     return hash.digest('hex');
+}
+function stableStringify(value) {
+    if (value === null || typeof value !== 'object') {
+        return JSON.stringify(value);
+    }
+    if (Array.isArray(value)) {
+        return `[${value.map((item) => stableStringify(item)).join(',')}]`;
+    }
+    const obj = value;
+    const keys = Object.keys(obj).sort((left, right) => left.localeCompare(right));
+    const entries = keys.map((key) => `${JSON.stringify(key)}:${stableStringify(obj[key])}`);
+    return `{${entries.join(',')}}`;
 }

@@ -1,115 +1,124 @@
 import http from 'node:http';
 import { EVENTS } from '../../core/event-bus/events.js';
-import { SnapshotReducer } from '../../core/snapshot/reducer.js';
-import { InvariantChecker } from '../../core/invariants/checker.js';
-import { ReplayStorage } from '../../core/replay/storage.js';
-import { ExecutionJournal } from '../../core/execution/journal.js';
-import { ExecutionCoordinator } from '../../core/determinism/execution-coordinator.js';
 export class ApiServer {
-    constructor(bus, host, port, riskGovernor, lineageTracer, unifiedField) {
+    constructor(bus, host, port, unifiedField) {
         this.bus = bus;
         this.host = host;
         this.port = port;
-        this.riskGovernor = riskGovernor;
-        this.lineageTracer = lineageTracer;
         this.unifiedField = unifiedField;
         this.server = null;
         this.latest = {};
+        this.causalInsights = [];
         this.orchestrationMetrics = [];
         this.orchestrationFailures = [];
         this.routingDecisions = [];
-        this.snapshotReducer = new SnapshotReducer();
-        this.invariantChecker = new InvariantChecker();
-        this.replayStorage = new ReplayStorage(process.env['REPLAY_LOG_PATH'] ?? '/tmp/quant-replay.log');
-        const coordinator = new ExecutionCoordinator();
-        this.executionJournal = new ExecutionJournal(coordinator);
-        // Run invariant checks whenever the snapshot updates
-        this.snapshotReducer.subscribe((snap) => {
-            const violations = this.invariantChecker.check(snap);
-            if (violations.length > 0) {
-                for (const v of violations) {
-                    this.bus.emit(EVENTS.TELEMETRY, {
-                        level: v.severity === 'critical' ? 'error' : 'warn',
-                        context: 'InvariantChecker',
-                        invariant: v.invariant,
-                        snapshotId: v.snapshotId,
-                        details: v.details,
-                        timestamp: v.timestamp,
-                    });
-                }
-            }
-        });
     }
     start() {
         this.bus.on(EVENTS.PROBABILITY, (event) => {
             this.latest.probability = event;
-            this.snapshotReducer.apply('probability', event);
-            const snap = this.snapshotReducer.getSnapshot();
-            this.replayStorage.append(EVENTS.PROBABILITY, event, { snapshotId: snap.snapshotId });
         });
         this.bus.on(EVENTS.AGGREGATED_SIGNAL, (event) => {
             this.latest.signal = event;
-            this.snapshotReducer.apply('signal', event);
         });
         this.bus.on(EVENTS.EXECUTION_CONTROL, (event) => {
             this.latest.executionControl = event;
-            this.snapshotReducer.apply('executionControl', event);
         });
         this.bus.on(EVENTS.EXECUTION_STATE, (event) => {
             this.latest.executionState = event;
-            this.snapshotReducer.apply('executionState', event);
         });
         this.bus.on(EVENTS.CALIBRATION_UPDATE, (event) => {
             this.latest.calibration = event;
-            this.snapshotReducer.apply('calibration', event);
         });
         this.bus.on(EVENTS.DRIFT_EVENT, (event) => {
             this.latest.drift = event;
-            this.snapshotReducer.apply('drift', event);
         });
         this.bus.on(EVENTS.VALIDATION_RESULT, (event) => {
             this.latest.validation = event;
-            // validation is not an ImmutableSnapshot field — no reducer call
         });
         this.bus.on(EVENTS.PORTFOLIO_UPDATE, (event) => {
             this.latest.portfolio = event;
-            this.snapshotReducer.apply('portfolio', event);
         });
         this.bus.on(EVENTS.ANOMALY, (event) => {
             this.latest.anomaly = event;
-            this.snapshotReducer.apply('anomaly', event);
+        });
+        this.bus.on(EVENTS.REALITY_SNAPSHOT, (event) => {
+            this.latest.realitySnapshot = event;
+        });
+        this.bus.on(EVENTS.CAUSAL_INSIGHT, (event) => {
+            this.causalInsights.unshift(event);
+            if (this.causalInsights.length > 40) {
+                this.causalInsights.pop();
+            }
+            this.latest.causalInsights = this.causalInsights;
+        });
+        this.bus.on(EVENTS.MARKET_CAUSAL_STATE, (event) => {
+            this.latest.marketCausalState = event;
+        });
+        this.bus.on(EVENTS.PARTICIPANT_FLOW, (event) => {
+            this.latest.participantFlow = event;
+        });
+        this.bus.on(EVENTS.ADVERSARIAL_AUDIT, (event) => {
+            this.latest.adversarialAudit = event;
+        });
+        this.bus.on(EVENTS.MARKET_MEMORY, (event) => {
+            this.latest.marketMemory = event;
+        });
+        this.bus.on(EVENTS.SIMULATION_UNIVERSE, (event) => {
+            this.latest.simulationUniverse = event;
+        });
+        this.bus.on(EVENTS.MULTI_TIMESCALE_VIEW, (event) => {
+            this.latest.multiTimescaleView = event;
+        });
+        this.bus.on(EVENTS.MARKET_PHYSICS, (event) => {
+            this.latest.marketPhysics = event;
+        });
+        this.bus.on(EVENTS.SCENARIO_BRANCH_STATE, (event) => {
+            this.latest.scenarioBranchState = event;
+        });
+        this.bus.on(EVENTS.CROSS_MARKET_CAUSAL_STATE, (event) => {
+            this.latest.crossMarketCausalState = event;
+        });
+        this.bus.on(EVENTS.MARKET_WORLD_STATE, (event) => {
+            this.latest.marketWorldState = event;
+        });
+        this.bus.on(EVENTS.META_CALIBRATION, (event) => {
+            this.latest.metaCalibration = event;
+        });
+        this.bus.on(EVENTS.OPERATOR_ATTENTION, (event) => {
+            this.latest.operatorAttention = event;
+        });
+        this.bus.on(EVENTS.SELF_IMPROVEMENT, (event) => {
+            this.latest.selfImprovement = event;
+        });
+        this.bus.on(EVENTS.MARKET_EXPERIENCE, (event) => {
+            this.latest.marketExperience = event;
+        });
+        this.bus.on(EVENTS.EPISTEMIC_MEMORY_REVISION, (event) => {
+            this.latest.epistemicMemoryRevision = event;
         });
         this.bus.on(EVENTS.AI_AGGREGATED_INTELLIGENCE, (event) => {
             this.latest.aiAggregatedIntelligence = event;
-            this.snapshotReducer.apply('aiAggregatedIntelligence', event);
         });
         this.bus.on(EVENTS.BELIEF_GRAPH_STATE, (event) => {
             this.latest.beliefGraphState = event;
-            // beliefGraphState is not an ImmutableSnapshot field — no reducer call
         });
         this.bus.on(EVENTS.SYSTEM_CONSCIOUSNESS, (event) => {
             this.latest.systemConsciousness = event;
-            this.snapshotReducer.apply('systemConsciousness', event);
         });
         this.bus.on(EVENTS.EPISTEMIC_HEALTH, (event) => {
             this.latest.epistemicHealth = event;
-            this.snapshotReducer.apply('epistemicHealth', event);
         });
         this.bus.on(EVENTS.DIGITAL_IMMUNE_ALERT, (event) => {
             this.latest.digitalImmuneAlert = event;
-            // digitalImmuneAlert is not an ImmutableSnapshot field — no reducer call
         });
         this.bus.on(EVENTS.STRATEGY_GENOME_UPDATE, (event) => {
             this.latest.strategyGenome = event;
-            // strategyGenome is not an ImmutableSnapshot field — no reducer call
         });
         this.bus.on(EVENTS.REPLAY_INTEGRITY, (event) => {
             this.latest.replayIntegrity = event;
-            // replayIntegrity is not an ImmutableSnapshot field — no reducer call
         });
         this.bus.on(EVENTS.CONSTITUTIONAL_DECISION, (event) => {
             this.latest.constitutionalDecision = event;
-            // constitutionalDecision is not an ImmutableSnapshot field — no reducer call
         });
         this.bus.on(EVENTS.AI_ORCHESTRATION_METRICS, (event) => {
             this.orchestrationMetrics.unshift(event);
@@ -117,7 +126,6 @@ export class ApiServer {
                 this.orchestrationMetrics.pop();
             }
             this.latest.aiOrchestrationMetrics = this.orchestrationMetrics;
-            this.snapshotReducer.apply('aiOrchestrationMetrics', event);
         });
         this.bus.on(EVENTS.AI_AGENT_FAILURE, (event) => {
             this.orchestrationFailures.unshift(event);
@@ -125,7 +133,6 @@ export class ApiServer {
                 this.orchestrationFailures.pop();
             }
             this.latest.aiOrchestrationFailures = this.orchestrationFailures;
-            this.snapshotReducer.apply('aiOrchestrationFailures', event);
         });
         this.bus.on(EVENTS.AI_ROUTING_DECISION, (event) => {
             this.routingDecisions.unshift(event);
@@ -133,27 +140,6 @@ export class ApiServer {
                 this.routingDecisions.pop();
             }
             this.latest.aiRoutingDecisions = this.routingDecisions;
-            // aiRoutingDecisions is not an ImmutableSnapshot field — no reducer call
-        });
-        this.bus.on(EVENTS.REALITY_SNAPSHOT, (event) => {
-            this.latest.realitySnapshot = event;
-            this.snapshotReducer.apply('realitySnapshot', event);
-        });
-        this.bus.on(EVENTS.CAUSAL_INSIGHT, (event) => {
-            this.latest.causalInsight = event;
-            this.snapshotReducer.apply('causalInsights', event);
-        });
-        this.bus.on(EVENTS.ADVERSARIAL_AUDIT, (event) => {
-            this.latest.adversarialAudit = event;
-            this.snapshotReducer.apply('adversarialAudit', event);
-        });
-        this.bus.on(EVENTS.MARKET_MEMORY, (event) => {
-            this.latest.marketMemory = event;
-            this.snapshotReducer.apply('marketMemory', event);
-        });
-        this.bus.on(EVENTS.MULTI_TIMESCALE_VIEW, (event) => {
-            this.latest.multiTimescaleView = event;
-            this.snapshotReducer.apply('multiTimescaleView', event);
         });
         this.bus.on(EVENTS.UNIFIED_FIELD, (event) => {
             this.latest.unifiedField = event;
@@ -188,12 +174,6 @@ export class ApiServer {
                 res.end(JSON.stringify(this.latest));
                 return;
             }
-            if (path === '/snapshot') {
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                const snap = this.snapshotReducer.toSerializable();
-                res.end(JSON.stringify(snap));
-                return;
-            }
             if (path === '/execution') {
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
@@ -204,6 +184,12 @@ export class ApiServer {
                     validation: this.latest.validation ?? null,
                     aiAggregatedIntelligence: this.latest.aiAggregatedIntelligence ?? null,
                     constitutionalDecision: this.latest.constitutionalDecision ?? null,
+                    marketPhysics: this.latest.marketPhysics ?? null,
+                    scenarioBranchState: this.latest.scenarioBranchState ?? null,
+                    crossMarketCausalState: this.latest.crossMarketCausalState ?? null,
+                    marketWorldState: this.latest.marketWorldState ?? null,
+                    metaCalibration: this.latest.metaCalibration ?? null,
+                    operatorAttention: this.latest.operatorAttention ?? null,
                 }));
                 return;
             }
@@ -238,57 +224,20 @@ export class ApiServer {
                     digitalImmuneAlert: this.latest.digitalImmuneAlert ?? null,
                     strategyGenome: this.latest.strategyGenome ?? null,
                     replayIntegrity: this.latest.replayIntegrity ?? null,
-                }));
-                return;
-            }
-            if (path === '/invariants') {
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({
-                    violations: this.invariantChecker.getViolations().slice(-50),
-                    criticalCount: this.invariantChecker.getCriticalViolations().length,
-                    hasCritical: this.invariantChecker.hasCriticalViolations(),
-                    summary: this.invariantChecker.violationSummary(),
-                }));
-                return;
-            }
-            if (path === '/journal') {
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({
-                    history: this.executionJournal.getHistory(50),
-                    failures: this.executionJournal.getFailures().slice(-20),
-                }));
-                return;
-            }
-            if (path === '/replay/verify') {
-                void this.replayStorage.verify().then((result) => {
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify(result));
-                });
-                return;
-            }
-            if (path === '/risk/mode') {
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({
-                    mode: this.riskGovernor?.getMode() ?? 'NORMAL',
-                    canExecute: this.riskGovernor?.canExecute() ?? true,
-                    isLocked: this.riskGovernor?.isLocked() ?? false,
-                    lockedSince: this.riskGovernor?.lockedSince() ?? null,
-                }));
-                return;
-            }
-            if (path === '/lineage') {
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({
-                    recent: this.lineageTracer?.getRecent(50) ?? [],
-                }));
-                return;
-            }
-            if (path.startsWith('/lineage/')) {
-                const contractId = decodeURIComponent(path.slice('/lineage/'.length));
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({
-                    contractId,
-                    chains: this.lineageTracer?.getLineage(contractId, 20) ?? [],
+                    marketCausalState: this.latest.marketCausalState ?? null,
+                    participantFlow: this.latest.participantFlow ?? null,
+                    adversarialAudit: this.latest.adversarialAudit ?? null,
+                    marketMemory: this.latest.marketMemory ?? null,
+                    multiTimescaleView: this.latest.multiTimescaleView ?? null,
+                    marketPhysics: this.latest.marketPhysics ?? null,
+                    scenarioBranchState: this.latest.scenarioBranchState ?? null,
+                    crossMarketCausalState: this.latest.crossMarketCausalState ?? null,
+                    marketWorldState: this.latest.marketWorldState ?? null,
+                    metaCalibration: this.latest.metaCalibration ?? null,
+                    operatorAttention: this.latest.operatorAttention ?? null,
+                    marketExperience: this.latest.marketExperience ?? null,
+                    selfImprovement: this.latest.selfImprovement ?? null,
+                    epistemicMemoryRevision: this.latest.epistemicMemoryRevision ?? null,
                 }));
                 return;
             }

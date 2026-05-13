@@ -2,6 +2,8 @@ export interface EventEnvelope<T> {
   sequence: number;
   timestamp: number;
   snapshotId: string;
+  source: string;
+  lineageId: string;
   payload: T;
 }
 
@@ -9,11 +11,19 @@ export class EventSequencer {
   private nextSequence = 1;
   private lastAcceptedSequence = 0;
 
-  wrap<T>(payload: T, snapshotId: string, timestamp: number = Date.now()): EventEnvelope<T> {
+  wrap<T>(
+    payload: T,
+    snapshotId: string,
+    source: string,
+    timestamp: number = Date.now(),
+  ): EventEnvelope<T> {
+    const sequence = this.nextSequence++;
     return {
-      sequence: this.nextSequence++,
+      sequence,
       timestamp,
       snapshotId,
+      source,
+      lineageId: `${source}:${snapshotId}:${sequence}`,
       payload,
     };
   }
@@ -28,6 +38,10 @@ export class EventSequencer {
 
   currentSequence(): number {
     return this.lastAcceptedSequence;
+  }
+
+  peekNextSequence(): number {
+    return this.nextSequence;
   }
 
   reset(sequence: number = 0): void {

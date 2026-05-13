@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
 import useSWR from 'swr';
 import type { SystemStateSnapshot } from '../types';
 import { coerceSystemState } from '../validation';
@@ -12,58 +11,63 @@ const fetcher = async (url: string): Promise<SystemStateSnapshot | null> => {
 };
 
 export function useSystemState(intervalMs = 500) {
-  // Track consecutive errors to drive adaptive poll intervals.
-  const consecutiveErrorsRef = useRef(0);
-  // Mirror in a ref so the visibilitychange handler can read the latest value
-  // without being re-created on every render.
-  const mutateRef = useRef<(() => void) | null>(null);
-
-  // Increase the interval when the backend appears unhealthy.
-  const effectiveInterval =
-    consecutiveErrorsRef.current >= 3 ? 2_000 : intervalMs;
-
-  const { data, error, isLoading, mutate } = useSWR<SystemStateSnapshot | null>(
+  const { data, error, isLoading } = useSWR<SystemStateSnapshot | null>(
     '/god-tier/state',
     fetcher,
     {
-      refreshInterval: effectiveInterval,
+      refreshInterval: (latest) => {
+        const mode = deriveCognitiveMode(latest ?? null);
+        if (mode === 'critical') {
+          return Math.max(200, Math.floor(intervalMs / 2));
+        }
+        if (mode === 'focused') {
+          return intervalMs;
+        }
+        return Math.max(intervalMs, 900);
+      },
       revalidateOnFocus: false,
-      revalidateOnMount: true,
-      revalidateIfStale: true,
-      dedupingInterval: effectiveInterval,
-      onSuccess: () => {
-        consecutiveErrorsRef.current = 0;
-      },
-      onError: () => {
-        consecutiveErrorsRef.current += 1;
-      },
+      dedupingInterval: intervalMs,
     },
   );
 
-  // Keep the ref up-to-date so the visibilitychange listener below can call
-  // the latest mutate without closing over a stale reference.
-  mutateRef.current = mutate;
-
-  // GC cycle: pause polling while the tab is hidden; resume on visibility.
-  const handleVisibilityChange = useCallback(() => {
-    if (!document.hidden && mutateRef.current) {
-      // Tab became visible again — trigger an immediate revalidation so the
-      // data is fresh before the next scheduled interval fires.
-      mutateRef.current();
-    }
-  }, []);
-
-  useEffect(() => {
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [handleVisibilityChange]);
+  const cognitiveMode = deriveCognitiveMode(data ?? null);
 
   return {
     state: data ?? null,
+    cognitiveMode,
     isLoading,
     isError: !!error,
-    consecutiveErrors: consecutiveErrorsRef.current,
   };
+}
+
+function deriveCognitiveMode(state: SystemStateSnapshot | null): 'normal' | 'focused' | 'critical' {
+  if (!state) {
+    return 'normal';
+  }
+
+  const control = state.executionControl?.mode;
+  const anomaly = state.anomaly?.severity;
+  const uncertainty = state.realitySnapshot?.uncertaintyState;
+  const authorityDecay = state.metaCalibration?.authorityDecay ?? 0;
+  const trustDecay = state.systemConsciousness?.trustDecay ?? 0;
+
+  if (
+    control === 'hard-stop' ||
+    anomaly === 'critical' ||
+    uncertainty === 'extreme' ||
+    authorityDecay > 0.8 ||
+    trustDecay > 0.78
+  ) {
+    return 'critical';
+  }
+  if (
+    control === 'safe-mode' ||
+    anomaly === 'high' ||
+    uncertainty === 'high' ||
+    authorityDecay > 0.62 ||
+    trustDecay > 0.58
+  ) {
+    return 'focused';
+  }
+  return 'normal';
 }
