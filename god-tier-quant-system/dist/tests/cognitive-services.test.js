@@ -12,7 +12,7 @@ function makeMicro(contractId, obi, sweepProbability = 0.3, ts = Date.now()) {
         contractId, obi, obiVelocity: obi * 0.1,
         liquidityPressureScore: 0.2, spreadExpansionScore: 0.1,
         sweepProbability, panicRepricing: false,
-        liquidityRegime: 'normal', aggressionScore: 0.3, timestamp: ts,
+        liquidityRegime: 'normal', aggressionScore: 0.3, timestamp: Math.max(1, ts),
     };
 }
 function makeProb(contractId, estimatedProbability, edge, regime = 'trending', ts = Date.now()) {
@@ -25,7 +25,7 @@ function makeProb(contractId, estimatedProbability, edge, regime = 'trending', t
     };
 }
 function makeCalibration(contractId, ece, ts = Date.now()) {
-    return { contractId, ece, brier: ece * 2, calibratedConfidence: 1 - ece, timestamp: ts };
+    return { contractId, ece, brier: ece * 2, calibratedConfidence: 1 - ece, timestamp: Math.max(1, ts) };
 }
 function makeDrift(contractId, severity, ts = Date.now()) {
     const kl = severity === 'high' ? 0.8 : severity === 'medium' ? 0.4 : 0.1;

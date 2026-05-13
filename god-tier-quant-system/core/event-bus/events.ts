@@ -62,4 +62,12 @@ export const EVENTS = {
   MULTI_TIMESCALE_VIEW: 'cognition:multiscale',
   RISK_GOVERNANCE: 'risk:governance',
   LINEAGE_CHAIN: 'lineage:chain',
+  ORDERBOOK_DELTA: 'orderbook:delta',
+  LIQUIDITY_GRAVITY: 'liquidity:gravity',
+  REGIME_TRANSITION: 'regime:transition',
+  FILTERED_SIGNAL: 'signal:filtered',
+  REALITY_ALIGNMENT: 'reality:alignment',
+  CAUSAL_WEIGHTS: 'causal:weights',
+  UNIFIED_FIELD: 'unified:field',
+  SHADOW_DECISION: 'shadow:decision',
 } as const;

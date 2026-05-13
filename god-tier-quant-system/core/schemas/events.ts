@@ -1016,3 +1016,152 @@ export interface BeliefGraphStateEvent {
   summary: BeliefGraphSummary;
   timestamp: number;
 }
+
+// ─── Unified Causal Market Physics Engine Schemas ──────────────────────────────
+
+export interface OrderbookDeltaEvent {
+  contractId: string;
+  bidAdded: Array<[number, number]>;
+  bidRemoved: Array<[number, number]>;
+  askAdded: Array<[number, number]>;
+  askRemoved: Array<[number, number]>;
+  spoofedBids: number[];
+  spoofedAsks: number[];
+  inferredIcebergBids: number[];
+  inferredIcebergAsks: number[];
+  netBidDelta: number;
+  netAskDelta: number;
+  liquidityRefillRate: number;
+  spreadMicroDynamics: number;
+  timestamp: number;
+}
+
+export interface LiquidityGravityEvent {
+  contractId: string;
+  bidWalls: Array<{ price: number; size: number; distance: number }>;
+  askWalls: Array<{ price: number; size: number; distance: number }>;
+  gravitationalBias: number;
+  nearestBidWallDistance: number;
+  nearestAskWallDistance: number;
+  resistanceZones: Array<{ price: number; strength: number; side: 'bid' | 'ask' }>;
+  absorptionStrength: number;
+  timestamp: number;
+}
+
+export interface RegimeTransitionEvent {
+  contractId: string;
+  currentRegime: Regime;
+  mostLikelyNextRegimes: Array<{ regime: Regime; probability: number }>;
+  regimeInstability: number;
+  timeInCurrentRegime: number;
+  transitionImminent: boolean;
+  timestamp: number;
+}
+
+export interface FilteredSignalEvent {
+  contractId: string;
+  rawBias: number;
+  structuralBias: number;
+  noiseComponent: number;
+  manipulationFlag: boolean;
+  manipulationScore: number;
+  signalStrength: number;
+  structuralFraction: number;
+  timestamp: number;
+}
+
+export interface RealityAlignmentEvent {
+  contractId: string;
+  cycleId: string;
+  predictedPAbove: number;
+  predictedPBelow: number;
+  actualOutcome: 'ABOVE' | 'BELOW' | 'UNKNOWN';
+  totalError: number;
+  errorDecomposition: {
+    liquidityError: number;
+    flowError: number;
+    volatilityError: number;
+    entropyError: number;
+  };
+  updatedWeights: {
+    liquidity: number;
+    flow: number;
+    volatility: number;
+    entropy: number;
+  };
+  sampleSize: number;
+  timestamp: number;
+}
+
+export interface CausalWeightsEvent {
+  contractId: string;
+  weights: {
+    liquidity: number;
+    flow: number;
+    volatility: number;
+    entropy: number;
+  };
+  confidences: {
+    liquidity: number;
+    flow: number;
+    volatility: number;
+    entropy: number;
+  };
+  sampleSize: number;
+  lastCalibrationAt: number;
+  timestamp: number;
+}
+
+export type FieldDecision = 'ABOVE' | 'BELOW' | 'NO BET';
+
+export interface UnifiedFieldEvent {
+  contractId: string;
+  liquidityForce: number;
+  flowForce: number;
+  volatilityForce: number;
+  entropyPenalty: number;
+  weights: {
+    liquidity: number;
+    flow: number;
+    volatility: number;
+    entropy: number;
+  };
+  fieldBias: number;
+  fieldStrength: number;
+  regimeProperty: Regime;
+  regimeInstability: number;
+  structuralFraction: number;
+  manipulationDetected: boolean;
+  pAbove: number;
+  pBelow: number;
+  pNoBet: number;
+  decision: FieldDecision;
+  decisionConfidence: number;
+  decisionReason: string;
+  causalAttribution: {
+    liquidityContribution: number;
+    flowContribution: number;
+    volatilityContribution: number;
+    entropyContribution: number;
+  };
+  adversarialPenalty: number;
+  timestamp: number;
+}
+
+export interface ShadowStrategyResult {
+  id: string;
+  threshold: number;
+  decision: FieldDecision;
+  confidence: number;
+  simulatedPnl: number;
+  hitRate: number;
+  sampleCount: number;
+}
+
+export interface ShadowDecisionEvent {
+  contractId: string;
+  strategies: ShadowStrategyResult[];
+  bestStrategyId: string;
+  dynamicThreshold: number;
+  timestamp: number;
+}

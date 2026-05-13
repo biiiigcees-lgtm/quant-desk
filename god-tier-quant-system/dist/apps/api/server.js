@@ -1,10 +1,11 @@
 import http from 'node:http';
 import { EVENTS } from '../../core/event-bus/events.js';
 export class ApiServer {
-    constructor(bus, host, port) {
+    constructor(bus, host, port, unifiedField) {
         this.bus = bus;
         this.host = host;
         this.port = port;
+        this.unifiedField = unifiedField;
         this.server = null;
         this.latest = {};
         this.causalInsights = [];
@@ -140,6 +141,27 @@ export class ApiServer {
             }
             this.latest.aiRoutingDecisions = this.routingDecisions;
         });
+        this.bus.on(EVENTS.UNIFIED_FIELD, (event) => {
+            this.latest.unifiedField = event;
+        });
+        this.bus.on(EVENTS.SHADOW_DECISION, (event) => {
+            this.latest.shadowDecision = event;
+        });
+        this.bus.on(EVENTS.LIQUIDITY_GRAVITY, (event) => {
+            this.latest.liquidityGravity = event;
+        });
+        this.bus.on(EVENTS.REGIME_TRANSITION, (event) => {
+            this.latest.regimeTransition = event;
+        });
+        this.bus.on(EVENTS.FILTERED_SIGNAL, (event) => {
+            this.latest.filteredSignal = event;
+        });
+        this.bus.on(EVENTS.REALITY_ALIGNMENT, (event) => {
+            this.latest.realityAlignment = event;
+        });
+        this.bus.on(EVENTS.CAUSAL_WEIGHTS, (event) => {
+            this.latest.causalWeights = event;
+        });
         this.server = http.createServer((req, res) => {
             const path = req.url ?? '/';
             if (path === '/health') {
@@ -216,6 +238,28 @@ export class ApiServer {
                     marketExperience: this.latest.marketExperience ?? null,
                     selfImprovement: this.latest.selfImprovement ?? null,
                     epistemicMemoryRevision: this.latest.epistemicMemoryRevision ?? null,
+                }));
+                return;
+            }
+            if (path === '/unified-field') {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    field: this.latest.unifiedField ?? null,
+                    shadow: this.latest.shadowDecision ?? null,
+                    gravity: this.latest.liquidityGravity ?? null,
+                    regime: this.latest.regimeTransition ?? null,
+                    filteredSignal: this.latest.filteredSignal ?? null,
+                    realityAlignment: this.latest.realityAlignment ?? null,
+                    causalWeights: this.latest.causalWeights ?? null,
+                }));
+                return;
+            }
+            if (path.startsWith('/unified-field/')) {
+                const contractId = decodeURIComponent(path.slice('/unified-field/'.length));
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    contractId,
+                    field: this.unifiedField?.getLatestField(contractId) ?? null,
                 }));
                 return;
             }

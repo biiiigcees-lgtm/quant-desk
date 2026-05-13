@@ -28,6 +28,9 @@ function testDuplicateIdempotencyRejection() {
     const now = 1000000;
     const first = coord.acquire('CONTRACT-A', 'key-dup-1', now);
     assert.equal(first.acquired, true, 'first acquire should succeed');
+    if (!first.token) {
+        assert.fail('first acquire should return a token');
+    }
     // Release so contract lock is gone — only idempotency key remains
     coord.release('CONTRACT-A', first.token, true);
     const second = coord.acquire('CONTRACT-A', 'key-dup-1', now + 100);
@@ -73,6 +76,9 @@ function testIdempotencyTTLExpiry() {
     const t0 = 4000000;
     const r1 = coord.acquire('CONTRACT-D', 'key-idem-ttl', t0);
     assert.equal(r1.acquired, true);
+    if (!r1.token) {
+        assert.fail('initial acquire should return a token');
+    }
     coord.release('CONTRACT-D', r1.token, true);
     // Still within idempotency window — should be rejected as duplicate
     const r2 = coord.acquire('CONTRACT-D', 'key-idem-ttl', t0 + idempotencyTtlMs - 1);
@@ -237,6 +243,9 @@ function testReleaseThenReacquire() {
     // First acquire
     const r1 = coord.acquire('CONTRACT-E', 'key-rel-1', t0);
     assert.equal(r1.acquired, true, 'initial acquire should succeed');
+    if (!r1.token) {
+        assert.fail('initial acquire should return a token');
+    }
     // Release it
     coord.release('CONTRACT-E', r1.token, true);
     // Acquire again with a new key (old key was marked processed)
@@ -261,7 +270,11 @@ function testSnapshotReducerImmutability() {
     // The top-level snapshot must be frozen
     assert.ok(Object.isFrozen(snapshot), 'SnapshotReducer.apply() must return a frozen (immutable) snapshot');
     // The nested probability object is stored under snapshot.probability
-    const probField = snapshot['probability'];
+    const probField = snapshot.probability;
+    assert.ok(probField, 'probability field should exist on snapshot');
+    if (!probField) {
+        return;
+    }
     assert.ok(Object.isFrozen(probField), 'nested probability object must also be frozen');
     assert.equal(probField['estimatedProbability'], 0.6, 'estimatedProbability should be 0.6');
     // Attempt mutation on the nested frozen object — must not change the value
@@ -275,7 +288,7 @@ function testSnapshotReducerImmutability() {
     // Either way, the snapshot value must be unchanged
     assert.equal(probField['estimatedProbability'], 0.6, 'frozen snapshot field must not be mutatable');
     // mutationThrew being true or false both valid depending on strict mode
-    void mutationThrew;
+    assert.equal(typeof mutationThrew, 'boolean', 'mutation flag should remain a boolean');
 }
 // ---------------------------------------------------------------------------
 // 14. testSnapshotReducerBoundedArrays
@@ -293,8 +306,11 @@ function testSnapshotReducerBoundedArrays() {
             value: Math.random(),
         });
     }
-    const metrics = snapshot['aiOrchestrationMetrics'];
+    const metrics = snapshot.aiOrchestrationMetrics;
     assert.ok(Array.isArray(metrics), 'aiOrchestrationMetrics should be an array');
+    if (!Array.isArray(metrics)) {
+        return;
+    }
     assert.ok(metrics.length <= 100, `aiOrchestrationMetrics array should be bounded at 100, got ${metrics.length}`);
 }
 // ---------------------------------------------------------------------------
@@ -329,13 +345,13 @@ async function testJournalSuccessfulExecution() {
     assert.equal(result.result, 42, 'result should be 42');
     assert.ok(result.durationMs >= 0, 'durationMs should be non-negative');
     const history = journal.getHistory();
-    const phases = history.map((e) => e.phase);
-    assert.ok(phases.includes('LOCK'), 'history should include LOCK');
-    assert.ok(phases.includes('VALIDATE_SNAPSHOT'), 'history should include VALIDATE_SNAPSHOT');
-    assert.ok(phases.includes('EXECUTE'), 'history should include EXECUTE');
-    assert.ok(phases.includes('CONFIRM'), 'history should include CONFIRM');
-    assert.ok(phases.includes('COMMIT'), 'history should include COMMIT');
-    assert.ok(phases.includes('LOG'), 'history should include LOG');
+    const phases = new Set(history.map((e) => e.phase));
+    assert.ok(phases.has('LOCK'), 'history should include LOCK');
+    assert.ok(phases.has('VALIDATE_SNAPSHOT'), 'history should include VALIDATE_SNAPSHOT');
+    assert.ok(phases.has('EXECUTE'), 'history should include EXECUTE');
+    assert.ok(phases.has('CONFIRM'), 'history should include CONFIRM');
+    assert.ok(phases.has('COMMIT'), 'history should include COMMIT');
+    assert.ok(phases.has('LOG'), 'history should include LOG');
 }
 async function testJournalStaleSnapshotRejection() {
     const coord = new ExecutionCoordinator({ leaseTtlMs: 5000, idempotencyTtlMs: 30000 });
@@ -423,7 +439,7 @@ function testInvariantCheckerViolationSummary() {
     const reducer = new SnapshotReducer2();
     // Multiple out-of-range probabilities
     for (let i = 0; i < 3; i++) {
-        const snap = reducer.apply('probability', { estimatedProbability: 2.0 });
+        const snap = reducer.apply('probability', { estimatedProbability: 2 });
         checker.check(snap);
     }
     const summary = checker.violationSummary();
@@ -461,7 +477,10 @@ async function run() {
     testInvariantCheckerViolationSummary();
     process.stdout.write('chaos-ok\n');
 }
-run().catch((err) => {
+try {
+    await run();
+}
+catch (err) {
     console.error(err);
     process.exit(1);
-});
+}

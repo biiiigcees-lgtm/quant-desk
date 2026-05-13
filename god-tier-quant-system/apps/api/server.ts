@@ -1,6 +1,7 @@
 import http from 'node:http';
 import { EventBus } from '../../core/event-bus/bus.js';
 import { EVENTS } from '../../core/event-bus/events.js';
+import { UnifiedMarketFieldService } from '../../services/unified-market-field/service.js';
 import type {
   AdversarialAuditEvent,
   CausalInsight,
@@ -33,7 +34,12 @@ export class ApiServer {
   private readonly orchestrationFailures: Array<{ agent: string; error: string; timestamp: number }> = [];
   private readonly routingDecisions: Array<{ triggerEvent: string; agents: string[]; timestamp: number }> = [];
 
-  constructor(private readonly bus: EventBus, private readonly host: string, private readonly port: number) {}
+  constructor(
+    private readonly bus: EventBus,
+    private readonly host: string,
+    private readonly port: number,
+    private readonly unifiedField?: UnifiedMarketFieldService,
+  ) {}
 
   start(): Promise<void> {
     this.bus.on(EVENTS.PROBABILITY, (event) => {
@@ -174,6 +180,27 @@ export class ApiServer {
       }
       this.latest.aiRoutingDecisions = this.routingDecisions;
     });
+    this.bus.on(EVENTS.UNIFIED_FIELD, (event) => {
+      this.latest.unifiedField = event;
+    });
+    this.bus.on(EVENTS.SHADOW_DECISION, (event) => {
+      this.latest.shadowDecision = event;
+    });
+    this.bus.on(EVENTS.LIQUIDITY_GRAVITY, (event) => {
+      this.latest.liquidityGravity = event;
+    });
+    this.bus.on(EVENTS.REGIME_TRANSITION, (event) => {
+      this.latest.regimeTransition = event;
+    });
+    this.bus.on(EVENTS.FILTERED_SIGNAL, (event) => {
+      this.latest.filteredSignal = event;
+    });
+    this.bus.on(EVENTS.REALITY_ALIGNMENT, (event) => {
+      this.latest.realityAlignment = event;
+    });
+    this.bus.on(EVENTS.CAUSAL_WEIGHTS, (event) => {
+      this.latest.causalWeights = event;
+    });
 
     this.server = http.createServer((req, res) => {
       const path = req.url ?? '/';
@@ -268,6 +295,31 @@ export class ApiServer {
         );
         return;
       }
+
+      if (path === '/unified-field') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          field: this.latest.unifiedField ?? null,
+          shadow: this.latest.shadowDecision ?? null,
+          gravity: this.latest.liquidityGravity ?? null,
+          regime: this.latest.regimeTransition ?? null,
+          filteredSignal: this.latest.filteredSignal ?? null,
+          realityAlignment: this.latest.realityAlignment ?? null,
+          causalWeights: this.latest.causalWeights ?? null,
+        }));
+        return;
+      }
+
+      if (path.startsWith('/unified-field/')) {
+        const contractId = decodeURIComponent(path.slice('/unified-field/'.length));
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          contractId,
+          field: this.unifiedField?.getLatestField(contractId) ?? null,
+        }));
+        return;
+      }
+
 
       res.writeHead(404, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'not_found' }));
