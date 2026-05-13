@@ -57,9 +57,52 @@ function makeRealitySnapshot(contractId: string, truthScore: number, systemState
   };
 }
 
+// ─── Helpers: SystemConsciousnessService inputs ───────────────────────────────
+
+function makeBeliefGraphState(
+  contractId: string,
+  opts: {
+    contradictionCount?: number;
+    maxContradictionStrength?: number;
+    graphEntropy?: number;
+    contradictions?: Array<{ hypothesis1: string; hypothesis2: string; conflictStrength: number; conflictReason: string }>;
+  } = {},
+) {
+  const contradictions = opts.contradictions ?? [];
+  const ts = Date.now();
+  const summary = {
+    contractId, snapshot_id: 'snap-sc', market_state_hash: 'abc', cycle_id: 'cy-sc',
+    beliefAdjustedProbability: 0.55, beliefUncertaintyInterval: [0.5, 0.6] as [number, number],
+    contradictions,
+    contradictionCount: opts.contradictionCount ?? contradictions.length,
+    maxContradictionStrength: opts.maxContradictionStrength ?? (contradictions[0]?.conflictStrength ?? 0),
+    topHypotheses: [{ nodeId: 'n1', hypothesis: 'momentum-bullish', evidence: 0.7, uncertainty: 0.2, causalInfluence: 0.5 }],
+    regimeTransitionHazard: 0.1, regimeTransitionConfidence: 0.8,
+    nextPredictedRegimes: ['trending' as const],
+    graphDensity: 0.4,
+    graphEntropy: opts.graphEntropy ?? 0.2,
+    strongestBeliefs: 1, weakestBeliefs: 0, timestamp: ts,
+  };
+  return { contractId, snapshot_id: 'snap-sc', market_state_hash: 'abc', cycle_id: 'cy-sc', summary, timestamp: ts };
+}
+
+function makeConstitutionalDecision(contractId: string, tradeAllowed = true, confidenceScore = 0.75) {
+  return {
+    cycle_id: 'cy-cd', snapshot_id: 'snap-cd', market_state_hash: 'xyz',
+    contractId, trade_allowed: tradeAllowed,
+    final_probability: 0.6, edge_score: 0.05, risk_level: 0.3,
+    execution_mode: 'market' as const, regime_state: 'trending',
+    confidence_score: confidenceScore,
+    simulation_result: { passed: true, divergenceScore: 0.05, scenarioCount: 100, tailProbability: 0.02, worstCasePnl: -50, reason: 'ok' },
+    governance_log: [], agent_conflicts: [],
+    agent_consensus: { market_confidence: 0.8, risk_confidence: 0.7, execution_confidence: 0.75, calibration_score: 0.85 },
+    timestamp: Date.now(),
+  };
+}
+
 // ─── SystemConsciousnessService ───────────────────────────────────────────────
 
-function testConsciousnessContradictionHighEdgeLowTruth(): void {
+function testConsciousnessDoesNotEmitWithoutBothInputs(): void {
   const bus = new EventBus();
   const svc = new SystemConsciousnessService(bus);
   svc.start();
@@ -67,19 +110,12 @@ function testConsciousnessContradictionHighEdgeLowTruth(): void {
   const events: SystemConsciousnessEvent[] = [];
   bus.on<SystemConsciousnessEvent>(EVENTS.SYSTEM_CONSCIOUSNESS, (e) => { events.push(e); });
 
-  // Set edge > 0.02 via PROBABILITY
-  bus.emit(EVENTS.PROBABILITY, makeProb('KXBTC-SC1', 0.6, 0.05));
-  // Set truthScore < 0.45 via REALITY_SNAPSHOT
-  bus.emit(EVENTS.REALITY_SNAPSHOT, makeRealitySnapshot('KXBTC-SC1', 0.3));
-
-  const last = events.at(-1)!;
-  const hasConflict = last.contradictions.some((c) =>
-    c.source === 'probability' && c.target === 'reality',
-  );
-  assert.ok(hasConflict, 'should detect high-edge vs low-truth contradiction');
+  // Only calibration — no BELIEF_GRAPH_STATE or CONSTITUTIONAL_DECISION
+  bus.emit(EVENTS.CALIBRATION_UPDATE, makeCalibration('KXBTC-SC0', 0.05));
+  assert.equal(events.length, 0, 'should not emit without BELIEF_GRAPH_STATE + CONSTITUTIONAL_DECISION');
 }
 
-function testConsciousnessContradictionBeliefSignalMismatch(): void {
+function testConsciousnessEmitsWhenBothPresent(): void {
   const bus = new EventBus();
   const svc = new SystemConsciousnessService(bus);
   svc.start();
@@ -87,27 +123,14 @@ function testConsciousnessContradictionBeliefSignalMismatch(): void {
   const events: SystemConsciousnessEvent[] = [];
   bus.on<SystemConsciousnessEvent>(EVENTS.SYSTEM_CONSCIOUSNESS, (e) => { events.push(e); });
 
-  // Signal direction = YES
-  bus.emit(EVENTS.AGGREGATED_SIGNAL, {
-    contractId: 'KXBTC-SC2', direction: 'YES', score: 0.7,
-    agreement: 0.8, strategyWeights: {}, strategySignals: [],
-    regime: 'trending', timestamp: Date.now(),
-  });
-  // Belief adjustment strongly negative (< -0.05)
-  bus.emit(EVENTS.BELIEF_GRAPH_UPDATE, {
-    contractId: 'KXBTC-SC2', nodes: [], edges: [],
-    constitutionalAdjustment: -0.08, graphConfidence: 0.6,
-    timestamp: Date.now(),
-  });
+  bus.emit(EVENTS.BELIEF_GRAPH_STATE, makeBeliefGraphState('KXBTC-SC1'));
+  bus.emit(EVENTS.CONSTITUTIONAL_DECISION, makeConstitutionalDecision('KXBTC-SC1'));
 
-  const last = events.at(-1)!;
-  const hasMismatch = last.contradictions.some((c) =>
-    c.source === 'belief-graph' && c.target === 'signal',
-  );
-  assert.ok(hasMismatch, 'should detect belief-signal direction mismatch');
+  assert.ok(events.length >= 1, 'should emit SYSTEM_CONSCIOUSNESS when both inputs are present');
+  assert.equal(events[0]!.contractId, 'KXBTC-SC1', 'contractId should match decision contractId');
 }
 
-function testConsciousnessStressCriticalWhenBothHighDensityAndUncertainty(): void {
+function testConsciousnessCriticalWhenHighStress(): void {
   const bus = new EventBus();
   const svc = new SystemConsciousnessService(bus);
   svc.start();
@@ -115,42 +138,42 @@ function testConsciousnessStressCriticalWhenBothHighDensityAndUncertainty(): voi
   const events: SystemConsciousnessEvent[] = [];
   bus.on<SystemConsciousnessEvent>(EVENTS.SYSTEM_CONSCIOUSNESS, (e) => { events.push(e); });
 
-  // Drive high ECE (poor calibration → high uncertainty topology)
-  bus.emit(EVENTS.CALIBRATION_UPDATE, makeCalibration('KXBTC-SC3', 0.25));
-  // High anomaly uncertainty
-  bus.emit(EVENTS.ANOMALY, makeAnomaly('KXBTC-SC3', 'critical'));
-  // Push high contradiction density via many spurious causal insights
-  for (let i = 0; i < 5; i++) {
-    bus.emit(EVENTS.CAUSAL_INSIGHT, {
-      contractId: 'KXBTC-SC3', cause: `A${i}`, effect: `B${i}`,
-      causalStrength: 0.1, reverseStrength: 0.05,
-      confidence: 0.3, spurious: true, timestamp: Date.now() + i,
-    });
-  }
-  bus.emit(EVENTS.CAUSAL_INSIGHT, {
-    contractId: 'KXBTC-SC3', cause: 'X', effect: 'Y',
-    causalStrength: 0.5, reverseStrength: 0.1,
-    confidence: 0.8, spurious: false, timestamp: Date.now() + 10,
-  });
+  // High contradiction strength + high graph entropy → high aggregateStress
+  bus.emit(EVENTS.BELIEF_GRAPH_STATE, makeBeliefGraphState('KXBTC-SC3', {
+    maxContradictionStrength: 0.9,
+    graphEntropy: 0.85,
+    contradictions: [{ hypothesis1: 'n1', hypothesis2: 'n2', conflictStrength: 0.9, conflictReason: 'mutual exclusion' }],
+  }));
+  // High ECE drives calibrationStress up
+  bus.emit(EVENTS.CALIBRATION_UPDATE, makeCalibration('KXBTC-SC3', 0.9));
+  bus.emit(EVENTS.DRIFT_EVENT, makeDrift('KXBTC-SC3', 'high'));
+  bus.emit(EVENTS.CONSTITUTIONAL_DECISION, makeConstitutionalDecision('KXBTC-SC3', false, 0.1));
 
   const last = events.at(-1)!;
+  assert.ok(last, 'should have emitted at least one event');
   assert.equal(last.cognitiveStressState, 'critical',
-    `expected critical but got ${last.cognitiveStressState}; density=${last.contradictionDensity}`);
+    `expected critical but got ${last.cognitiveStressState}`);
 }
 
-function testConsciousnessEmitsOnEverySubscription(): void {
+function testConsciousnessStableWhenHealthy(): void {
   const bus = new EventBus();
   const svc = new SystemConsciousnessService(bus);
   svc.start();
 
-  let count = 0;
-  bus.on<SystemConsciousnessEvent>(EVENTS.SYSTEM_CONSCIOUSNESS, () => { count++; });
+  const events: SystemConsciousnessEvent[] = [];
+  bus.on<SystemConsciousnessEvent>(EVENTS.SYSTEM_CONSCIOUSNESS, (e) => { events.push(e); });
 
-  bus.emit(EVENTS.PROBABILITY, makeProb('KXBTC-SC4', 0.55, 0.01));
-  bus.emit(EVENTS.CALIBRATION_UPDATE, makeCalibration('KXBTC-SC4', 0.05));
-  bus.emit(EVENTS.REALITY_SNAPSHOT, makeRealitySnapshot('KXBTC-SC4', 0.8));
+  // Minimal stress scenario
+  bus.emit(EVENTS.BELIEF_GRAPH_STATE, makeBeliefGraphState('KXBTC-SC4', {
+    maxContradictionStrength: 0.05, graphEntropy: 0.05, contradictions: [],
+  }));
+  bus.emit(EVENTS.CALIBRATION_UPDATE, makeCalibration('KXBTC-SC4', 0.02));
+  bus.emit(EVENTS.DRIFT_EVENT, makeDrift('KXBTC-SC4', 'low'));
+  bus.emit(EVENTS.CONSTITUTIONAL_DECISION, makeConstitutionalDecision('KXBTC-SC4', true, 0.9));
 
-  assert.ok(count >= 3, `should emit at least 3 events; got ${count}`);
+  const last = events.at(-1)!;
+  assert.equal(last.cognitiveStressState, 'stable',
+    `expected stable but got ${last.cognitiveStressState}`);
 }
 
 // ─── EpistemicHealthService ───────────────────────────────────────────────────
@@ -503,10 +526,10 @@ function testMultiTimescaleTemporalAlignmentMapping(): void {
 // ─── Run all ──────────────────────────────────────────────────────────────────
 
 async function run(): Promise<void> {
-  testConsciousnessContradictionHighEdgeLowTruth();
-  testConsciousnessContradictionBeliefSignalMismatch();
-  testConsciousnessStressCriticalWhenBothHighDensityAndUncertainty();
-  testConsciousnessEmitsOnEverySubscription();
+  testConsciousnessDoesNotEmitWithoutBothInputs();
+  testConsciousnessEmitsWhenBothPresent();
+  testConsciousnessCriticalWhenHighStress();
+  testConsciousnessStableWhenHealthy();
 
   testEpistemicGradeAWhenAllHealthy();
   testEpistemicGradeFWhenCriticalConditions();

@@ -1,4 +1,4 @@
-// BTC derivatives data — funding rate, OI from Bybit with OKX fallback
+// BTC derivatives data — funding rate and OI from Bybit with OKX fallback
 
 const STALE_CACHE_TTL_MS = 180000;
 let lastGoodSnapshot = null;
@@ -137,7 +137,6 @@ async function fetchBybitOI() {
   if (!list?.length) return null;
   const latest  = Number.parseFloat(list[0].openInterest);
   const prev    = list[1] ? Number.parseFloat(list[1].openInterest) : latest;
-  // openInterestValue from Bybit is the notional USD value of the OI
   const oiUsd   = Number.parseFloat(list[0].openInterestValue || 0);
   return {
     openInterest:    latest,
