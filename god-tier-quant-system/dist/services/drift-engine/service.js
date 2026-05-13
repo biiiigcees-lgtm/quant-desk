@@ -8,8 +8,9 @@ export class DriftEngine {
         this.bus.on(EVENTS.FEATURE_INTELLIGENCE, (event) => {
             const base = this.baseline.get(event.contractId) ?? event.driftHint;
             this.baseline.set(event.contractId, base * 0.995 + event.driftHint * 0.005);
-            const psi = Math.abs(event.driftHint - base);
-            const kl = Math.max(0, event.driftHint * Math.log((event.driftHint + 1e-6) / (base + 1e-6)));
+            const safeHint = Math.max(0, event.driftHint);
+            const psi = Math.abs(safeHint - base);
+            const kl = Math.max(0, safeHint * Math.log((safeHint + 1e-6) / (base + 1e-6)));
             let severity;
             if (psi > 0.35 || kl > 0.25) {
                 severity = 'high';

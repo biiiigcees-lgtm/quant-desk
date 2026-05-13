@@ -5,9 +5,14 @@ import type { SystemStateSnapshot } from '../types';
 import { coerceSystemState } from '../validation';
 
 const fetcher = async (url: string): Promise<SystemStateSnapshot | null> => {
-  const res = await fetch(url);
-  if (!res.ok) return null;
-  return coerceSystemState(await res.json());
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return null;
+    const raw = await res.json();
+    return coerceSystemState(raw);
+  } catch {
+    return null;
+  }
 };
 
 export function useSystemState(intervalMs = 500) {
