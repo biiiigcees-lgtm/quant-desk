@@ -1031,6 +1031,66 @@ export interface BeliefGraphStateEvent {
   timestamp: number;
 }
 
+export type SystemBeliefRegimeType = 'trend' | 'chop' | 'breakout' | 'reversal';
+export type SystemBeliefLiquidityCondition = 'thin' | 'normal' | 'dense';
+export type SystemBeliefVolatilityRegime = 'low' | 'medium' | 'high';
+export type SystemBeliefBias = 'bullish' | 'bearish' | 'neutral';
+
+export interface SystemBeliefV2 {
+  regimeHypothesis: {
+    type: SystemBeliefRegimeType;
+    probability: number;
+    stability: number;
+  };
+  structuralMarketState: {
+    liquidityCondition: SystemBeliefLiquidityCondition;
+    volatilityRegime: SystemBeliefVolatilityRegime;
+    manipulationRisk: number;
+  };
+  directionalBiasModel: {
+    bias: SystemBeliefBias;
+    strength: number;
+    persistence: number;
+  };
+  behavioralExpectation: {
+    expectedVolatility: number;
+    expectedDrift: number;
+    expectedMomentum: number;
+  };
+  selfAssessment: {
+    confidenceInBelief: number;
+    calibrationDrift: number;
+    reliabilityScore: number;
+  };
+}
+
+export interface SystemBeliefStateEvent {
+  contractId: string;
+  snapshot_id: string;
+  market_state_hash: string;
+  cycle_id: string;
+  belief: SystemBeliefV2;
+  timestamp: number;
+}
+
+export interface SystemBeliefUpdateEvent {
+  contractId: string;
+  belief: SystemBeliefV2;
+  constitutionalAdjustment: number;
+  confidencePenalty: number;
+  timestamp: number;
+}
+
+export interface SystemBeliefOutcomeEvent {
+  contractId: string;
+  observedOutcome: 'ABOVE' | 'BELOW' | 'UNKNOWN';
+  expectedDirection: 'bullish' | 'bearish' | 'neutral';
+  directionalError: number;
+  reliabilityScore: number;
+  calibrationDrift: number;
+  timestamp: number;
+}
+
 // ─── Unified Causal Market Physics Engine Schemas ──────────────────────────────
 
 export interface OrderbookDeltaEvent {

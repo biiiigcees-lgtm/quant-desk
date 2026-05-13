@@ -1,4 +1,5 @@
-import { appendFileSync, createReadStream, existsSync, statSync } from 'node:fs';
+import { appendFileSync, createReadStream, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, } from 'node:fs';
+import { basename, dirname, join } from 'node:path';
 import { createInterface } from 'node:readline';
 // ---------------------------------------------------------------------------
 // ReplayStorage — append-only, sequenced event log
@@ -8,6 +9,9 @@ export class ReplayStorage {
         this.sequence = 0;
         this.path = path;
         this.maxFileSizeBytes = options.maxFileSizeBytes ?? 256 * 1024 * 1024; // 256 MB default
+        this.maxArchivedFiles = Math.max(1, options.maxArchivedFiles ?? 8);
+        mkdirSync(dirname(this.path), { recursive: true });
+        this.sequence = this.detectLastSequence();
     }
     /**
      * Append an event to the log.
@@ -15,50 +19,55 @@ export class ReplayStorage {
      * Never throws.
      */
     append(event, payload, meta = {}) {
+        this.rotateIfNeeded();
         this.sequence += 1;
         const record = {
             sequence: this.sequence,
             event,
             contractId: meta.contractId,
             snapshotId: meta.snapshotId,
+            source: meta.source,
+            idempotencyKey: meta.idempotencyKey,
             payload,
-            timestamp: Date.now(),
+            timestamp: meta.timestamp ?? Date.now(),
         };
-        if (!this.isFileSizeExceeded()) {
-            try {
-                appendFileSync(this.path, JSON.stringify(record) + '\n');
-            }
-            catch {
-                // Never propagate write failures — in-memory sequence still advances
-            }
+        try {
+            appendFileSync(this.path, JSON.stringify(record) + '\n');
+        }
+        catch {
+            // Never propagate write failures — in-memory sequence still advances
         }
         return record;
     }
     /** Read all records from disk in sequence order. */
     async readAll() {
         const records = [];
-        if (!existsSync(this.path)) {
+        const logPaths = this.logPathsChronological();
+        if (logPaths.length === 0) {
             return records;
         }
-        try {
-            const stream = createReadStream(this.path, { encoding: 'utf8' });
-            const rl = createInterface({ input: stream, crlfDelay: Infinity });
-            for await (const line of rl) {
-                const trimmed = line.trim();
-                if (!trimmed)
-                    continue;
-                try {
-                    const record = JSON.parse(trimmed);
-                    records.push(record);
-                }
-                catch {
-                    // Skip malformed lines — log is corrupt or partially written
+        for (const logPath of logPaths) {
+            try {
+                const stream = createReadStream(logPath, { encoding: 'utf8' });
+                const rl = createInterface({ input: stream, crlfDelay: Infinity });
+                for await (const line of rl) {
+                    const trimmed = line.trim();
+                    if (!trimmed)
+                        continue;
+                    try {
+                        const record = JSON.parse(trimmed);
+                        records.push(record);
+                    }
+                    catch {
+                        // Skip malformed lines — log is corrupt or partially written
+                    }
                 }
             }
+            catch {
+                // File unreadable
+            }
         }
-        catch {
-            // File unreadable
-        }
+        records.sort((left, right) => left.sequence - right.sequence);
         return records;
     }
     /**
@@ -146,4 +155,130 @@ export class ReplayStorage {
         }
         return false;
     }
+    detectLastSequence() {
+        const logPaths = this.logPathsReverseChronological();
+        if (logPaths.length === 0) {
+            return 0;
+        }
+        for (const logPath of logPaths) {
+            const seq = this.detectLastSequenceFromFile(logPath);
+            if (seq > 0) {
+                return seq;
+            }
+        }
+        return 0;
+    }
+    detectLastSequenceFromFile(logPath) {
+        const lines = this.readLogLines(logPath);
+        for (let i = lines.length - 1; i >= 0; i -= 1) {
+            const line = lines[i]?.trim();
+            if (!line) {
+                continue;
+            }
+            const seq = parseSequence(line);
+            if (seq > 0) {
+                return seq;
+            }
+        }
+        return 0;
+    }
+    readLogLines(logPath) {
+        try {
+            const content = readFileSync(logPath, 'utf8');
+            return content.trim().split('\n');
+        }
+        catch {
+            // Ignore read errors and continue scanning other log segments.
+            return [];
+        }
+    }
+    rotateIfNeeded() {
+        if (!this.isFileSizeExceeded()) {
+            return;
+        }
+        const archivePath = this.nextArchivePath();
+        try {
+            renameSync(this.path, archivePath);
+        }
+        catch {
+            // Ignore rotation failures; append will attempt current file.
+            return;
+        }
+        const archives = this.archivePathsChronological();
+        const overflow = Math.max(0, archives.length - this.maxArchivedFiles);
+        for (let i = 0; i < overflow; i += 1) {
+            const stalePath = archives[i];
+            if (!stalePath) {
+                continue;
+            }
+            try {
+                unlinkSync(stalePath);
+            }
+            catch {
+                // Ignore cleanup errors.
+            }
+        }
+    }
+    archivePathsChronological() {
+        const dir = dirname(this.path);
+        const prefix = `${basename(this.path)}.`;
+        const suffix = '.archive';
+        let entries = [];
+        try {
+            entries = readdirSync(dir);
+        }
+        catch {
+            return [];
+        }
+        return entries
+            .filter((entry) => entry.startsWith(prefix) && entry.endsWith(suffix))
+            .map((entry) => join(dir, entry))
+            .sort((left, right) => {
+            const leftTime = safeMtime(left);
+            const rightTime = safeMtime(right);
+            return leftTime - rightTime;
+        });
+    }
+    logPathsChronological() {
+        const archives = this.archivePathsChronological();
+        if (existsSync(this.path)) {
+            return [...archives, this.path];
+        }
+        return archives;
+    }
+    logPathsReverseChronological() {
+        return this.logPathsChronological().reverse();
+    }
+    nextArchivePath() {
+        const dir = dirname(this.path);
+        const file = basename(this.path);
+        const baseTs = Date.now();
+        let candidate = join(dir, `${file}.${baseTs}.${this.sequence}.archive`);
+        let counter = 1;
+        while (existsSync(candidate)) {
+            candidate = join(dir, `${file}.${baseTs}.${this.sequence}.${counter}.archive`);
+            counter += 1;
+        }
+        return candidate;
+    }
+}
+function safeMtime(path) {
+    try {
+        return statSync(path).mtimeMs;
+    }
+    catch {
+        return 0;
+    }
+}
+function parseSequence(line) {
+    try {
+        const parsed = JSON.parse(line);
+        if (Number.isInteger(parsed.sequence) && Number(parsed.sequence) > 0) {
+            return Number(parsed.sequence);
+        }
+    }
+    catch {
+        // Continue scanning backwards until a valid line is found.
+    }
+    return 0;
 }

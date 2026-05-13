@@ -58,14 +58,43 @@ function testStaleEventRejection() {
         calibrationError: 0.03,
         brierScore: 0.11,
         regime: 'trending',
-        timestamp: 9999,
+        timestamp: 7000,
     }, {
         source: 'chaos-test',
         snapshotId: 'snap-chaos-1',
-        timestamp: 9999,
+        timestamp: 7000,
     });
     assert.equal(bus.history(EVENTS.PROBABILITY).length, 1, 'stale event should not be accepted into history');
     assert.ok(bus.rejections(EVENTS.PROBABILITY).some((r) => r.rejectionReason === 'stale-event'));
+}
+function testOutOfOrderBufferFlush() {
+    const bus = new EventBus();
+    const emitProbability = (timestamp, snapshotId) => {
+        bus.emit(EVENTS.PROBABILITY, {
+            contractId: 'KXBTC-CHAOS',
+            estimatedProbability: 0.6,
+            marketImpliedProbability: 0.55,
+            edge: 0.05,
+            confidenceInterval: [0.52, 0.68],
+            uncertaintyScore: 0.2,
+            calibrationError: 0.03,
+            brierScore: 0.1,
+            regime: 'trending',
+            timestamp,
+        }, {
+            source: 'chaos-test',
+            snapshotId,
+            timestamp,
+        });
+    };
+    emitProbability(10000, 'snap-chaos-100');
+    emitProbability(9500, 'snap-chaos-095');
+    assert.equal(bus.history(EVENTS.PROBABILITY).length, 1, 'in-window out-of-order event should buffer, not reject');
+    emitProbability(10100, 'snap-chaos-101');
+    const history = bus.history(EVENTS.PROBABILITY);
+    assert.equal(history.length, 3, 'buffered event should flush on next in-order event');
+    assert.ok(history.some((entry) => entry.sourceTimestamp === 9500), 'buffered timestamp should be preserved in history');
+    assert.equal(bus.rejections(EVENTS.PROBABILITY).filter((entry) => entry.rejectionReason === 'stale-event').length, 0);
 }
 function testReplayMismatchEscalatesToHardStop() {
     const bus = new EventBus();
@@ -132,6 +161,7 @@ function testCriticalCognitionEventsRequireExplicitTimestamp() {
 function run() {
     testDuplicateIdempotencyRejection();
     testStaleEventRejection();
+    testOutOfOrderBufferFlush();
     testReplayMismatchEscalatesToHardStop();
     testCriticalCognitionEventsRequireExplicitTimestamp();
     process.stdout.write('chaos-resilience-ok\n');

@@ -5,6 +5,7 @@ import {
   BeliefGraphStateEvent,
   DriftEvent,
   EpistemicMemoryRevisionEvent,
+  SystemBeliefStateEvent,
 } from '../../core/schemas/events.js';
 
 export class AiMemoryService {
@@ -51,42 +52,99 @@ export class AiMemoryService {
     this.bus.on<BeliefGraphStateEvent>(EVENTS.BELIEF_GRAPH_STATE, (event) => {
       const top = event.summary.topHypotheses.slice(0, 4);
       for (const hypothesis of top) {
-        const key = `${event.contractId}:hypothesis:${hypothesis.nodeId}`;
-        const previousConfidence = this.lastHypothesisConfidence.get(key) ?? hypothesis.evidence;
-        const nextConfidence = hypothesis.evidence;
-
-        if (Math.abs(nextConfidence - previousConfidence) < 0.03) {
-          continue;
-        }
-
-        this.lastHypothesisConfidence.set(key, nextConfidence);
-        const revisionId = `${event.contractId}:${hypothesis.nodeId}:${event.timestamp}`;
-        const reason = `confidence-shift:${previousConfidence.toFixed(3)}->${nextConfidence.toFixed(3)}`;
-
-        const revision: EpistemicMemoryRevisionEvent = {
+        this.writeHypothesisRevision({
           contractId: event.contractId,
-          revisionId,
+          snapshotId: event.snapshot_id,
+          cycleId: event.cycle_id,
           hypothesisId: hypothesis.nodeId,
-          previousConfidence: Number(previousConfidence.toFixed(4)),
-          nextConfidence: Number(nextConfidence.toFixed(4)),
-          reason,
-          lineage: [event.snapshot_id, event.cycle_id, hypothesis.nodeId],
+          nextConfidence: Number((1 - hypothesis.uncertainty).toFixed(4)),
           contradictionCount: event.summary.contradictionCount,
           timestamp: event.timestamp,
-        };
-
-        const value = `${hypothesis.nodeId}|${reason}|contradictions=${event.summary.contradictionCount}`;
-        this.memory.set(key, { value, timestamp: event.timestamp });
-        this.prune(event.timestamp);
-
-        this.bus.emit<EpistemicMemoryRevisionEvent>(EVENTS.EPISTEMIC_MEMORY_REVISION, revision);
-        this.bus.emit<AiMemoryWriteEvent>(EVENTS.AI_MEMORY_WRITE, {
-          key,
-          value,
           confidence: Number((1 - hypothesis.uncertainty).toFixed(4)),
-          timestamp: event.timestamp,
         });
       }
+    });
+
+    this.bus.on<SystemBeliefStateEvent>(EVENTS.SYSTEM_BELIEF_STATE, (event) => {
+      const belief = event.belief;
+      const hypotheses = [
+        {
+          id: `regime:${belief.regimeHypothesis.type}`,
+          confidence: belief.regimeHypothesis.probability,
+          uncertainty: 1 - belief.regimeHypothesis.stability,
+        },
+        {
+          id: `bias:${belief.directionalBiasModel.bias}`,
+          confidence: belief.directionalBiasModel.strength,
+          uncertainty: 1 - belief.directionalBiasModel.persistence,
+        },
+        {
+          id: `self:reliability`,
+          confidence: belief.selfAssessment.reliabilityScore,
+          uncertainty: belief.selfAssessment.calibrationDrift,
+        },
+      ];
+
+      const contradictionCount = belief.structuralMarketState.manipulationRisk > 0.65 ? 1 : 0;
+      for (const hypothesis of hypotheses) {
+        this.writeHypothesisRevision({
+          contractId: event.contractId,
+          snapshotId: event.snapshot_id,
+          cycleId: event.cycle_id,
+          hypothesisId: hypothesis.id,
+          nextConfidence: hypothesis.confidence,
+          contradictionCount,
+          timestamp: event.timestamp,
+          confidence: Number((1 - hypothesis.uncertainty).toFixed(4)),
+        });
+      }
+    });
+  }
+
+  private writeHypothesisRevision(params: {
+    contractId: string;
+    snapshotId: string;
+    cycleId: string;
+    hypothesisId: string;
+    nextConfidence: number;
+    contradictionCount: number;
+    timestamp: number;
+    confidence: number;
+  }): void {
+    const { contractId, snapshotId, cycleId, hypothesisId, nextConfidence, contradictionCount, timestamp, confidence } = params;
+    const key = `${contractId}:hypothesis:${hypothesisId}`;
+    const previousConfidence = this.lastHypothesisConfidence.get(key) ?? nextConfidence;
+
+    if (Math.abs(nextConfidence - previousConfidence) < 0.03) {
+      return;
+    }
+
+    this.lastHypothesisConfidence.set(key, nextConfidence);
+    const revisionId = `${contractId}:${hypothesisId}:${timestamp}`;
+    const reason = `confidence-shift:${previousConfidence.toFixed(3)}->${nextConfidence.toFixed(3)}`;
+
+    const revision: EpistemicMemoryRevisionEvent = {
+      contractId,
+      revisionId,
+      hypothesisId,
+      previousConfidence: Number(previousConfidence.toFixed(4)),
+      nextConfidence: Number(nextConfidence.toFixed(4)),
+      reason,
+      lineage: [snapshotId, cycleId, hypothesisId],
+      contradictionCount,
+      timestamp,
+    };
+
+    const value = `${hypothesisId}|${reason}|contradictions=${contradictionCount}`;
+    this.memory.set(key, { value, timestamp });
+    this.prune(timestamp);
+
+    this.bus.emit<EpistemicMemoryRevisionEvent>(EVENTS.EPISTEMIC_MEMORY_REVISION, revision);
+    this.bus.emit<AiMemoryWriteEvent>(EVENTS.AI_MEMORY_WRITE, {
+      key,
+      value,
+      confidence,
+      timestamp,
     });
   }
 

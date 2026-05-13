@@ -9,6 +9,7 @@ import {
   MarketExperienceEvent,
   MetaCalibrationEvent,
   OperatorAttentionEvent,
+  SystemBeliefStateEvent,
   SystemConsciousnessEvent,
 } from '../../core/schemas/events.js';
 
@@ -18,6 +19,7 @@ interface ConsciousnessOptions {
 
 export class SystemConsciousnessService {
   private latestBelief: BeliefGraphStateEvent | null = null;
+  private latestSystemBelief: SystemBeliefStateEvent | null = null;
   private latestDecision: ConstitutionalDecisionEvent | null = null;
   private latestCalibration: CalibrationEvent | null = null;
   private latestDrift: DriftEvent | null = null;
@@ -33,6 +35,11 @@ export class SystemConsciousnessService {
   start(): void {
     this.bus.on<BeliefGraphStateEvent>(EVENTS.BELIEF_GRAPH_STATE, (event) => {
       this.latestBelief = event;
+      this.publish();
+    });
+
+    this.bus.on<SystemBeliefStateEvent>(EVENTS.SYSTEM_BELIEF_STATE, (event) => {
+      this.latestSystemBelief = event;
       this.publish();
     });
 
@@ -68,28 +75,21 @@ export class SystemConsciousnessService {
   }
 
   private publish(): void {
-    if (!this.latestBelief || !this.latestDecision) {
+    if (!this.latestDecision || (!this.latestBelief && !this.latestSystemBelief)) {
       return;
     }
 
-    const top = this.latestBelief.summary.topHypotheses.slice(0, 3).map((item) => ({
-      nodeId: item.nodeId,
-      evidence: item.evidence,
-      uncertainty: item.uncertainty,
-    }));
-    const contradictionDensity = clamp(
-      this.latestBelief.summary.contradictionCount / Math.max(1, this.latestBelief.summary.topHypotheses.length),
-      0,
-      1,
-    );
-    const uncertaintyTopology = clamp(this.latestBelief.summary.graphEntropy, 0, 1);
+    const topology = this.latestSystemBelief
+      ? topologyFromSystemBelief(this.latestSystemBelief)
+      : topologyFromBeliefGraph(this.latestBelief!);
+
+    const top = topology.topHypotheses;
+    const contradictionDensity = topology.contradictionDensity;
+    const uncertaintyTopology = topology.uncertaintyTopology;
+
     const driftStress = this.latestDrift ? clamp(Math.max(this.latestDrift.psi, this.latestDrift.kl), 0, 1) : 0;
     const calibrationStress = this.latestCalibration ? clamp(this.latestCalibration.ece, 0, 1) : 0;
-    const contradictionStress = clamp(
-      this.latestBelief.summary.maxContradictionStrength,
-      0,
-      1,
-    );
+    const contradictionStress = topology.contradictionStress;
     const aggregateStress = clamp(
       0.35 * contradictionStress + 0.35 * calibrationStress + 0.3 * driftStress,
       0,
@@ -119,16 +119,12 @@ export class SystemConsciousnessService {
       trustDecay,
     });
 
-    const contradictions = this.latestBelief.summary.contradictions.map((item) => ({
-      source: item.hypothesis1,
-      target: item.hypothesis2,
-      severity: contradictionSeverity(item.conflictStrength),
-      detail: item.conflictReason,
-    }));
+    const contradictions = topology.contradictions;
 
     const cognitiveStressState = cognitiveStressFromAggregate(Math.max(aggregateStress, trustDecay));
     const timestamp = maxTimestamp([
-      this.latestBelief.timestamp,
+      this.latestBelief?.timestamp,
+      this.latestSystemBelief?.timestamp,
       this.latestDecision.timestamp,
       this.latestCalibration?.timestamp,
       this.latestDrift?.timestamp,
@@ -143,7 +139,7 @@ export class SystemConsciousnessService {
       snapshotId: this.latestDecision.snapshot_id,
       beliefTopology: {
         topHypotheses: top,
-        contradictionCount: this.latestBelief.summary.contradictionCount,
+        contradictionCount: topology.contradictionCount,
         contradictionDensity,
         uncertaintyTopology,
       },
@@ -195,6 +191,103 @@ export class SystemConsciousnessService {
       timestamp: health.timestamp,
     });
   }
+}
+
+interface ConsciousnessTopology {
+  topHypotheses: Array<{ nodeId: string; evidence: number; uncertainty: number }>;
+  contradictionCount: number;
+  contradictionDensity: number;
+  uncertaintyTopology: number;
+  contradictionStress: number;
+  contradictions: Array<{
+    source: string;
+    target: string;
+    severity: 'low' | 'medium' | 'high';
+    detail: string;
+  }>;
+}
+
+function topologyFromBeliefGraph(belief: BeliefGraphStateEvent): ConsciousnessTopology {
+  const topHypotheses = belief.summary.topHypotheses.slice(0, 3).map((item) => ({
+    nodeId: item.nodeId,
+    evidence: item.evidence,
+    uncertainty: item.uncertainty,
+  }));
+
+  const contradictionCount = belief.summary.contradictionCount;
+  const contradictionDensity = clamp(
+    contradictionCount / Math.max(1, belief.summary.topHypotheses.length),
+    0,
+    1,
+  );
+
+  return {
+    topHypotheses,
+    contradictionCount,
+    contradictionDensity,
+    uncertaintyTopology: clamp(belief.summary.graphEntropy, 0, 1),
+    contradictionStress: clamp(belief.summary.maxContradictionStrength, 0, 1),
+    contradictions: belief.summary.contradictions.map((item) => ({
+      source: item.hypothesis1,
+      target: item.hypothesis2,
+      severity: contradictionSeverity(item.conflictStrength),
+      detail: item.conflictReason,
+    })),
+  };
+}
+
+function topologyFromSystemBelief(belief: SystemBeliefStateEvent): ConsciousnessTopology {
+  const signal = belief.belief;
+  const topHypotheses: Array<{ nodeId: string; evidence: number; uncertainty: number }> = [
+    {
+      nodeId: `regime:${signal.regimeHypothesis.type}`,
+      evidence: signal.regimeHypothesis.probability,
+      uncertainty: 1 - signal.regimeHypothesis.stability,
+    },
+    {
+      nodeId: `bias:${signal.directionalBiasModel.bias}`,
+      evidence: signal.directionalBiasModel.strength,
+      uncertainty: 1 - signal.directionalBiasModel.persistence,
+    },
+    {
+      nodeId: `liquidity:${signal.structuralMarketState.liquidityCondition}`,
+      evidence: 1 - signal.structuralMarketState.manipulationRisk,
+      uncertainty: signal.structuralMarketState.manipulationRisk,
+    },
+  ];
+
+  const contradictionStress = clamp(
+    signal.structuralMarketState.manipulationRisk * 0.5 + signal.selfAssessment.calibrationDrift * 0.5,
+    0,
+    1,
+  );
+  const isHighContradiction = contradictionStress > 0.66;
+  const isMediumContradiction = contradictionStress > 0.4;
+  const contradictionCount = isHighContradiction ? 2 : (isMediumContradiction ? 1 : 0);
+  const contradictionDensity = clamp(contradictionCount / topHypotheses.length, 0, 1);
+  const contradictions = contradictionCount > 0
+    ? [
+        {
+          source: `bias:${signal.directionalBiasModel.bias}`,
+          target: `structure:${signal.structuralMarketState.volatilityRegime}`,
+          severity: contradictionSeverity(contradictionStress),
+          detail: `bias persistence=${signal.directionalBiasModel.persistence.toFixed(2)} vs manipulation=${signal.structuralMarketState.manipulationRisk.toFixed(2)}`,
+        },
+      ]
+    : [];
+
+  return {
+    topHypotheses,
+    contradictionCount,
+    contradictionDensity,
+    uncertaintyTopology: clamp(
+      signal.behavioralExpectation.expectedVolatility * 0.55 + signal.selfAssessment.calibrationDrift * 0.45,
+      0,
+      1,
+    ),
+    contradictionStress,
+    contradictions,
+  };
 }
 
 function buildInvalidationPath(input: {

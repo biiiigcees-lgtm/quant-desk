@@ -133,6 +133,45 @@ function testScenarioInvalidationBlocks(): void {
   );
 }
 
+function testLatencyConfidenceDecayAdjustsConfidence(): void {
+  const bus = new EventBus();
+  new ConstitutionalDecisionService(bus).start();
+
+  const decisions: ConstitutionalDecisionEvent[] = [];
+  bus.on<ConstitutionalDecisionEvent>(EVENTS.CONSTITUTIONAL_DECISION, (event) => {
+    decisions.push(event);
+  });
+
+  const contractId = 'KXBTC-CD-LAT';
+  const now = Date.now();
+  bus.emit(EVENTS.DECISION_SNAPSHOT, makeSnapshot(contractId, now));
+  bus.emit(EVENTS.MARKET_DATA_INTEGRITY, {
+    contractId,
+    healthScore: 0.42,
+    degraded: true,
+    reasons: ['high-latency'],
+    observedGapMs: 600,
+    staleAgeMs: 2400,
+    latencyMs: 850,
+    sourceClockSkewMs: 30,
+    packetGapCount: 3,
+    corruptionCount: 0,
+    timestamp: now + 10,
+  });
+  bus.emit(EVENTS.AI_AGGREGATED_INTELLIGENCE, makeAggregated(contractId));
+
+  const out = decisions[0];
+  if (!out) {
+    throw new Error('expected constitutional decision output');
+  }
+
+  assert.ok(out.confidence_score < 0.6, `expected latency decay to reduce confidence below 0.6; got ${out.confidence_score}`);
+  assert.ok(
+    out.governance_log.some((row) => row.rule === 'latency-confidence-decay' && row.outcome === 'adjust'),
+    'expected latency-confidence-decay adjustment trace',
+  );
+}
+
 function makeAggregated(contractId: string): AggregatedIntelligenceEvent {
   return {
     contractId,
@@ -307,6 +346,7 @@ function run(): void {
   testHardStopVetoWins();
   testMetaCalibrationAuthorityDecayBlocks();
   testScenarioInvalidationBlocks();
+  testLatencyConfidenceDecayAdjustsConfidence();
   process.stdout.write('constitutional-decision-ok\n');
 }
 

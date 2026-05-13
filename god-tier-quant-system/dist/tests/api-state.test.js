@@ -23,14 +23,6 @@ async function requestJson(port, path) {
 }
 async function run() {
     const bus = new EventBus();
-    const api = new ApiServer(bus, '127.0.0.1', 0);
-    await api.start();
-    const server = api.server;
-    assert.ok(server, 'API server should start');
-    const address = server?.address();
-    if (!address || typeof address === 'string') {
-        throw new Error('expected API server to bind to a port');
-    }
     bus.emit(EVENTS.EXECUTION_CONTROL, {
         mode: 'hard-stop',
         reason: 'calibration-critical',
@@ -44,12 +36,25 @@ async function run() {
         safetyMode: 'hard-stop',
         timestamp: 2,
     });
+    const api = new ApiServer(bus, '127.0.0.1', 0);
+    await api.start();
+    const server = api.server;
+    assert.ok(server, 'API server should start');
+    const address = server?.address();
+    if (!address || typeof address === 'string') {
+        throw new Error('expected API server to bind to a port');
+    }
     const state = (await requestJson(address.port, '/state'));
     assert.equal(state.executionControl?.mode, 'hard-stop', 'state endpoint should expose execution control mode');
     assert.equal(state.executionState?.phase, 'blocked', 'state endpoint should expose execution state');
     const execution = (await requestJson(address.port, '/execution'));
     assert.equal(execution.executionControl?.mode, 'hard-stop', 'execution endpoint should expose control mode');
     assert.equal(execution.executionState?.phase, 'blocked', 'execution endpoint should expose state');
+    const stateAtOne = (await requestJson(address.port, '/state-at-sequence/1'));
+    assert.equal(stateAtOne.executionControl?.mode, 'hard-stop', 'state-at-sequence should include events up to target sequence');
+    assert.equal(stateAtOne.executionState, undefined, 'state-at-sequence should exclude later events beyond target sequence');
+    const stateAtTwo = (await requestJson(address.port, '/state-at-sequence/2'));
+    assert.equal(stateAtTwo.executionState?.phase, 'blocked', 'state-at-sequence should include matching sequence state');
     await api.stop();
     process.stdout.write('api-state-ok\n');
 }

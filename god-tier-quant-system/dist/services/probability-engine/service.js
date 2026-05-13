@@ -13,6 +13,7 @@ export class ProbabilityEngine {
         this.latestMicro = new Map();
         this.prior = new Map();
         this.latestBelief = new Map();
+        this.latestSystemBelief = new Map();
         this.latestPhysics = new Map();
         this.latestScenario = new Map();
         this.latestFeedIntegrity = new Map();
@@ -23,6 +24,9 @@ export class ProbabilityEngine {
         });
         this.bus.on(EVENTS.BELIEF_GRAPH_UPDATE, (event) => {
             this.latestBelief.set(event.contractId, event);
+        });
+        this.bus.on(EVENTS.SYSTEM_BELIEF_UPDATE, (event) => {
+            this.latestSystemBelief.set(event.contractId, event);
         });
         this.bus.on(EVENTS.MARKET_PHYSICS, (event) => {
             this.latestPhysics.set(event.contractId, event);
@@ -44,13 +48,15 @@ export class ProbabilityEngine {
             const inferredRegime = this.regime.inferRegime(feature, micro);
             const adjusted = this.regime.adjustProbability(rawBlend, inferredRegime);
             const calibrated = this.calibration.calibrate(adjusted);
-            // Apply constitutional adjustment from the belief graph when available.
+            // Apply constitutional adjustment from the system belief engine (fallback to legacy belief graph).
             const belief = this.latestBelief.get(feature.contractId);
+            const systemBelief = this.latestSystemBelief.get(feature.contractId);
             const physics = this.latestPhysics.get(feature.contractId);
             const scenario = this.latestScenario.get(feature.contractId);
-            const constitutional = belief
-                ? Math.max(0.01, Math.min(0.99, calibrated + belief.constitutionalAdjustment))
-                : calibrated;
+            const constitutionalAdjustment = systemBelief?.constitutionalAdjustment
+                ?? belief?.constitutionalAdjustment
+                ?? 0;
+            const constitutional = clamp(calibrated + constitutionalAdjustment, 0.01, 0.99);
             const dominantBranchScore = scenario
                 ? scenario.branchScores[scenario.dominantBranch] ?? 0.5
                 : 0.5;
@@ -66,8 +72,16 @@ export class ProbabilityEngine {
             const feedIntegrity = this.latestFeedIntegrity.get(feature.contractId);
             const integrityPenalty = feedIntegrity ? clamp(1 - feedIntegrity.healthScore, 0, 0.45) : 0;
             const finalEstimate = clamp(rawEstimate * (1 - integrityPenalty) + feature.impliedProbability * integrityPenalty, 0.01, 0.99);
-            const uncertaintyBase = belief ? logistic.uncertainty * (1 - belief.graphConfidence * 0.2) : logistic.uncertainty;
+            const legacyBeliefConfidence = belief?.graphConfidence;
+            const systemBeliefConfidence = systemBelief?.belief.selfAssessment.confidenceInBelief;
+            const confidenceSignal = systemBeliefConfidence ?? legacyBeliefConfidence;
+            const confidencePenalty = systemBelief?.confidencePenalty ?? 0;
+            const hasConfidenceSignal = confidenceSignal !== undefined;
+            const uncertaintyBase = hasConfidenceSignal
+                ? logistic.uncertainty * (1 - confidenceSignal * 0.2)
+                : logistic.uncertainty;
             const uncertaintyScore = clamp(uncertaintyBase +
+                confidencePenalty * 0.4 +
                 (physics?.structuralStress ?? 0) * 0.2 +
                 (scenario?.volatilityWeight ?? 0) * 0.25 +
                 (scenario?.invalidated ? 0.1 : 0) +

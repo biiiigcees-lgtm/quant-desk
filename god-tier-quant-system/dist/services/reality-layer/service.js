@@ -1,11 +1,17 @@
 import { createHash } from 'node:crypto';
 import { EVENTS } from '../../core/event-bus/events.js';
 const DRIFT_FACTOR = {
-    none: 1.0, low: 0.9, medium: 0.7, high: 0.4,
+    none: 1, low: 0.9, medium: 0.7, high: 0.4,
 };
 const ANOMALY_FACTOR = {
-    none: 1.0, low: 0.85, medium: 0.65, high: 0.35, critical: 0.05,
+    none: 1, low: 0.85, medium: 0.65, high: 0.35, critical: 0.05,
 };
+function clamp(value, min, max) {
+    if (!Number.isFinite(value)) {
+        return min;
+    }
+    return Math.max(min, Math.min(max, value));
+}
 export class RealityLayerService {
     constructor(bus) {
         this.bus = bus;
@@ -37,6 +43,12 @@ export class RealityLayerService {
             s.lastTimestamp = event.timestamp;
             this.emit(event.contractId);
         });
+        this.bus.on(EVENTS.SYSTEM_BELIEF_UPDATE, (event) => {
+            const s = this.getOrCreate(event.contractId);
+            s.beliefFactor = clamp(event.belief.selfAssessment.reliabilityScore * (1 - event.confidencePenalty * 0.5), 0, 1);
+            s.lastTimestamp = event.timestamp;
+            this.emit(event.contractId);
+        });
         this.bus.on(EVENTS.EXECUTION_CONTROL, (event) => {
             // Hard-stop applies globally; use the contractId as key if present, else '*'
             const id = event.contractId ?? '*';
@@ -63,8 +75,8 @@ export class RealityLayerService {
         if (!this.state.has(contractId)) {
             this.state.set(contractId, {
                 calibrationFactor: 0.8,
-                driftFactor: 1.0,
-                anomalyFactor: 1.0,
+                driftFactor: 1,
+                anomalyFactor: 1,
                 beliefFactor: 0.5,
                 hardStop: false,
                 lastTimestamp: Date.now(),
@@ -74,16 +86,17 @@ export class RealityLayerService {
     }
     buildSnapshot(contractId, s) {
         const truthScore = Number((s.calibrationFactor * s.driftFactor * s.anomalyFactor * s.beliefFactor).toFixed(4));
-        const systemState = s.hardStop || truthScore < 0.20 ? 'halted'
-            : truthScore < 0.45 ? 'degraded'
-                : truthScore < 0.70 ? 'cautious'
-                    : 'nominal';
-        const executionPermission = systemState !== 'halted' &&
-            !(systemState === 'degraded' && s.anomalyFactor <= ANOMALY_FACTOR.high);
-        const uncertaintyState = truthScore >= 0.70 ? 'low'
-            : truthScore >= 0.45 ? 'medium'
-                : truthScore >= 0.20 ? 'high'
-                    : 'extreme';
+        const isHalted = s.hardStop || truthScore < 0.20;
+        const isDegraded = !isHalted && truthScore < 0.45;
+        const isCautious = !isHalted && !isDegraded && truthScore < 0.70;
+        const systemState = isHalted ? 'halted' : isDegraded ? 'degraded' : isCautious ? 'cautious' : 'nominal';
+        const executionAllowed = systemState !== 'halted';
+        const anomalyNotHigh = !((systemState === 'degraded' && s.anomalyFactor <= ANOMALY_FACTOR.high));
+        const executionPermission = executionAllowed && anomalyNotHigh;
+        const isLowUncertainty = truthScore >= 0.70;
+        const isMediumUncertainty = truthScore >= 0.45;
+        const isHighUncertainty = truthScore >= 0.20;
+        const uncertaintyState = isLowUncertainty ? 'low' : isMediumUncertainty ? 'medium' : isHighUncertainty ? 'high' : 'extreme';
         const snapshotInput = `${contractId}:${truthScore}:${s.lastTimestamp}`;
         const canonicalSnapshotId = createHash('sha1').update(snapshotInput).digest('hex').slice(0, 12);
         return {

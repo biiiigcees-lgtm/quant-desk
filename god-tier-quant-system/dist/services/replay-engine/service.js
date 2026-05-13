@@ -47,6 +47,13 @@ export class ReplayEngine {
             });
         }
     }
+    deriveState(upToSequence) {
+        const records = this.bus.history().filter((record) => upToSequence === undefined || record.sequence <= upToSequence);
+        return ReplayEngine.reduceState(records);
+    }
+    getStateAtSequence(sequence) {
+        return this.deriveState(sequence);
+    }
     getRecords() {
         return this.bus.history(this.tracked).map((record) => ({
             sequence: record.sequence,
@@ -77,7 +84,75 @@ export class ReplayEngine {
         }
         return hash.digest('hex');
     }
+    static reduceState(records) {
+        const state = {};
+        for (const record of records) {
+            const collection = STATE_COLLECTIONS[record.event];
+            if (collection) {
+                const current = Array.isArray(state[collection.key]) ? [...state[collection.key]] : [];
+                current.unshift(record.payload);
+                state[collection.key] = current.slice(0, collection.limit);
+            }
+            const stateKey = STATE_EVENT_KEYS[record.event];
+            if (stateKey) {
+                state[stateKey] = record.payload;
+            }
+        }
+        return state;
+    }
 }
+const STATE_EVENT_KEYS = {
+    [EVENTS.PROBABILITY]: 'probability',
+    [EVENTS.AGGREGATED_SIGNAL]: 'signal',
+    [EVENTS.EXECUTION_CONTROL]: 'executionControl',
+    [EVENTS.EXECUTION_STATE]: 'executionState',
+    [EVENTS.CALIBRATION_UPDATE]: 'calibration',
+    [EVENTS.DRIFT_EVENT]: 'drift',
+    [EVENTS.VALIDATION_RESULT]: 'validation',
+    [EVENTS.PORTFOLIO_UPDATE]: 'portfolio',
+    [EVENTS.ANOMALY]: 'anomaly',
+    [EVENTS.REALITY_SNAPSHOT]: 'realitySnapshot',
+    [EVENTS.MARKET_DATA_INTEGRITY]: 'marketDataIntegrity',
+    [EVENTS.MARKET_CAUSAL_STATE]: 'marketCausalState',
+    [EVENTS.PARTICIPANT_FLOW]: 'participantFlow',
+    [EVENTS.ADVERSARIAL_AUDIT]: 'adversarialAudit',
+    [EVENTS.MARKET_MEMORY]: 'marketMemory',
+    [EVENTS.SIMULATION_UNIVERSE]: 'simulationUniverse',
+    [EVENTS.MULTI_TIMESCALE_VIEW]: 'multiTimescaleView',
+    [EVENTS.MARKET_PHYSICS]: 'marketPhysics',
+    [EVENTS.SCENARIO_BRANCH_STATE]: 'scenarioBranchState',
+    [EVENTS.CROSS_MARKET_CAUSAL_STATE]: 'crossMarketCausalState',
+    [EVENTS.MARKET_WORLD_STATE]: 'marketWorldState',
+    [EVENTS.META_CALIBRATION]: 'metaCalibration',
+    [EVENTS.OPERATOR_ATTENTION]: 'operatorAttention',
+    [EVENTS.SELF_IMPROVEMENT]: 'selfImprovement',
+    [EVENTS.MARKET_EXPERIENCE]: 'marketExperience',
+    [EVENTS.EPISTEMIC_MEMORY_REVISION]: 'epistemicMemoryRevision',
+    [EVENTS.AI_AGGREGATED_INTELLIGENCE]: 'aiAggregatedIntelligence',
+    [EVENTS.BELIEF_GRAPH_STATE]: 'beliefGraphState',
+    [EVENTS.SYSTEM_BELIEF_STATE]: 'systemBeliefState',
+    [EVENTS.SYSTEM_BELIEF_UPDATE]: 'systemBeliefUpdate',
+    [EVENTS.SYSTEM_BELIEF_OUTCOME]: 'systemBeliefOutcome',
+    [EVENTS.SYSTEM_CONSCIOUSNESS]: 'systemConsciousness',
+    [EVENTS.EPISTEMIC_HEALTH]: 'epistemicHealth',
+    [EVENTS.DIGITAL_IMMUNE_ALERT]: 'digitalImmuneAlert',
+    [EVENTS.STRATEGY_GENOME_UPDATE]: 'strategyGenome',
+    [EVENTS.REPLAY_INTEGRITY]: 'replayIntegrity',
+    [EVENTS.CONSTITUTIONAL_DECISION]: 'constitutionalDecision',
+    [EVENTS.UNIFIED_FIELD]: 'unifiedField',
+    [EVENTS.SHADOW_DECISION]: 'shadowDecision',
+    [EVENTS.LIQUIDITY_GRAVITY]: 'liquidityGravity',
+    [EVENTS.REGIME_TRANSITION]: 'regimeTransition',
+    [EVENTS.FILTERED_SIGNAL]: 'filteredSignal',
+    [EVENTS.REALITY_ALIGNMENT]: 'realityAlignment',
+    [EVENTS.CAUSAL_WEIGHTS]: 'causalWeights',
+};
+const STATE_COLLECTIONS = {
+    [EVENTS.CAUSAL_INSIGHT]: { key: 'causalInsights', limit: 40 },
+    [EVENTS.AI_ORCHESTRATION_METRICS]: { key: 'aiOrchestrationMetrics', limit: 100 },
+    [EVENTS.AI_AGENT_FAILURE]: { key: 'aiOrchestrationFailures', limit: 100 },
+    [EVENTS.AI_ROUTING_DECISION]: { key: 'aiRoutingDecisions', limit: 100 },
+};
 function stableStringify(value) {
     if (value === null || typeof value !== 'object') {
         return JSON.stringify(value);

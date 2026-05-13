@@ -34,5 +34,10 @@ export function loadConfig() {
             immuneCooldownMs: Number(process.env.ORGANISM_IMMUNE_COOLDOWN_MS ?? 10000),
             replayValidationMinSamples: Number(process.env.ORGANISM_REPLAY_MIN_SAMPLES ?? 25),
         },
+        replay: {
+            logPath: process.env.REPLAY_LOG_PATH ?? './runtime/replay/events.log',
+            maxFileSizeBytes: Number(process.env.REPLAY_LOG_MAX_BYTES ?? 256 * 1024 * 1024),
+            maxArchivedFiles: Number(process.env.REPLAY_LOG_MAX_ARCHIVES ?? 8),
+        },
     };
 }

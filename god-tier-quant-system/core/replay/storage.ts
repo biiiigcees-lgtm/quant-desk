@@ -1,4 +1,15 @@
-import { appendFileSync, createReadStream, existsSync, statSync } from 'node:fs';
+import {
+  appendFileSync,
+  createReadStream,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  statSync,
+  unlinkSync,
+} from 'node:fs';
+import { basename, dirname, join } from 'node:path';
 import { createInterface } from 'node:readline';
 
 // ---------------------------------------------------------------------------
@@ -10,6 +21,8 @@ export interface ReplayRecord {
   readonly event: string;
   readonly contractId?: string;
   readonly snapshotId?: string;
+  readonly source?: string;
+  readonly idempotencyKey?: string;
   readonly payload: unknown;
   readonly timestamp: number;
 }
@@ -30,10 +43,14 @@ export class ReplayStorage {
   private sequence = 0;
   private readonly path: string;
   private readonly maxFileSizeBytes: number;
+  private readonly maxArchivedFiles: number;
 
-  constructor(path: string, options: { maxFileSizeBytes?: number } = {}) {
+  constructor(path: string, options: { maxFileSizeBytes?: number; maxArchivedFiles?: number } = {}) {
     this.path = path;
     this.maxFileSizeBytes = options.maxFileSizeBytes ?? 256 * 1_024 * 1_024; // 256 MB default
+    this.maxArchivedFiles = Math.max(1, options.maxArchivedFiles ?? 8);
+    mkdirSync(dirname(this.path), { recursive: true });
+    this.sequence = this.detectLastSequence();
   }
 
   /**
@@ -44,8 +61,9 @@ export class ReplayStorage {
   append(
     event: string,
     payload: unknown,
-    meta: { contractId?: string; snapshotId?: string } = {},
+    meta: { contractId?: string; snapshotId?: string; source?: string; idempotencyKey?: string; timestamp?: number } = {},
   ): ReplayRecord {
+    this.rotateIfNeeded();
     this.sequence += 1;
 
     const record: ReplayRecord = {
@@ -53,16 +71,16 @@ export class ReplayStorage {
       event,
       contractId: meta.contractId,
       snapshotId: meta.snapshotId,
+      source: meta.source,
+      idempotencyKey: meta.idempotencyKey,
       payload,
-      timestamp: Date.now(),
+      timestamp: meta.timestamp ?? Date.now(),
     };
 
-    if (!this.isFileSizeExceeded()) {
-      try {
-        appendFileSync(this.path, JSON.stringify(record) + '\n');
-      } catch {
-        // Never propagate write failures — in-memory sequence still advances
-      }
+    try {
+      appendFileSync(this.path, JSON.stringify(record) + '\n');
+    } catch {
+      // Never propagate write failures — in-memory sequence still advances
     }
 
     return record;
@@ -72,28 +90,32 @@ export class ReplayStorage {
   async readAll(): Promise<ReplayRecord[]> {
     const records: ReplayRecord[] = [];
 
-    if (!existsSync(this.path)) {
+    const logPaths = this.logPathsChronological();
+    if (logPaths.length === 0) {
       return records;
     }
 
-    try {
-      const stream = createReadStream(this.path, { encoding: 'utf8' });
-      const rl = createInterface({ input: stream, crlfDelay: Infinity });
+    for (const logPath of logPaths) {
+      try {
+        const stream = createReadStream(logPath, { encoding: 'utf8' });
+        const rl = createInterface({ input: stream, crlfDelay: Infinity });
 
-      for await (const line of rl) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-        try {
-          const record = JSON.parse(trimmed) as ReplayRecord;
-          records.push(record);
-        } catch {
-          // Skip malformed lines — log is corrupt or partially written
+        for await (const line of rl) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            const record = JSON.parse(trimmed) as ReplayRecord;
+            records.push(record);
+          } catch {
+            // Skip malformed lines — log is corrupt or partially written
+          }
         }
+      } catch {
+        // File unreadable
       }
-    } catch {
-      // File unreadable
     }
 
+    records.sort((left, right) => left.sequence - right.sequence);
     return records;
   }
 
@@ -190,4 +212,142 @@ export class ReplayStorage {
     }
     return false;
   }
+
+  private detectLastSequence(): number {
+    const logPaths = this.logPathsReverseChronological();
+    if (logPaths.length === 0) {
+      return 0;
+    }
+
+    for (const logPath of logPaths) {
+      const seq = this.detectLastSequenceFromFile(logPath);
+      if (seq > 0) {
+        return seq;
+      }
+    }
+
+    return 0;
+  }
+
+  private detectLastSequenceFromFile(logPath: string): number {
+    const lines = this.readLogLines(logPath);
+    for (let i = lines.length - 1; i >= 0; i -= 1) {
+      const line = lines[i]?.trim();
+      if (!line) {
+        continue;
+      }
+      const seq = parseSequence(line);
+      if (seq > 0) {
+        return seq;
+      }
+    }
+    return 0;
+  }
+
+  private readLogLines(logPath: string): string[] {
+    try {
+      const content = readFileSync(logPath, 'utf8');
+      return content.trim().split('\n');
+    } catch {
+      // Ignore read errors and continue scanning other log segments.
+      return [];
+    }
+  }
+
+  private rotateIfNeeded(): void {
+    if (!this.isFileSizeExceeded()) {
+      return;
+    }
+
+    const archivePath = this.nextArchivePath();
+    try {
+      renameSync(this.path, archivePath);
+    } catch {
+      // Ignore rotation failures; append will attempt current file.
+      return;
+    }
+
+    const archives = this.archivePathsChronological();
+    const overflow = Math.max(0, archives.length - this.maxArchivedFiles);
+    for (let i = 0; i < overflow; i += 1) {
+      const stalePath = archives[i];
+      if (!stalePath) {
+        continue;
+      }
+      try {
+        unlinkSync(stalePath);
+      } catch {
+        // Ignore cleanup errors.
+      }
+    }
+  }
+
+  private archivePathsChronological(): string[] {
+    const dir = dirname(this.path);
+    const prefix = `${basename(this.path)}.`;
+    const suffix = '.archive';
+
+    let entries: string[] = [];
+    try {
+      entries = readdirSync(dir);
+    } catch {
+      return [];
+    }
+
+    return entries
+      .filter((entry) => entry.startsWith(prefix) && entry.endsWith(suffix))
+      .map((entry) => join(dir, entry))
+      .sort((left, right) => {
+        const leftTime = safeMtime(left);
+        const rightTime = safeMtime(right);
+        return leftTime - rightTime;
+      });
+  }
+
+  private logPathsChronological(): string[] {
+    const archives = this.archivePathsChronological();
+    if (existsSync(this.path)) {
+      return [...archives, this.path];
+    }
+    return archives;
+  }
+
+  private logPathsReverseChronological(): string[] {
+    return this.logPathsChronological().reverse();
+  }
+
+  private nextArchivePath(): string {
+    const dir = dirname(this.path);
+    const file = basename(this.path);
+    const baseTs = Date.now();
+    let candidate = join(dir, `${file}.${baseTs}.${this.sequence}.archive`);
+    let counter = 1;
+
+    while (existsSync(candidate)) {
+      candidate = join(dir, `${file}.${baseTs}.${this.sequence}.${counter}.archive`);
+      counter += 1;
+    }
+
+    return candidate;
+  }
+}
+
+function safeMtime(path: string): number {
+  try {
+    return statSync(path).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
+
+function parseSequence(line: string): number {
+  try {
+    const parsed = JSON.parse(line) as { sequence?: unknown };
+    if (Number.isInteger(parsed.sequence) && Number(parsed.sequence) > 0) {
+      return Number(parsed.sequence);
+    }
+  } catch {
+    // Continue scanning backwards until a valid line is found.
+  }
+  return 0;
 }

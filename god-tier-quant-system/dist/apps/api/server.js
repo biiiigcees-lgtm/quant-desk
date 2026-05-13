@@ -1,5 +1,6 @@
 import http from 'node:http';
 import { EVENTS } from '../../core/event-bus/events.js';
+import { ReplayEngine } from '../../services/replay-engine/service.js';
 export class ApiServer {
     constructor(bus, host, port, unifiedField) {
         this.bus = bus;
@@ -12,6 +13,13 @@ export class ApiServer {
         this.orchestrationMetrics = [];
         this.orchestrationFailures = [];
         this.routingDecisions = [];
+        this.replayEngine = new ReplayEngine(this.bus);
+    }
+    currentState() {
+        return this.replayEngine.deriveState();
+    }
+    stateAtSequence(sequence) {
+        return this.replayEngine.getStateAtSequence(sequence);
     }
     start() {
         this.bus.on(EVENTS.PROBABILITY, (event) => {
@@ -174,42 +182,57 @@ export class ApiServer {
             }
             if (path === '/state') {
                 res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify(this.latest));
+                res.end(JSON.stringify(this.currentState()));
+                return;
+            }
+            if (path.startsWith('/state-at-sequence/')) {
+                const rawSequence = decodeURIComponent(path.slice('/state-at-sequence/'.length));
+                const sequence = Number(rawSequence);
+                if (!Number.isInteger(sequence) || sequence < 0) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'invalid_sequence' }));
+                    return;
+                }
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(this.stateAtSequence(sequence)));
                 return;
             }
             if (path === '/execution') {
+                const state = this.currentState();
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
-                    executionState: this.latest.executionState ?? null,
-                    executionControl: this.latest.executionControl ?? null,
-                    calibration: this.latest.calibration ?? null,
-                    drift: this.latest.drift ?? null,
-                    validation: this.latest.validation ?? null,
-                    aiAggregatedIntelligence: this.latest.aiAggregatedIntelligence ?? null,
-                    constitutionalDecision: this.latest.constitutionalDecision ?? null,
-                    marketPhysics: this.latest.marketPhysics ?? null,
-                    scenarioBranchState: this.latest.scenarioBranchState ?? null,
-                    crossMarketCausalState: this.latest.crossMarketCausalState ?? null,
-                    marketWorldState: this.latest.marketWorldState ?? null,
-                    metaCalibration: this.latest.metaCalibration ?? null,
-                    operatorAttention: this.latest.operatorAttention ?? null,
+                    executionState: state.executionState ?? null,
+                    executionControl: state.executionControl ?? null,
+                    calibration: state.calibration ?? null,
+                    drift: state.drift ?? null,
+                    validation: state.validation ?? null,
+                    aiAggregatedIntelligence: state.aiAggregatedIntelligence ?? null,
+                    constitutionalDecision: state.constitutionalDecision ?? null,
+                    marketPhysics: state.marketPhysics ?? null,
+                    scenarioBranchState: state.scenarioBranchState ?? null,
+                    crossMarketCausalState: state.crossMarketCausalState ?? null,
+                    marketWorldState: state.marketWorldState ?? null,
+                    metaCalibration: state.metaCalibration ?? null,
+                    operatorAttention: state.operatorAttention ?? null,
                 }));
                 return;
             }
             if (path === '/decision') {
+                const state = this.currentState();
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
-                    constitutionalDecision: this.latest.constitutionalDecision ?? null,
+                    constitutionalDecision: state.constitutionalDecision ?? null,
                 }));
                 return;
             }
             if (path === '/orchestration') {
+                const state = this.currentState();
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
-                    aiAggregatedIntelligence: this.latest.aiAggregatedIntelligence ?? null,
-                    aiOrchestrationMetrics: this.latest.aiOrchestrationMetrics ?? [],
-                    aiOrchestrationFailures: this.latest.aiOrchestrationFailures ?? [],
-                    aiRoutingDecisions: this.latest.aiRoutingDecisions ?? [],
+                    aiAggregatedIntelligence: state.aiAggregatedIntelligence ?? null,
+                    aiOrchestrationMetrics: state.aiOrchestrationMetrics ?? [],
+                    aiOrchestrationFailures: state.aiOrchestrationFailures ?? [],
+                    aiRoutingDecisions: state.aiRoutingDecisions ?? [],
                     summary: this.computeOrchestrationSummary(),
                 }));
                 return;
@@ -220,40 +243,42 @@ export class ApiServer {
                 return;
             }
             if (path === '/organism') {
+                const state = this.currentState();
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
-                    systemConsciousness: this.latest.systemConsciousness ?? null,
-                    epistemicHealth: this.latest.epistemicHealth ?? null,
-                    digitalImmuneAlert: this.latest.digitalImmuneAlert ?? null,
-                    strategyGenome: this.latest.strategyGenome ?? null,
-                    replayIntegrity: this.latest.replayIntegrity ?? null,
-                    marketCausalState: this.latest.marketCausalState ?? null,
-                    participantFlow: this.latest.participantFlow ?? null,
-                    adversarialAudit: this.latest.adversarialAudit ?? null,
-                    marketMemory: this.latest.marketMemory ?? null,
-                    multiTimescaleView: this.latest.multiTimescaleView ?? null,
-                    marketPhysics: this.latest.marketPhysics ?? null,
-                    scenarioBranchState: this.latest.scenarioBranchState ?? null,
-                    crossMarketCausalState: this.latest.crossMarketCausalState ?? null,
-                    marketWorldState: this.latest.marketWorldState ?? null,
-                    metaCalibration: this.latest.metaCalibration ?? null,
-                    operatorAttention: this.latest.operatorAttention ?? null,
-                    marketExperience: this.latest.marketExperience ?? null,
-                    selfImprovement: this.latest.selfImprovement ?? null,
-                    epistemicMemoryRevision: this.latest.epistemicMemoryRevision ?? null,
+                    systemConsciousness: state.systemConsciousness ?? null,
+                    epistemicHealth: state.epistemicHealth ?? null,
+                    digitalImmuneAlert: state.digitalImmuneAlert ?? null,
+                    strategyGenome: state.strategyGenome ?? null,
+                    replayIntegrity: state.replayIntegrity ?? null,
+                    marketCausalState: state.marketCausalState ?? null,
+                    participantFlow: state.participantFlow ?? null,
+                    adversarialAudit: state.adversarialAudit ?? null,
+                    marketMemory: state.marketMemory ?? null,
+                    multiTimescaleView: state.multiTimescaleView ?? null,
+                    marketPhysics: state.marketPhysics ?? null,
+                    scenarioBranchState: state.scenarioBranchState ?? null,
+                    crossMarketCausalState: state.crossMarketCausalState ?? null,
+                    marketWorldState: state.marketWorldState ?? null,
+                    metaCalibration: state.metaCalibration ?? null,
+                    operatorAttention: state.operatorAttention ?? null,
+                    marketExperience: state.marketExperience ?? null,
+                    selfImprovement: state.selfImprovement ?? null,
+                    epistemicMemoryRevision: state.epistemicMemoryRevision ?? null,
                 }));
                 return;
             }
             if (path === '/unified-field') {
+                const state = this.currentState();
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
-                    field: this.latest.unifiedField ?? null,
-                    shadow: this.latest.shadowDecision ?? null,
-                    gravity: this.latest.liquidityGravity ?? null,
-                    regime: this.latest.regimeTransition ?? null,
-                    filteredSignal: this.latest.filteredSignal ?? null,
-                    realityAlignment: this.latest.realityAlignment ?? null,
-                    causalWeights: this.latest.causalWeights ?? null,
+                    field: state.unifiedField ?? null,
+                    shadow: state.shadowDecision ?? null,
+                    gravity: state.liquidityGravity ?? null,
+                    regime: state.regimeTransition ?? null,
+                    filteredSignal: state.filteredSignal ?? null,
+                    realityAlignment: state.realityAlignment ?? null,
+                    causalWeights: state.causalWeights ?? null,
                 }));
                 return;
             }

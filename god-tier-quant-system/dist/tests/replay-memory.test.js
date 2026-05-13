@@ -1,7 +1,12 @@
 import { strict as assert } from 'node:assert';
+import { mkdtempSync, rmSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { EventBus } from '../core/event-bus/bus.js';
 import { EVENTS } from '../core/event-bus/events.js';
+import { ReplayStorage } from '../core/replay/storage.js';
 import { ReplayEngine } from '../services/replay-engine/service.js';
+import { PersistentEventLog } from '../services/replay-engine/persistent-log.js';
 import { AiIntelligenceService } from '../services/ai-intelligence/service.js';
 function testReplayChecksumDeterminism() {
     const bus = new EventBus();
@@ -75,9 +80,129 @@ function testAiTelemetryEmission() {
     assert.ok(telemetryNames.includes('ai.memory.anomaly.recorded'));
     assert.ok(ai.recentNarratives(5).length > 0, 'AI memory should store observations');
 }
-function run() {
+function testReplayStorageResumesSequenceAfterRestart() {
+    const tmpDir = mkdtempSync(path.join(os.tmpdir(), 'replay-storage-'));
+    const filePath = path.join(tmpDir, 'events.log');
+    try {
+        const firstWriter = new ReplayStorage(filePath);
+        const first = firstWriter.append('e1', { v: 1 });
+        const second = firstWriter.append('e2', { v: 2 });
+        const restartedWriter = new ReplayStorage(filePath);
+        const third = restartedWriter.append('e3', { v: 3 });
+        assert.equal(first.sequence, 1);
+        assert.equal(second.sequence, 2);
+        assert.equal(third.sequence, 3, 'sequence should continue from disk state after restart');
+    }
+    finally {
+        rmSync(tmpDir, { recursive: true, force: true });
+    }
+}
+function testReplayStateAtSequence() {
+    const bus = new EventBus();
+    const replay = new ReplayEngine(bus);
+    bus.emit(EVENTS.EXECUTION_CONTROL, {
+        mode: 'safe-mode',
+        reason: 'initial-risk',
+        timestamp: 1,
+    });
+    bus.emit(EVENTS.EXECUTION_STATE, {
+        executionId: 'exec-1',
+        contractId: 'KXBTC-T3',
+        phase: 'queued',
+        reason: 'initial-risk',
+        safetyMode: 'safe-mode',
+        timestamp: 2,
+    });
+    bus.emit(EVENTS.EXECUTION_CONTROL, {
+        mode: 'hard-stop',
+        reason: 'drift-critical',
+        timestamp: 3,
+    });
+    const stateAtTwo = replay.getStateAtSequence(2);
+    const stateAtThree = replay.getStateAtSequence(3);
+    assert.equal(stateAtTwo.executionControl?.mode, 'safe-mode', 'state reconstruction should use only events up to the target sequence');
+    assert.equal(stateAtTwo.executionState?.phase, 'queued', 'state reconstruction should preserve prior execution state');
+    assert.equal(stateAtThree.executionControl?.mode, 'hard-stop', 'later state reconstruction should include newer control events');
+}
+async function testPersistentEventLogHydration() {
+    const tmpDir = mkdtempSync(path.join(os.tmpdir(), 'persistent-replay-'));
+    const filePath = path.join(tmpDir, 'events.log');
+    try {
+        const sourceBus = new EventBus();
+        const sourceStorage = new ReplayStorage(filePath);
+        const sourcePersistentLog = new PersistentEventLog(sourceBus, sourceStorage, {
+            persistedEvents: [EVENTS.EXECUTION_CONTROL, EVENTS.EXECUTION_STATE],
+        });
+        sourcePersistentLog.start();
+        sourceBus.emit(EVENTS.EXECUTION_CONTROL, {
+            mode: 'safe-mode',
+            reason: 'feed-risk',
+            timestamp: 10,
+        });
+        sourceBus.emit(EVENTS.EXECUTION_STATE, {
+            executionId: 'exec-hydrate-1',
+            contractId: 'KXBTC-H1',
+            phase: 'queued',
+            reason: 'feed-risk',
+            safetyMode: 'safe-mode',
+            timestamp: 11,
+        });
+        sourcePersistentLog.stop();
+        const targetBus = new EventBus();
+        const targetStorage = new ReplayStorage(filePath);
+        const targetPersistentLog = new PersistentEventLog(targetBus, targetStorage, {
+            persistedEvents: [EVENTS.EXECUTION_CONTROL, EVENTS.EXECUTION_STATE],
+        });
+        const hydratedCount = await targetPersistentLog.hydrateBus();
+        targetPersistentLog.stop();
+        assert.equal(hydratedCount, 2, 'startup hydration should replay persisted events into bus history');
+        const replay = new ReplayEngine(targetBus);
+        const hydratedState = replay.deriveState();
+        assert.equal(hydratedState.executionControl?.mode, 'safe-mode', 'hydrated state should include persisted execution control');
+        assert.equal(hydratedState.executionState?.phase, 'queued', 'hydrated state should include persisted execution state');
+    }
+    finally {
+        rmSync(tmpDir, { recursive: true, force: true });
+    }
+}
+async function testReplayStorageRotationKeepsReplayableHistory() {
+    const tmpDir = mkdtempSync(path.join(os.tmpdir(), 'replay-rotation-'));
+    const filePath = path.join(tmpDir, 'events.log');
+    try {
+        const storage = new ReplayStorage(filePath, {
+            maxFileSizeBytes: 120,
+            maxArchivedFiles: 4,
+        });
+        storage.append('rotation:e1', { payload: 'x'.repeat(180) }, { timestamp: 1 });
+        storage.append('rotation:e2', { payload: 'y'.repeat(180) }, { timestamp: 2 });
+        storage.append('rotation:e3', { payload: 'z'.repeat(180) }, { timestamp: 3 });
+        const records = await storage.readAll();
+        assert.equal(records.length, 3, 'archive rotation should preserve replayable history across segments');
+        assert.deepEqual(records.map((record) => record.sequence), [1, 2, 3], 'readAll should return records in sequence order across archives');
+        const replayed = [];
+        const replayedCount = await storage.replay((record) => {
+            replayed.push(record.sequence);
+        });
+        assert.equal(replayedCount, 3, 'replay should include records from active log and archives');
+        assert.deepEqual(replayed, [1, 2, 3], 'replay should preserve deterministic ordering across rotated logs');
+        const restartedStorage = new ReplayStorage(filePath, {
+            maxFileSizeBytes: 120,
+            maxArchivedFiles: 4,
+        });
+        const next = restartedStorage.append('rotation:e4', { payload: 'w'.repeat(10) }, { timestamp: 4 });
+        assert.equal(next.sequence, 4, 'sequence should resume correctly after rotation and restart');
+    }
+    finally {
+        rmSync(tmpDir, { recursive: true, force: true });
+    }
+}
+async function run() {
     testReplayChecksumDeterminism();
     testAiTelemetryEmission();
+    testReplayStorageResumesSequenceAfterRestart();
+    testReplayStateAtSequence();
+    await testPersistentEventLogHydration();
+    await testReplayStorageRotationKeepsReplayableHistory();
     process.stdout.write('replay-memory-ok\n');
 }
-run();
+await run();

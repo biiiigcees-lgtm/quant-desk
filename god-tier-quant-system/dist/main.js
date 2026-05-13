@@ -25,6 +25,7 @@ import { PortfolioEngine } from './services/portfolio-engine/service.js';
 import { PortfolioIntelligenceService } from './services/portfolio-intelligence/service.js';
 import { ReconciliationEngine } from './services/reconciliation-engine/service.js';
 import { ReplayEngine } from './services/replay-engine/service.js';
+import { PersistentEventLog } from './services/replay-engine/persistent-log.js';
 import { AnomalyEngine } from './services/anomaly-engine/service.js';
 import { AiIntelligenceService } from './services/ai-intelligence/service.js';
 import { AiMemoryService } from './services/ai-memory/service.js';
@@ -33,6 +34,7 @@ import { OptimizationEngine } from './services/optimization-engine/service.js';
 import { SnapshotSyncService } from './services/snapshot-sync/service.js';
 import { ConstitutionalDecisionService } from './services/constitutional-decision/service.js';
 import { BeliefGraphService } from './services/belief-graph/service.js';
+import { SystemBeliefService } from './services/system-belief/service.js';
 import { AiAgentRouterService } from './services/ai-orchestration/router/service.js';
 import { AiAggregationService } from './services/ai-orchestration/aggregation/service.js';
 import { OpenRouterProvider } from './services/ai-orchestration/providers/openrouter.js';
@@ -62,12 +64,19 @@ import { RealityAlignmentService } from './services/reality-alignment/service.js
 import { CausalWeightEngine } from './services/causal-weight-engine/service.js';
 import { UnifiedMarketFieldService } from './services/unified-market-field/service.js';
 import { ShadowTradingService } from './services/shadow-trading/service.js';
+import { ReplayStorage } from './core/replay/storage.js';
 async function main() {
     const config = loadConfig();
     const bus = new EventBus();
     const logger = new Logger('god-tier-quant-system');
     const metrics = new MetricsRegistry();
     const tracer = new Tracer(bus, 'main');
+    const replayStorage = new ReplayStorage(config.replay.logPath, {
+        maxFileSizeBytes: config.replay.maxFileSizeBytes,
+        maxArchivedFiles: config.replay.maxArchivedFiles,
+    });
+    const persistentEventLog = new PersistentEventLog(bus, replayStorage);
+    const hydratedEvents = await persistentEventLog.hydrateBus();
     const marketData = new MarketDataService(bus, logger);
     const marketDataIntegrity = new MarketDataIntegrityService(bus);
     const globalContext = new GlobalContextService(bus);
@@ -99,6 +108,7 @@ async function main() {
         maxClockDriftMs: config.snapshot.maxClockDriftMs,
     });
     const beliefGraph = new BeliefGraphService(bus);
+    const systemBelief = new SystemBeliefService(bus);
     const constitutionalDecision = new ConstitutionalDecisionService(bus);
     const aiAggregation = new AiAggregationService(bus);
     const consciousness = new SystemConsciousnessService(bus, {
@@ -176,6 +186,7 @@ async function main() {
     ai.start();
     aiMemory.start();
     beliefGraph.start();
+    systemBelief.start();
     realityLayer.start();
     causalWorldModel.start();
     participantModel.start();
@@ -207,6 +218,7 @@ async function main() {
     unifiedMarketField.start();
     shadowTrading.start();
     memoryLifecycle.start(5 * 60 * 1000);
+    persistentEventLog.start();
     bus.on(EVENTS.TELEMETRY, (event) => {
         metrics.record(event);
     });
@@ -221,11 +233,14 @@ async function main() {
         researchLab: `${config.apiHost}:${config.apiPort + 1}`,
         aiOrchestration: config.orchestration.enabled,
         aiOrchestrationShadowMode: config.orchestration.shadowMode,
+        replayHydratedEvents: hydratedEvents,
+        replayLogPath: config.replay.logPath,
     });
     const shutdown = async () => {
         logger.info('shutting down');
         const span = tracer.startSpan('shutdown');
         marketData.stop();
+        persistentEventLog.stop();
         await api.stop();
         await researchLab.stop();
         tracer.endSpan(span, { status: 'ok' });

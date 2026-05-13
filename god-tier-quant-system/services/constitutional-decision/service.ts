@@ -12,12 +12,15 @@ import {
   ExecutionControlEvent,
   GovernanceRuleTrace,
   MarketExperienceEvent,
+  MarketDataIntegrityEvent,
   MarketWorldStateEvent,
   MetaCalibrationEvent,
   OperatorAttentionEvent,
   ScenarioBranchStateEvent,
   SimulationResult,
   SimulationUniverseEvent,
+  SystemBeliefStateEvent,
+  SystemBeliefUpdateEvent,
 } from '../../core/schemas/events.js';
 
 interface ContractState {
@@ -26,12 +29,15 @@ interface ContractState {
   executionControl: ExecutionControlEvent | null;
   simulation: SimulationUniverseEvent | null;
   beliefGraph: BeliefGraphStateEvent | null;
+  systemBeliefState: SystemBeliefStateEvent | null;
+  systemBeliefUpdate: SystemBeliefUpdateEvent | null;
   scenarioBranch: ScenarioBranchStateEvent | null;
   crossMarket: CrossMarketCausalStateEvent | null;
   marketWorld: MarketWorldStateEvent | null;
   marketExperience: MarketExperienceEvent | null;
   metaCalibration: MetaCalibrationEvent | null;
   operatorAttention: OperatorAttentionEvent | null;
+  marketDataIntegrity: MarketDataIntegrityEvent | null;
   sequence: number;
 }
 
@@ -74,6 +80,16 @@ export class ConstitutionalDecisionService {
       state.beliefGraph = event;
     });
 
+    this.bus.on<SystemBeliefStateEvent>(EVENTS.SYSTEM_BELIEF_STATE, (event) => {
+      const state = this.getState(event.contractId);
+      state.systemBeliefState = event;
+    });
+
+    this.bus.on<SystemBeliefUpdateEvent>(EVENTS.SYSTEM_BELIEF_UPDATE, (event) => {
+      const state = this.getState(event.contractId);
+      state.systemBeliefUpdate = event;
+    });
+
     this.bus.on<ScenarioBranchStateEvent>(EVENTS.SCENARIO_BRANCH_STATE, (event) => {
       const state = this.getState(event.contractId);
       state.scenarioBranch = event;
@@ -102,6 +118,11 @@ export class ConstitutionalDecisionService {
     this.bus.on<OperatorAttentionEvent>(EVENTS.OPERATOR_ATTENTION, (event) => {
       const state = this.getState(event.contractId);
       state.operatorAttention = event;
+    });
+
+    this.bus.on<MarketDataIntegrityEvent>(EVENTS.MARKET_DATA_INTEGRITY, (event) => {
+      const state = this.getState(event.contractId);
+      state.marketDataIntegrity = event;
     });
 
     this.bus.on<AggregatedIntelligenceEvent>(EVENTS.AI_AGGREGATED_INTELLIGENCE, (event) => {
@@ -158,12 +179,24 @@ export class ConstitutionalDecisionService {
     let finalProbability = clamp(snapshotProbability + adjustment, 0.01, 0.99);
 
     const beliefGraph = state.beliefGraph;
+    const systemBeliefState = state.systemBeliefState;
+    const systemBeliefUpdate = state.systemBeliefUpdate;
+
+    finalProbability = this.applySystemBeliefIntegration(
+      systemBeliefState,
+      systemBeliefUpdate,
+      finalProbability,
+      governanceLog,
+      conflicts,
+      decisionState,
+    );
     finalProbability = this.applyBeliefGraphIntegration(
       beliefGraph,
       finalProbability,
       governanceLog,
       conflicts,
       decisionState,
+      Boolean(systemBeliefState),
     );
 
     finalProbability = this.applyMarketWorldProbabilityAdjustment(state.marketWorld, finalProbability, governanceLog);
@@ -188,7 +221,12 @@ export class ConstitutionalDecisionService {
       1,
     );
 
-    confidenceScore = this.applyBeliefGraphConfidenceAdjustment(beliefGraph, confidenceScore);
+    confidenceScore = this.applySystemBeliefConfidenceAdjustment(systemBeliefUpdate, confidenceScore, governanceLog);
+    confidenceScore = this.applyBeliefGraphConfidenceAdjustment(
+      beliefGraph,
+      confidenceScore,
+      Boolean(systemBeliefUpdate),
+    );
     confidenceScore = this.applyMetaCalibrationConfidenceAdjustment(state.metaCalibration, confidenceScore, governanceLog);
     confidenceScore = this.applyOperatorAttentionConfidenceAdjustment(state.operatorAttention, confidenceScore, governanceLog);
 
@@ -196,6 +234,13 @@ export class ConstitutionalDecisionService {
     confidenceScore = this.applyOverconfidenceClamp(
       ai.probability_adjustment.overconfidenceDetected,
       confidenceScore,
+      governanceLog,
+    );
+    confidenceScore = this.applyLatencyConfidenceAdjustment(
+      state,
+      snapshot,
+      confidenceScore,
+      decisionTime,
       governanceLog,
     );
 
@@ -234,6 +279,66 @@ export class ConstitutionalDecisionService {
     };
 
     return decision;
+  }
+
+  private applyLatencyConfidenceAdjustment(
+    state: ContractState,
+    snapshot: DecisionSnapshotEvent | null,
+    confidenceScore: number,
+    decisionTime: number,
+    governanceLog: GovernanceRuleTrace[],
+  ): number {
+    const websocketDelayMs = Math.max(0, state.marketDataIntegrity?.latencyMs ?? 0);
+    const staleAgeMs = Math.max(0, state.marketDataIntegrity?.staleAgeMs ?? 0);
+    const processingDelayMs = snapshot ? Math.max(0, decisionTime - snapshot.timestamp) : 0;
+    const renderDelayMs = state.operatorAttention ? Math.round(clamp(state.operatorAttention.density, 0, 1) * 40) : 0;
+    const totalLatencyMs = websocketDelayMs + processingDelayMs + renderDelayMs;
+
+    const latencyPenalty = clamp(
+      totalLatencyMs / 2000
+      + staleAgeMs / 5000
+      + (state.marketDataIntegrity?.degraded ? 0.12 : 0)
+      + (state.marketDataIntegrity?.packetGapCount ?? 0) * 0.01,
+      0,
+      0.65,
+    );
+
+    const adjusted = clamp(confidenceScore * (1 - latencyPenalty), 0, 1);
+
+    this.bus.emit(EVENTS.TELEMETRY, {
+      name: 'execution.latency.websocket_ms',
+      value: websocketDelayMs,
+      tags: { contractId: snapshot?.contractId ?? 'na' },
+      timestamp: decisionTime,
+    });
+    this.bus.emit(EVENTS.TELEMETRY, {
+      name: 'execution.latency.processing_ms',
+      value: processingDelayMs,
+      tags: { contractId: snapshot?.contractId ?? 'na' },
+      timestamp: decisionTime,
+    });
+    this.bus.emit(EVENTS.TELEMETRY, {
+      name: 'execution.latency.render_ms',
+      value: renderDelayMs,
+      tags: { contractId: snapshot?.contractId ?? 'na' },
+      timestamp: decisionTime,
+    });
+    this.bus.emit(EVENTS.TELEMETRY, {
+      name: 'execution.latency.confidence_penalty',
+      value: latencyPenalty,
+      tags: { contractId: snapshot?.contractId ?? 'na' },
+      timestamp: decisionTime,
+    });
+
+    governanceLog.push(
+      this.rule(
+        'latency-confidence-decay',
+        latencyPenalty > 0.2 ? 'adjust' : 'pass',
+        `ws=${websocketDelayMs}ms proc=${processingDelayMs}ms render=${renderDelayMs}ms stale=${staleAgeMs}ms penalty=${latencyPenalty.toFixed(3)}`,
+      ),
+    );
+
+    return adjusted;
   }
 
   private recordRiskExecutionConflict(ai: AggregatedIntelligenceEvent, conflicts: AgentConflict[]): void {
@@ -575,13 +680,65 @@ export class ConstitutionalDecisionService {
     }
   }
 
+  private applySystemBeliefIntegration(
+    systemBeliefState: SystemBeliefStateEvent | null,
+    systemBeliefUpdate: SystemBeliefUpdateEvent | null,
+    finalProbability: number,
+    governanceLog: GovernanceRuleTrace[],
+    conflicts: AgentConflict[],
+    decisionState: MutableDecisionState,
+  ): number {
+    if (!systemBeliefState || !systemBeliefUpdate) {
+      governanceLog.push(this.rule('system-belief-integration', 'pass', 'no system belief available'));
+      return finalProbability;
+    }
+
+    const belief = systemBeliefState.belief;
+    if (belief.selfAssessment.calibrationDrift > 0.72 && decisionState.executionMode === 'market') {
+      decisionState.executionMode = 'passive';
+      conflicts.push({
+        category: 'risk-vs-execution',
+        severity: 'medium',
+        detail: 'system belief calibration drift forces passive execution',
+      });
+      governanceLog.push(
+        this.rule('system-belief-calibration', 'adjust', `calibration_drift=${belief.selfAssessment.calibrationDrift.toFixed(3)}`),
+      );
+    } else {
+      governanceLog.push(
+        this.rule('system-belief-calibration', 'pass', `calibration_drift=${belief.selfAssessment.calibrationDrift.toFixed(3)}`),
+      );
+    }
+
+    let adjusted = clamp(finalProbability + systemBeliefUpdate.constitutionalAdjustment, 0.01, 0.99);
+    if (belief.directionalBiasModel.bias === 'neutral') {
+      adjusted = clamp((adjusted + 0.5) / 2, 0.01, 0.99);
+    }
+
+    governanceLog.push(
+      this.rule(
+        'system-belief-integration',
+        'adjust',
+        `bias=${belief.directionalBiasModel.bias} adj=${systemBeliefUpdate.constitutionalAdjustment.toFixed(4)} penalty=${systemBeliefUpdate.confidencePenalty.toFixed(3)}`,
+      ),
+    );
+
+    return adjusted;
+  }
+
   private applyBeliefGraphIntegration(
     beliefGraph: BeliefGraphStateEvent | null,
     finalProbability: number,
     governanceLog: GovernanceRuleTrace[],
     conflicts: AgentConflict[],
     decisionState: MutableDecisionState,
+    skipDueToSystemBelief: boolean = false,
   ): number {
+    if (skipDueToSystemBelief) {
+      governanceLog.push(this.rule('belief-graph-integration', 'pass', 'system belief already applied'));
+      return finalProbability;
+    }
+
     if (!beliefGraph) {
       governanceLog.push(this.rule('belief-graph-integration', 'pass', 'no belief graph available'));
       return finalProbability;
@@ -600,11 +757,32 @@ export class ConstitutionalDecisionService {
     return adjustedProb;
   }
 
+  private applySystemBeliefConfidenceAdjustment(
+    systemBeliefUpdate: SystemBeliefUpdateEvent | null,
+    confidenceScore: number,
+    governanceLog: GovernanceRuleTrace[],
+  ): number {
+    if (!systemBeliefUpdate) {
+      return confidenceScore;
+    }
+
+    const adjusted = clamp(confidenceScore * (1 - systemBeliefUpdate.confidencePenalty * 0.45), 0, 1);
+    governanceLog.push(
+      this.rule(
+        'system-belief-confidence',
+        systemBeliefUpdate.confidencePenalty > 0.25 ? 'adjust' : 'pass',
+        `penalty=${systemBeliefUpdate.confidencePenalty.toFixed(3)} reliability=${systemBeliefUpdate.belief.selfAssessment.reliabilityScore.toFixed(3)}`,
+      ),
+    );
+    return adjusted;
+  }
+
   private applyBeliefGraphConfidenceAdjustment(
     beliefGraph: BeliefGraphStateEvent | null,
     confidenceScore: number,
+    skipDueToSystemBelief: boolean = false,
   ): number {
-    if (!beliefGraph) {
+    if (skipDueToSystemBelief || !beliefGraph) {
       return confidenceScore;
     }
 
@@ -839,12 +1017,15 @@ export class ConstitutionalDecisionService {
       executionControl: null,
       simulation: null,
       beliefGraph: null,
+      systemBeliefState: null,
+      systemBeliefUpdate: null,
       scenarioBranch: null,
       crossMarket: null,
       marketWorld: null,
       marketExperience: null,
       metaCalibration: null,
       operatorAttention: null,
+      marketDataIntegrity: null,
       sequence: 0,
     };
     this.byContract.set(contractId, state);

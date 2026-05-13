@@ -32,6 +32,11 @@ export interface SystemConfig {
     immuneCooldownMs: number;
     replayValidationMinSamples: number;
   };
+  replay: {
+    logPath: string;
+    maxFileSizeBytes: number;
+    maxArchivedFiles: number;
+  };
 }
 
 export function loadConfig(): SystemConfig {
@@ -69,6 +74,11 @@ export function loadConfig(): SystemConfig {
       epistemicFloor: Number(process.env.ORGANISM_EPISTEMIC_FLOOR ?? 0.35),
       immuneCooldownMs: Number(process.env.ORGANISM_IMMUNE_COOLDOWN_MS ?? 10_000),
       replayValidationMinSamples: Number(process.env.ORGANISM_REPLAY_MIN_SAMPLES ?? 25),
+    },
+    replay: {
+      logPath: process.env.REPLAY_LOG_PATH ?? './runtime/replay/events.log',
+      maxFileSizeBytes: Number(process.env.REPLAY_LOG_MAX_BYTES ?? 256 * 1_024 * 1_024),
+      maxArchivedFiles: Number(process.env.REPLAY_LOG_MAX_ARCHIVES ?? 8),
     },
   };
 }
