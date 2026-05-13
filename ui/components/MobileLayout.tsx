@@ -4,9 +4,11 @@ import { useState } from 'react';
 import { cx } from '../lib/cx';
 import type { SystemStateSnapshot, ParticipantType } from '../lib/types';
 import { SEVERITY_COLOR } from '../lib/tokens';
-import { widthPctClass } from '../lib/visual';
+import { leftPctClass, widthPctClass } from '../lib/visual';
 
 interface Props { state: SystemStateSnapshot | null }
+type MetricTone = 'green' | 'yellow' | 'red';
+type DecisionTone = 'green' | 'red' | 'neutral';
 
 // ─── Mobile Content (scrollable sections) ─────────────────────────────────────
 
@@ -51,7 +53,7 @@ function PriceChartSection({ state }: Readonly<Props>) {
         <MobileProbBar label="MKT" value={mktProb} fillClass="bg-green" />
         <span className={cx(
           'ml-auto font-mono text-xs font-semibold',
-          edge > 0 ? 'text-green' : edge < 0 ? 'text-red' : 'text-muted',
+          signedToneClass(edge, 'text-muted'),
         )}>
           {edge > 0 ? '+' : ''}{(edge * 100).toFixed(2)}% edge
         </span>
@@ -105,8 +107,12 @@ function DecisionSection({ state }: Readonly<Props>) {
   const uncertainty = prob?.uncertaintyScore ?? 0;
   const edgeScore = Math.round(Math.min(100, Math.abs(edge) * 1000));
   const truthScore = reality?.truthScore ?? 0;
-  const probColor = edge > 0.01 ? 'text-green' : edge < -0.01 ? 'text-red' : 'text-primary';
   const ehScore = epistemicHealth?.epistemicHealthScore ?? 0;
+  const probColor = signedToneClass(edge, 'text-primary', 0.01);
+  const edgeTone = bandToneClass(edgeScore, 40, 20);
+  const uncertaintyTone = reverseBandToneClass(uncertainty, 0.3, 0.6);
+  const truthTone = bandToneClass(truthScore, 0.7, 0.4);
+  const ehFillClass = bandFillClass(ehScore, 0.7, 0.4);
 
   return (
     <section className="px-4 py-4 panel-border shrink-0">
@@ -123,12 +129,17 @@ function DecisionSection({ state }: Readonly<Props>) {
       {/* CI bar */}
       <div className="relative w-full h-1 bg-elevated rounded-full mb-4">
         <div
-          className="absolute h-1 rounded-full opacity-30 bg-blue"
-          style={{ left: `${(ciLow * 100).toFixed(1)}%`, width: `${((ciHigh - ciLow) * 100).toFixed(1)}%` }}
+          className={cx(
+            'absolute h-1 rounded-full opacity-30 bg-blue',
+            leftPctClass(ciLow),
+            widthPctClass(ciHigh - ciLow),
+          )}
         />
         <div
-          className="absolute w-2.5 h-2.5 rounded-full -top-[3px] -translate-x-1/2 bg-blue"
-          style={{ left: `${(estProb * 100).toFixed(1)}%` }}
+          className={cx(
+            'absolute w-2.5 h-2.5 rounded-full -top-[3px] -translate-x-1/2 bg-blue',
+            leftPctClass(estProb),
+          )}
         />
       </div>
       {/* Metrics row */}
@@ -136,17 +147,17 @@ function DecisionSection({ state }: Readonly<Props>) {
         <MobileMetric
           label="edge score"
           value={`${edgeScore}/100`}
-          tone={edgeScore > 40 ? 'green' : edgeScore > 20 ? 'yellow' : 'red'}
+          tone={edgeTone}
         />
         <MobileMetric
           label="uncertainty"
           value={`${(uncertainty * 100).toFixed(0)}%`}
-          tone={uncertainty < 0.3 ? 'green' : uncertainty < 0.6 ? 'yellow' : 'red'}
+          tone={uncertaintyTone}
         />
         <MobileMetric
           label="truth score"
           value={`${(truthScore * 100).toFixed(0)}%`}
-          tone={truthScore > 0.7 ? 'green' : truthScore > 0.4 ? 'yellow' : 'red'}
+          tone={truthTone}
         />
       </div>
       {/* Epistemic health */}
@@ -157,7 +168,7 @@ function DecisionSection({ state }: Readonly<Props>) {
             <div className={cx(
               'h-full rounded-full transition-all duration-500',
               widthPctClass(ehScore),
-              ehScore > 0.7 ? 'bg-green' : ehScore > 0.4 ? 'bg-yellow' : 'bg-red',
+              ehFillClass,
             )} />
           </div>
           <span className={cx(
@@ -173,9 +184,9 @@ function DecisionSection({ state }: Readonly<Props>) {
 }
 
 function MobileMetric({ label, value, tone }: Readonly<{
-  label: string; value: string; tone: 'green' | 'yellow' | 'red';
+  label: string; value: string; tone: MetricTone;
 }>) {
-  const toneClass = tone === 'green' ? 'text-green' : tone === 'yellow' ? 'text-yellow' : 'text-red';
+  const toneClass = toneTextClass(tone);
   return (
     <div className="flex flex-col gap-0.5">
       <span className="panel-header">{label}</span>
@@ -205,7 +216,7 @@ function MarketStateSection({ state }: Readonly<Props>) {
         <RegimeBadge
           label="meta"
           value={`${((meta?.compositeScore ?? 0) * 100).toFixed(0)}%`}
-          color={(meta?.compositeScore ?? 0) > 0.7 ? '#00E5A8' : (meta?.compositeScore ?? 0) > 0.45 ? '#FFB020' : '#FF4D4D'}
+          color={metaCompositeColor(meta?.compositeScore ?? 0)}
         />
       </div>
       <div className="space-y-1.5">
@@ -218,8 +229,7 @@ function MarketStateSection({ state }: Readonly<Props>) {
         <span className="font-mono text-2xs text-muted">uncertainty state</span>
         <span className={cx(
           'font-mono text-xs font-semibold',
-          reality?.uncertaintyState === 'extreme' ? 'text-red' :
-          reality?.uncertaintyState === 'high' ? 'text-yellow' : 'text-green',
+          uncertaintyStateClass(reality?.uncertaintyState),
         )}>
           {reality?.uncertaintyState ?? '—'}
         </span>
@@ -229,11 +239,7 @@ function MarketStateSection({ state }: Readonly<Props>) {
 }
 
 function RegimeBadge({ label, value, color }: Readonly<{ label: string; value: string; color: string }>) {
-  const toneClass =
-    color === '#00E5A8' ? 'text-green' :
-    color === '#FFB020' ? 'text-yellow' :
-    color === '#FF8C00' ? 'text-[#FF8C00]' :
-    color === '#FF4D4D' ? 'text-red' : 'text-neutral';
+  const toneClass = toneClassByColor(color);
   return (
     <div className="flex flex-col items-center px-2 py-1 rounded bg-elevated gap-0.5 min-w-[3rem]">
       <span className="panel-header">{label}</span>
@@ -363,8 +369,8 @@ function CognitionSection({ state }: Readonly<Props>) {
 
 function CompactCell({ label, value }: Readonly<{ label: string; value: number }>) {
   const v = Math.max(0, Math.min(1, value));
-  const fill = v > 0.7 ? 'bg-green' : v > 0.4 ? 'bg-yellow' : 'bg-red';
-  const text = v > 0.7 ? 'text-green' : v > 0.4 ? 'text-yellow' : 'text-red';
+  const fill = bandFillClass(v, 0.7, 0.4);
+  const text = bandTextClass(v, 0.7, 0.4);
   return (
     <div className="bg-elevated rounded p-2 flex flex-col gap-1">
       <span className="panel-header">{label}</span>
@@ -387,7 +393,6 @@ function CollapsibleSection({
       <button
         className="w-full flex items-center justify-between px-4 py-2.5 shrink-0 text-left"
         onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
       >
         <span className="panel-header">{title}</span>
         <span className="font-mono text-xs text-muted">{open ? '▾' : '▸'}</span>
@@ -424,7 +429,7 @@ export function MobileDecisionBar({ state }: Readonly<Props>) {
         <div className="ml-2 flex flex-col items-end gap-0.5 shrink-0">
           <span className={cx(
             'font-mono text-xs font-semibold',
-            edge > 0 ? 'text-green' : edge < 0 ? 'text-red' : 'text-muted',
+            signedToneClass(edge, 'text-muted'),
           )}>
             {edge > 0 ? '+' : ''}{(edge * 100).toFixed(2)}%
           </span>
@@ -439,16 +444,10 @@ export function MobileDecisionBar({ state }: Readonly<Props>) {
 }
 
 function DecisionButton({ label, active, tone }: Readonly<{
-  label: string; active: boolean; tone: 'green' | 'red' | 'neutral';
+  label: string; active: boolean; tone: DecisionTone;
 }>) {
-  const activeClass =
-    tone === 'green' ? 'bg-green text-base border-green font-bold' :
-    tone === 'red' ? 'bg-red text-base border-red font-bold' :
-    'bg-elevated text-primary border-border font-bold';
-  const inactiveClass =
-    tone === 'green' ? 'text-green border-green/30 bg-elevated' :
-    tone === 'red' ? 'text-red border-red/30 bg-elevated' :
-    'text-neutral border-border bg-elevated';
+  const activeClass = decisionToneClass(tone, true);
+  const inactiveClass = decisionToneClass(tone, false);
   return (
     <div className={cx(
       'flex-1 text-center font-mono text-xs uppercase py-2 rounded border transition-all duration-300',
@@ -497,5 +496,83 @@ function participantFill(t: ParticipantType): string {
     case 'panic-flow':         return 'bg-red';
     case 'arbitrage':          return 'bg-yellow';
     default:                   return 'bg-[#FF8C00]';
+  }
+}
+
+function toneTextClass(tone: MetricTone): string {
+  switch (tone) {
+    case 'green': return 'text-green';
+    case 'yellow': return 'text-yellow';
+    default: return 'text-red';
+  }
+}
+
+function bandToneClass(value: number, high: number, medium: number): MetricTone {
+  if (value > high) return 'green';
+  if (value > medium) return 'yellow';
+  return 'red';
+}
+
+function reverseBandToneClass(value: number, low: number, medium: number): MetricTone {
+  if (value < low) return 'green';
+  if (value < medium) return 'yellow';
+  return 'red';
+}
+
+function bandFillClass(value: number, high: number, medium: number): string {
+  const tone = bandToneClass(value, high, medium);
+  if (tone === 'green') return 'bg-green';
+  if (tone === 'yellow') return 'bg-yellow';
+  return 'bg-red';
+}
+
+function bandTextClass(value: number, high: number, medium: number): string {
+  const tone = bandToneClass(value, high, medium);
+  return toneTextClass(tone);
+}
+
+function signedToneClass(value: number, neutralClass: string, deadzone = 0): string {
+  if (value > deadzone) return 'text-green';
+  if (value < -deadzone) return 'text-red';
+  return neutralClass;
+}
+
+function metaCompositeColor(value: number): string {
+  if (value > 0.7) return '#00E5A8';
+  if (value > 0.45) return '#FFB020';
+  return '#FF4D4D';
+}
+
+function uncertaintyStateClass(state: string | undefined): string {
+  switch (state) {
+    case 'extreme': return 'text-red';
+    case 'high': return 'text-yellow';
+    default: return 'text-green';
+  }
+}
+
+function toneClassByColor(color: string): string {
+  switch (color) {
+    case '#00E5A8': return 'text-green';
+    case '#FFB020': return 'text-yellow';
+    case '#FF8C00': return 'text-[#FF8C00]';
+    case '#FF4D4D': return 'text-red';
+    default: return 'text-neutral';
+  }
+}
+
+function decisionToneClass(tone: DecisionTone, active: boolean): string {
+  if (active) {
+    switch (tone) {
+      case 'green': return 'bg-green text-base border-green font-bold';
+      case 'red': return 'bg-red text-base border-red font-bold';
+      default: return 'bg-elevated text-primary border-border font-bold';
+    }
+  }
+
+  switch (tone) {
+    case 'green': return 'text-green border-green/30 bg-elevated';
+    case 'red': return 'text-red border-red/30 bg-elevated';
+    default: return 'text-neutral border-border bg-elevated';
   }
 }
