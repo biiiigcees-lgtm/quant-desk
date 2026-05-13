@@ -110,7 +110,7 @@ export function RightPanel({ state }: Readonly<Props>) {
   const world = state?.marketWorldState;
 
   return (
-    <aside className="flex flex-col w-[28%] min-w-0 bg-surface panel-border overflow-hidden">
+    <aside className="hidden md:flex flex-col w-[28%] min-w-0 bg-surface panel-border overflow-hidden">
       {/* Header */}
       <div className="px-3 py-1.5 panel-border flex items-center justify-between shrink-0">
         <span className="panel-header">ai cognition network</span>

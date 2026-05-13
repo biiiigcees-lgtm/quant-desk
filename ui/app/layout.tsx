@@ -1,5 +1,10 @@
 import './globals.css';
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+};
+
 export const metadata = {
   title: 'Quant Desk — Intelligence Terminal',
   description: 'Institutional probabilistic intelligence operating system for Kalshi prediction markets',

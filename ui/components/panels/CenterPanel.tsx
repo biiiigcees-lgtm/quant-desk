@@ -153,35 +153,6 @@ export function CenterPanel({ state }: Readonly<Props>) {
         </div>
       )}
 
-      {/* Execution permission */}
-      <div className="px-4 py-4 panel-border shrink-0 flex items-center justify-between">
-        <div>
-          <span className="panel-header block mb-1">execution permission</span>
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">{permission ? '🔓' : '🔒'}</span>
-            <div>
-              <div
-                className={cx('font-mono text-sm font-bold uppercase', permission ? 'text-green' : 'text-red')}
-              >
-                {permission ? 'permitted' : 'blocked'}
-              </div>
-              <div className="font-mono text-2xs text-muted">
-                {execControl?.reason ?? 'no override active'}
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="text-right">
-          <span className="panel-header block mb-1">governance</span>
-          <div className={cx('font-mono text-xs font-semibold uppercase', stateTextClass)}>
-            {systemState}
-          </div>
-          <div className="font-mono text-2xs text-muted mt-0.5">
-            {reality?.actionableState ? 'actionable' : 'standby'}
-          </div>
-        </div>
-      </div>
-
       {/* Causal graph */}
       <div className="px-4 py-3 flex-1 overflow-hidden">
         <span className="panel-header block mb-2">causal world model</span>
