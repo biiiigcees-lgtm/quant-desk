@@ -107,69 +107,101 @@ export class SystemBeliefService {
     updateBelief(current, snapshot, inputs) {
         const p = snapshot.state.probability.estimatedProbability;
         const edge = snapshot.state.probability.edge;
+        const regimeData = this.calculateRegimeData(snapshot, inputs);
+        const structuralData = this.calculateStructuralData(snapshot, inputs);
+        const biasData = this.calculateBiasData(p, current, regimeData.nextRegimeStability);
+        const behavioralData = this.calculateBehavioralData(snapshot, inputs, edge);
+        const assessmentData = this.calculateAssessmentData(snapshot, inputs, edge);
+        return this.buildBeliefState(current, regimeData, structuralData, biasData, behavioralData, assessmentData);
+    }
+    calculateRegimeData(snapshot, inputs) {
         const regime = snapshot.state.probability.regime;
+        const edge = snapshot.state.probability.edge;
         const drift = inputs.drift;
         const anomaly = inputs.anomaly;
-        const integrity = inputs.integrity;
-        const micro = inputs.microstructure;
-        const lastDecision = inputs.lastDecision;
         const isChop = regime === 'choppy' || regime === 'compression';
-        const isReversal = regime === 'reversal-prone';
-        const isBreakout = regime === 'momentum-ignition' || regime === 'expansion';
+        const isReversal = !isChop && regime === 'reversal-prone';
+        const isBreakout = !isChop && !isReversal && (regime === 'momentum-ignition' || regime === 'expansion');
         const nextRegimeType = isChop ? 'chop' : (isReversal ? 'reversal' : (isBreakout ? 'breakout' : 'trend'));
         const nextRegimeProbability = clamp(0.5 + Math.abs(edge) * 1.5 - (drift?.severity === 'high' ? 0.2 : drift?.severity === 'medium' ? 0.1 : 0), 0, 1);
         const nextRegimeStability = clamp(1 - (drift?.psi ?? 0) * 0.6 - (anomaly?.confidenceDegradation ?? 0) * 0.4, 0, 1);
+        return { nextRegimeType, nextRegimeProbability, nextRegimeStability };
+    }
+    calculateStructuralData(snapshot, inputs) {
+        const micro = inputs.microstructure;
+        const integrity = inputs.integrity;
+        const anomaly = inputs.anomaly;
+        const uncertainty = snapshot.state.probability.uncertaintyScore;
         const isThinLiquidity = micro?.liquidityRegime === 'vacuum' || (integrity?.healthScore ?? 1) < 0.45;
-        const isNormalLiquidity = micro?.liquidityRegime === 'thin';
+        const isNormalLiquidity = !isThinLiquidity && micro?.liquidityRegime === 'thin';
         const nextLiquidity = isThinLiquidity ? 'thin' : (isNormalLiquidity ? 'normal' : 'dense');
-        const isHighVol = snapshot.state.probability.uncertaintyScore > 0.65;
-        const isMediumVol = snapshot.state.probability.uncertaintyScore > 0.35;
+        const isHighVol = uncertainty > 0.65;
+        const isMediumVol = !isHighVol && uncertainty > 0.35;
         const nextVolRegime = isHighVol ? 'high' : (isMediumVol ? 'medium' : 'low');
         const nextManipulationRisk = clamp((micro?.spoofProbability ?? 0) * 0.5 + (anomaly?.confidenceDegradation ?? 0) * 0.3 + (1 - (integrity?.healthScore ?? 1)) * 0.2, 0, 1);
+        return { nextLiquidity, nextVolRegime, nextManipulationRisk };
+    }
+    calculateBiasData(p, current, regimeStability) {
         const isBullish = p > 0.55;
-        const isBearish = p < 0.45;
+        const isBearish = !isBullish && p < 0.45;
         const nextBias = isBullish ? 'bullish' : (isBearish ? 'bearish' : 'neutral');
         const nextBiasStrength = clamp(Math.abs(p - 0.5) * 2, 0, 1);
-        const nextPersistence = clamp(current.directionalBiasModel.persistence * 0.8 + nextRegimeStability * 0.2, 0, 1);
-        const expectedVolatility = clamp((snapshot.state.probability.uncertaintyScore * 0.55) + (micro?.spreadExpansionScore ?? 0) * 0.25 + (anomaly ? 0.2 : 0), 0, 1);
+        const nextPersistence = clamp(current.directionalBiasModel.persistence * 0.8 + regimeStability * 0.2, 0, 1);
+        return { nextBias, nextBiasStrength, nextPersistence };
+    }
+    calculateBehavioralData(snapshot, inputs, edge) {
+        const micro = inputs.microstructure;
+        const anomaly = inputs.anomaly;
+        const uncertainty = snapshot.state.probability.uncertaintyScore;
+        const expectedVolatility = clamp((uncertainty * 0.55) + (micro?.spreadExpansionScore ?? 0) * 0.25 + (anomaly ? 0.2 : 0), 0, 1);
         const expectedDrift = clamp(edge * 8, -1, 1);
         const expectedMomentum = clamp((micro?.obiVelocity ?? 0) * 0.5 + (micro?.aggressionScore ?? 0) * 0.5, -1, 1);
-        const reliabilityTarget = clamp(1 - snapshot.state.probability.uncertaintyScore * 0.4 - nextManipulationRisk * 0.3 - (drift?.severity === 'high' ? 0.2 : 0), 0, 1);
-        const calibrationTarget = clamp(snapshot.state.probability.calibrationError + (drift?.psi ?? 0) * 0.15, 0, 1);
+        return { expectedVolatility, expectedDrift, expectedMomentum };
+    }
+    calculateAssessmentData(snapshot, inputs, edge) {
+        const drift = inputs.drift;
+        const uncertainty = snapshot.state.probability.uncertaintyScore;
+        const calibError = snapshot.state.probability.calibrationError;
+        const lastDecision = inputs.lastDecision;
+        const reliabilityTarget = clamp(1 - uncertainty * 0.4 - (drift?.severity === 'high' ? 0.2 : 0), 0, 1);
+        const calibrationTarget = clamp(calibError + (drift?.psi ?? 0) * 0.15, 0, 1);
         const decisionConfidence = lastDecision?.confidence_score ?? 0.5;
         const confidenceTarget = clamp(reliabilityTarget * (1 - calibrationTarget) * (0.8 + decisionConfidence * 0.2), 0, 1);
+        return { reliabilityTarget, calibrationTarget, confidenceTarget };
+    }
+    buildBeliefState(current, regimeData, structuralData, biasData, behavioralData, assessmentData) {
         return {
             regimeHypothesis: {
-                type: nextRegimeType,
-                probability: clamp(smooth(current.regimeHypothesis.probability, nextRegimeProbability, 0.2), 0, 1),
-                stability: clamp(smooth(current.regimeHypothesis.stability, nextRegimeStability, 0.15), 0, 1),
+                type: regimeData.nextRegimeType,
+                probability: clamp(smooth(current.regimeHypothesis.probability, regimeData.nextRegimeProbability, 0.2), 0, 1),
+                stability: clamp(smooth(current.regimeHypothesis.stability, regimeData.nextRegimeStability, 0.15), 0, 1),
             },
             structuralMarketState: {
-                liquidityCondition: nextLiquidity,
-                volatilityRegime: nextVolRegime,
-                manipulationRisk: clamp(smooth(current.structuralMarketState.manipulationRisk, nextManipulationRisk, 0.2), 0, 1),
+                liquidityCondition: structuralData.nextLiquidity,
+                volatilityRegime: structuralData.nextVolRegime,
+                manipulationRisk: clamp(smooth(current.structuralMarketState.manipulationRisk, structuralData.nextManipulationRisk, 0.2), 0, 1),
             },
             directionalBiasModel: {
-                bias: nextBias,
-                strength: clamp(smooth(current.directionalBiasModel.strength, nextBiasStrength, 0.25), 0, 1),
-                persistence: clamp(smooth(current.directionalBiasModel.persistence, nextPersistence, 0.15), 0, 1),
+                bias: biasData.nextBias,
+                strength: clamp(smooth(current.directionalBiasModel.strength, biasData.nextBiasStrength, 0.25), 0, 1),
+                persistence: clamp(smooth(current.directionalBiasModel.persistence, biasData.nextPersistence, 0.15), 0, 1),
             },
             behavioralExpectation: {
-                expectedVolatility: clamp(smooth(current.behavioralExpectation.expectedVolatility, expectedVolatility, 0.2), 0, 1),
-                expectedDrift: clamp(smooth(current.behavioralExpectation.expectedDrift, expectedDrift, 0.2), -1, 1),
-                expectedMomentum: clamp(smooth(current.behavioralExpectation.expectedMomentum, expectedMomentum, 0.2), -1, 1),
+                expectedVolatility: clamp(smooth(current.behavioralExpectation.expectedVolatility, behavioralData.expectedVolatility, 0.2), 0, 1),
+                expectedDrift: clamp(smooth(current.behavioralExpectation.expectedDrift, behavioralData.expectedDrift, 0.2), -1, 1),
+                expectedMomentum: clamp(smooth(current.behavioralExpectation.expectedMomentum, behavioralData.expectedMomentum, 0.2), -1, 1),
             },
             selfAssessment: {
-                confidenceInBelief: clamp(smooth(current.selfAssessment.confidenceInBelief, confidenceTarget, 0.2), 0, 1),
-                calibrationDrift: clamp(smooth(current.selfAssessment.calibrationDrift, calibrationTarget, 0.18), 0, 1),
-                reliabilityScore: clamp(smooth(current.selfAssessment.reliabilityScore, reliabilityTarget, 0.18), 0, 1),
+                confidenceInBelief: clamp(smooth(current.selfAssessment.confidenceInBelief, assessmentData.confidenceTarget, 0.2), 0, 1),
+                calibrationDrift: clamp(smooth(current.selfAssessment.calibrationDrift, assessmentData.calibrationTarget, 0.18), 0, 1),
+                reliabilityScore: clamp(smooth(current.selfAssessment.reliabilityScore, assessmentData.reliabilityTarget, 0.18), 0, 1),
             },
         };
     }
     deriveConstitutionalAdjustment(belief) {
-        const direction = belief.directionalBiasModel.bias === 'bullish' ? 1
-            : belief.directionalBiasModel.bias === 'bearish' ? -1
-                : 0;
+        const isBullish = belief.directionalBiasModel.bias === 'bullish';
+        const isBearish = !isBullish && belief.directionalBiasModel.bias === 'bearish';
+        const direction = isBullish ? 1 : (isBearish ? -1 : 0);
         const signal = direction * belief.directionalBiasModel.strength * belief.directionalBiasModel.persistence;
         const trust = belief.selfAssessment.reliabilityScore * (1 - belief.selfAssessment.calibrationDrift);
         const structuralPenalty = belief.structuralMarketState.manipulationRisk * 0.4;

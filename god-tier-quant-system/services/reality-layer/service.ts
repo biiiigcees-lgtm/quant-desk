@@ -53,14 +53,14 @@ export class RealityLayerService {
 
     this.bus.on<DriftEvent>(EVENTS.DRIFT_EVENT, (event) => {
       const s = this.getOrCreate(event.contractId);
-      s.driftFactor = DRIFT_FACTOR[event.severity] ?? 1.0;
+      s.driftFactor = DRIFT_FACTOR[event.severity] ?? 1;
       s.lastTimestamp = event.timestamp;
       this.emit(event.contractId);
     });
 
     this.bus.on<AnomalyEvent>(EVENTS.ANOMALY, (event) => {
       const s = this.getOrCreate(event.contractId);
-      s.anomalyFactor = ANOMALY_FACTOR[event.severity] ?? 1.0;
+      s.anomalyFactor = ANOMALY_FACTOR[event.severity] ?? 1;
       s.lastTimestamp = event.timestamp;
       this.emit(event.contractId);
     });
@@ -126,19 +126,9 @@ export class RealityLayerService {
       (s.calibrationFactor * s.driftFactor * s.anomalyFactor * s.beliefFactor).toFixed(4),
     );
 
-    const isHalted = s.hardStop || truthScore < 0.20;
-    const isDegraded = !isHalted && truthScore < 0.45;
-    const isCautious = !isHalted && !isDegraded && truthScore < 0.70;
-    const systemState: SystemState = isHalted ? 'halted' : isDegraded ? 'degraded' : isCautious ? 'cautious' : 'nominal';
-
-    const executionAllowed = systemState !== 'halted';
-    const anomalyNotHigh = !((systemState === 'degraded' && s.anomalyFactor <= ANOMALY_FACTOR.high));
-    const executionPermission = executionAllowed && anomalyNotHigh;
-
-    const isLowUncertainty = truthScore >= 0.70;
-    const isMediumUncertainty = truthScore >= 0.45;
-    const isHighUncertainty = truthScore >= 0.20;
-    const uncertaintyState = isLowUncertainty ? 'low' : isMediumUncertainty ? 'medium' : isHighUncertainty ? 'high' : 'extreme';
+    const systemState = this.determineSystemState(s.hardStop, truthScore, s.anomalyFactor);
+    const executionPermission = this.calculateExecutionPermission(systemState, s.anomalyFactor);
+    const uncertaintyState = this.determineUncertaintyState(truthScore);
 
     const snapshotInput = `${contractId}:${truthScore}:${s.lastTimestamp}`;
     const canonicalSnapshotId = createHash('sha1').update(snapshotInput).digest('hex').slice(0, 12);
@@ -157,6 +147,26 @@ export class RealityLayerService {
       beliefFactor: Number(s.beliefFactor.toFixed(4)),
       timestamp: s.lastTimestamp,
     };
+  }
+
+  private determineSystemState(hardStop: boolean, truthScore: number, anomalyFactor: number): SystemState {
+    if (hardStop || truthScore < 0.20) return 'halted';
+    if (truthScore < 0.45) return 'degraded';
+    if (truthScore < 0.70) return 'cautious';
+    return 'nominal';
+  }
+
+  private calculateExecutionPermission(systemState: SystemState, anomalyFactor: number): boolean {
+    if (systemState === 'halted') return false;
+    if (systemState === 'degraded' && anomalyFactor <= ANOMALY_FACTOR.high) return false;
+    return true;
+  }
+
+  private determineUncertaintyState(truthScore: number): string {
+    if (truthScore >= 0.70) return 'low';
+    if (truthScore >= 0.45) return 'medium';
+    if (truthScore >= 0.20) return 'high';
+    return 'extreme';
   }
 
   private emit(contractId: string): void {

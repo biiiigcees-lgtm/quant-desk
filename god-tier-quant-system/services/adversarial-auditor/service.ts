@@ -54,7 +54,9 @@ export class AdversarialAuditorService {
 
     this.bus.on<AggregatedSignal>(EVENTS.AGGREGATED_SIGNAL, safeHandler((e) => {
       const s = this.getOrCreate(e.contractId);
-      s.signalDirection = e.direction === 'YES' ? 1 : (e.direction === 'NO' ? -1 : 0);
+      const isYes = e.direction === 'YES';
+      const isNo = e.direction === 'NO';
+      s.signalDirection = isYes ? 1 : (isNo ? -1 : 0);
     }, 'AdversarialAuditor.signal'));
 
     this.bus.on<RealitySnapshot>(EVENTS.REALITY_SNAPSHOT, safeHandler((e) => {

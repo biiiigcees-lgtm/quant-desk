@@ -262,7 +262,7 @@ function topologyFromSystemBelief(belief: SystemBeliefStateEvent): Consciousness
     1,
   );
   const isHighContradiction = contradictionStress > 0.66;
-  const isMediumContradiction = contradictionStress > 0.4;
+  const isMediumContradiction = !isHighContradiction && contradictionStress > 0.4;
   const contradictionCount = isHighContradiction ? 2 : (isMediumContradiction ? 1 : 0);
   const contradictionDensity = clamp(contradictionCount / topHypotheses.length, 0, 1);
   const contradictions = contradictionCount > 0

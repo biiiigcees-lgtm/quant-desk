@@ -184,7 +184,7 @@ function topologyFromSystemBelief(belief) {
     ];
     const contradictionStress = clamp(signal.structuralMarketState.manipulationRisk * 0.5 + signal.selfAssessment.calibrationDrift * 0.5, 0, 1);
     const isHighContradiction = contradictionStress > 0.66;
-    const isMediumContradiction = contradictionStress > 0.4;
+    const isMediumContradiction = !isHighContradiction && contradictionStress > 0.4;
     const contradictionCount = isHighContradiction ? 2 : (isMediumContradiction ? 1 : 0);
     const contradictionDensity = clamp(contradictionCount / topHypotheses.length, 0, 1);
     const contradictions = contradictionCount > 0
