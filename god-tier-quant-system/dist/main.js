@@ -49,6 +49,14 @@ import { LogicalClock } from './core/clock/clock.js';
 import { RiskGovernor } from './core/risk/governor.js';
 import { MemoryLifecycleManager } from './core/memory/lifecycle.js';
 import { EventLineageTracer } from './core/observability/lineage.js';
+import { OrderbookDeltaService } from './services/orderbook-delta/service.js';
+import { LiquidityGravityService } from './services/liquidity-gravity/service.js';
+import { RegimeTransitionService } from './services/regime-transition/service.js';
+import { NoiseFilterService } from './services/noise-filter/service.js';
+import { RealityAlignmentService } from './services/reality-alignment/service.js';
+import { CausalWeightEngine } from './services/causal-weight-engine/service.js';
+import { UnifiedMarketFieldService } from './services/unified-market-field/service.js';
+import { ShadowTradingService } from './services/shadow-trading/service.js';
 async function main() {
     const config = loadConfig();
     const bus = new EventBus();
@@ -106,6 +114,14 @@ async function main() {
     const riskGovernor = new RiskGovernor(bus);
     const memoryLifecycle = new MemoryLifecycleManager();
     const lineageTracer = new EventLineageTracer(bus);
+    const orderbookDelta = new OrderbookDeltaService(bus);
+    const liquidityGravity = new LiquidityGravityService(bus);
+    const regimeTransition = new RegimeTransitionService(bus);
+    const noiseFilter = new NoiseFilterService(bus);
+    const realityAlignment = new RealityAlignmentService(bus);
+    const causalWeightEngine = new CausalWeightEngine(bus);
+    const unifiedMarketField = new UnifiedMarketFieldService(bus);
+    const shadowTrading = new ShadowTradingService(bus);
     const openRouterProvider = new OpenRouterProvider({
         apiKey: config.openRouter.apiKey,
         timeoutMs: config.openRouter.timeoutMs,
@@ -124,7 +140,7 @@ async function main() {
             cooldownMs: config.orchestration.circuitBreaker.cooldownMs,
         },
     });
-    const api = new ApiServer(bus, config.apiHost, config.apiPort, riskGovernor, lineageTracer);
+    const api = new ApiServer(bus, config.apiHost, config.apiPort, riskGovernor, lineageTracer, unifiedMarketField);
     const researchLab = new ResearchLabServer(bus, config.apiHost, config.apiPort + 1);
     globalContext.start();
     micro.start();
@@ -164,6 +180,15 @@ async function main() {
     aiRouter.start();
     riskGovernor.start();
     lineageTracer.start();
+    // Unified Causal Market Physics Engine — starts after all upstream services
+    orderbookDelta.start();
+    liquidityGravity.start();
+    noiseFilter.start();
+    regimeTransition.start();
+    causalWeightEngine.start();
+    realityAlignment.start();
+    unifiedMarketField.start();
+    shadowTrading.start();
     memoryLifecycle.register('lineage', () => lineageTracer.pruneOlderThan(30 * 60 * 1000));
     memoryLifecycle.start(5 * 60 * 1000);
     bus.on(EVENTS.TELEMETRY, (event) => {

@@ -6,12 +6,13 @@ import { ReplayStorage } from '../../core/replay/storage.js';
 import { ExecutionJournal } from '../../core/execution/journal.js';
 import { ExecutionCoordinator } from '../../core/determinism/execution-coordinator.js';
 export class ApiServer {
-    constructor(bus, host, port, riskGovernor, lineageTracer) {
+    constructor(bus, host, port, riskGovernor, lineageTracer, unifiedField) {
         this.bus = bus;
         this.host = host;
         this.port = port;
         this.riskGovernor = riskGovernor;
         this.lineageTracer = lineageTracer;
+        this.unifiedField = unifiedField;
         this.server = null;
         this.latest = {};
         this.orchestrationMetrics = [];
@@ -154,6 +155,27 @@ export class ApiServer {
             this.latest.multiTimescaleView = event;
             this.snapshotReducer.apply('multiTimescaleView', event);
         });
+        this.bus.on(EVENTS.UNIFIED_FIELD, (event) => {
+            this.latest.unifiedField = event;
+        });
+        this.bus.on(EVENTS.SHADOW_DECISION, (event) => {
+            this.latest.shadowDecision = event;
+        });
+        this.bus.on(EVENTS.LIQUIDITY_GRAVITY, (event) => {
+            this.latest.liquidityGravity = event;
+        });
+        this.bus.on(EVENTS.REGIME_TRANSITION, (event) => {
+            this.latest.regimeTransition = event;
+        });
+        this.bus.on(EVENTS.FILTERED_SIGNAL, (event) => {
+            this.latest.filteredSignal = event;
+        });
+        this.bus.on(EVENTS.REALITY_ALIGNMENT, (event) => {
+            this.latest.realityAlignment = event;
+        });
+        this.bus.on(EVENTS.CAUSAL_WEIGHTS, (event) => {
+            this.latest.causalWeights = event;
+        });
         this.server = http.createServer((req, res) => {
             const path = req.url ?? '/';
             if (path === '/health') {
@@ -267,6 +289,28 @@ export class ApiServer {
                 res.end(JSON.stringify({
                     contractId,
                     chains: this.lineageTracer?.getLineage(contractId, 20) ?? [],
+                }));
+                return;
+            }
+            if (path === '/unified-field') {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    field: this.latest.unifiedField ?? null,
+                    shadow: this.latest.shadowDecision ?? null,
+                    gravity: this.latest.liquidityGravity ?? null,
+                    regime: this.latest.regimeTransition ?? null,
+                    filteredSignal: this.latest.filteredSignal ?? null,
+                    realityAlignment: this.latest.realityAlignment ?? null,
+                    causalWeights: this.latest.causalWeights ?? null,
+                }));
+                return;
+            }
+            if (path.startsWith('/unified-field/')) {
+                const contractId = decodeURIComponent(path.slice('/unified-field/'.length));
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    contractId,
+                    field: this.unifiedField?.getLatestField(contractId) ?? null,
                 }));
                 return;
             }
