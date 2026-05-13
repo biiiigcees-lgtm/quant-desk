@@ -45,7 +45,7 @@ export function BottomPanel({ state }: Readonly<Props>) {
     : [];
 
   return (
-    <footer className="flex h-[28%] bg-surface panel-border shrink-0 overflow-hidden divide-x divide-border">
+    <footer className="flex h-[28%] bg-surface panel-border shrink-0 overflow-x-auto md:overflow-hidden divide-x divide-border">
       {/* Execution state machine */}
       <div className="flex flex-col w-[22%] p-3 overflow-hidden">
         <span className="panel-header mb-2">execution state machine</span>

@@ -37,11 +37,11 @@ export function TopBar({ state, isConnected }: Readonly<Props>) {
         {systemState}
       </div>
 
-      {/* Epistemic health grade badge */}
+      {/* Epistemic health grade badge — hidden on mobile */}
       {epistemicGrade && (
         <div
           className={cx(
-            'px-1.5 py-0.5 rounded font-mono text-2xs font-bold border',
+            'hidden md:flex px-1.5 py-0.5 rounded font-mono text-2xs font-bold border',
             epistemicGradeClass(epistemicGrade),
           )}
           title={`Epistemic health: ${epistemicGrade}`}
@@ -51,7 +51,7 @@ export function TopBar({ state, isConnected }: Readonly<Props>) {
       )}
 
       {metaCalibration !== undefined && (
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="hidden md:flex items-center gap-1.5 shrink-0">
           <span className="panel-header">meta</span>
           <span className={cx('font-mono text-2xs font-semibold', scoreToneClass(metaCalibration))}>
             {(metaCalibration * 100).toFixed(0)}%
@@ -60,7 +60,7 @@ export function TopBar({ state, isConnected }: Readonly<Props>) {
       )}
 
       {selfTrust !== undefined && (
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="hidden md:flex items-center gap-1.5 shrink-0">
           <span className="panel-header">trust</span>
           <span className={cx('font-mono text-2xs font-semibold', scoreToneClass(selfTrust))}>
             {(selfTrust * 100).toFixed(0)}%
@@ -69,7 +69,7 @@ export function TopBar({ state, isConnected }: Readonly<Props>) {
       )}
 
       {authorityDecay !== undefined && (
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="hidden md:flex items-center gap-1.5 shrink-0">
           <span className="panel-header">decay</span>
           <span className={cx('font-mono text-2xs font-semibold', decayToneClass(authorityDecay))}>
             {(authorityDecay * 100).toFixed(0)}%
@@ -77,8 +77,8 @@ export function TopBar({ state, isConnected }: Readonly<Props>) {
         </div>
       )}
 
-      {/* Truth score bar */}
-      <div className="flex items-center gap-1.5 shrink-0">
+      {/* Truth score bar — hidden on mobile */}
+      <div className="hidden md:flex items-center gap-1.5 shrink-0">
         <span className="panel-header">truth</span>
         <div className="w-16 h-1.5 bg-elevated rounded-full overflow-hidden">
           <div
@@ -92,7 +92,7 @@ export function TopBar({ state, isConnected }: Readonly<Props>) {
         <span className="panel-header font-mono">{(truthScore * 100).toFixed(0)}%</span>
       </div>
 
-      <div className="w-px h-4 bg-border" />
+      <div className="hidden md:block w-px h-4 bg-border" />
 
       {/* Probability display */}
       <div className="flex items-center gap-3 font-mono text-xs shrink-0">
@@ -106,10 +106,10 @@ export function TopBar({ state, isConnected }: Readonly<Props>) {
         </span>
       </div>
 
-      <div className="w-px h-4 bg-border" />
+      <div className="hidden md:block w-px h-4 bg-border" />
 
-      {/* Regime */}
-      <div className="flex items-center gap-1.5 shrink-0">
+      {/* Regime — hidden on mobile */}
+      <div className="hidden md:flex items-center gap-1.5 shrink-0">
         <span className="panel-header">regime</span>
         <span className="font-mono text-xs text-yellow uppercase">{prob?.regime ?? '—'}</span>
       </div>
