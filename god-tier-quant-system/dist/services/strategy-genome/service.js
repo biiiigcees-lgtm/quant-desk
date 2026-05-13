@@ -23,6 +23,20 @@ export class StrategyGenomeService {
             this.genomes.set(current.strategyId, current);
             this.publish();
         });
+        this.bus.on(EVENTS.SELF_IMPROVEMENT, (event) => {
+            const optimizerGenome = this.getOrCreateGenome(event.strategyId);
+            optimizerGenome.validationCount += 1;
+            optimizerGenome.auditScore = clamp(optimizerGenome.auditScore * 0.8 + (event.guarded ? 70 : 85) * 0.2, 0, 100);
+            optimizerGenome.mutationRate = clamp(optimizerGenome.mutationRate * 0.75 + event.adaptationRate * 0.25, 0.02, event.guarded ? 0.28 : 0.45);
+            if (event.guarded) {
+                optimizerGenome.lifecycle = optimizerGenome.lifecycle === 'extinction' ? 'extinction' : 'decay';
+            }
+            else {
+                optimizerGenome.lifecycle = deriveLifecycleFromValidation(optimizerGenome);
+            }
+            this.genomes.set(optimizerGenome.strategyId, optimizerGenome);
+            this.publish();
+        });
     }
     applyValidation(event) {
         if (!event.strategyId) {

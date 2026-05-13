@@ -148,12 +148,117 @@ async function run(): Promise<void> {
     timestamp: Date.now(),
   });
 
+  bus.emit(EVENTS.MARKET_PHYSICS, {
+    contractId: 'KXBTC-DEMO',
+    compression: 0.62,
+    expansion: 0.41,
+    inertia: 0.55,
+    exhaustion: 0.37,
+    entropyExpansion: 0.44,
+    liquidityConservation: 0.59,
+    structuralStress: 0.68,
+    timestamp: Date.now(),
+  });
+
+  bus.emit(EVENTS.SCENARIO_BRANCH_STATE, {
+    contractId: 'KXBTC-DEMO',
+    invalidated: false,
+    branchScores: { baseline: 0.58, stress: 0.42 },
+    dominantBranch: 'baseline',
+    volatilityWeight: 0.49,
+    timestamp: Date.now(),
+  });
+
+  bus.emit(EVENTS.CROSS_MARKET_CAUSAL_STATE, {
+    contractId: 'KXBTC-DEMO',
+    riskTransmissionScore: 0.46,
+    correlationBreakdown: {
+      macroToLocal: 0.51,
+      liquidityToDrift: 0.43,
+      sentimentCoupling: 0.39,
+    },
+    dominantDriver: 'macro-to-local',
+    timestamp: Date.now(),
+  });
+
+  bus.emit(EVENTS.MARKET_WORLD_STATE, {
+    contractId: 'KXBTC-DEMO',
+    participantIntent: 'hedging',
+    syntheticLiquidityProbability: 0.57,
+    forcedPositioningPressure: 0.41,
+    reflexivityAcceleration: 0.36,
+    worldConfidence: 0.64,
+    scenarioDominantBranch: 'baseline',
+    hiddenState: 'momentum-continuation',
+    timestamp: Date.now(),
+  });
+
+  bus.emit(EVENTS.META_CALIBRATION, {
+    contractId: 'KXBTC-DEMO',
+    signalCalibration: 0.66,
+    aiCalibration: 0.61,
+    executionCalibration: 0.58,
+    regimeCalibration: 0.63,
+    uncertaintyCalibration: 0.54,
+    compositeScore: 0.61,
+    authorityDecay: 0.34,
+    timestamp: Date.now(),
+  });
+
+  bus.emit(EVENTS.OPERATOR_ATTENTION, {
+    contractId: 'KXBTC-DEMO',
+    focus: 'focused',
+    priority: ['calibration', 'execution'],
+    contradictionHotspots: ['momentum-bullish|mean-reversion-pressure'],
+    density: 0.44,
+    timestamp: Date.now(),
+  });
+
+  bus.emit(EVENTS.MARKET_EXPERIENCE, {
+    contractId: 'KXBTC-DEMO',
+    archetype: 'liquidity-fragility-breakout',
+    recurringFailureSignature: false,
+    traumaPenalty: 0.22,
+    retrievalConfidence: 0.58,
+    timestamp: Date.now(),
+  });
+
+  bus.emit(EVENTS.SELF_IMPROVEMENT, {
+    strategyId: 'trend-follow-v2',
+    contractId: 'KXBTC-DEMO',
+    adaptationRate: 0.11,
+    guarded: false,
+    reason: 'positive reconciliation drift',
+    updatedWeights: { momentum: 0.62, meanReversion: 0.38 },
+    timestamp: Date.now(),
+  });
+
+  bus.emit(EVENTS.EPISTEMIC_MEMORY_REVISION, {
+    contractId: 'KXBTC-DEMO',
+    revisionId: 'rev-1',
+    hypothesisId: 'momentum-bullish',
+    previousConfidence: 0.55,
+    nextConfidence: 0.61,
+    reason: 'belief graph confidence update',
+    lineage: ['snap-1', 'cycle-1'],
+    contradictionCount: 1,
+    timestamp: Date.now(),
+  });
+
   const organism = (await requestJson(address.port, '/organism')) as {
     systemConsciousness: { executionConfidence: number } | null;
     epistemicHealth: { score: number } | null;
     digitalImmuneAlert: { recommendedMode: string } | null;
     strategyGenome: { topGenomes: Array<{ strategyId: string }> } | null;
     replayIntegrity: { deterministic: boolean } | null;
+    marketPhysics: { structuralStress: number } | null;
+    scenarioBranchState: { dominantBranch: string } | null;
+    crossMarketCausalState: { dominantDriver: string } | null;
+    marketWorldState: { participantIntent: string } | null;
+    metaCalibration: { compositeScore: number } | null;
+    operatorAttention: { focus: string } | null;
+    selfImprovement: { strategyId: string } | null;
+    epistemicMemoryRevision: { revisionId: string } | null;
   };
 
   assert.ok(organism.systemConsciousness, 'organism endpoint should expose consciousness');
@@ -161,11 +266,23 @@ async function run(): Promise<void> {
   assert.ok(organism.strategyGenome?.topGenomes.length, 'organism endpoint should expose genome updates');
   assert.equal(organism.replayIntegrity?.deterministic, true, 'replay integrity should validate deterministic replay');
   assert.equal(organism.digitalImmuneAlert?.recommendedMode, 'hard-stop', 'immune alert should enforce hard-stop on critical anomalies');
+  assert.ok(organism.marketPhysics, 'organism endpoint should expose market physics state');
+  assert.equal(organism.scenarioBranchState?.dominantBranch, 'baseline', 'organism endpoint should expose scenario branch state');
+  assert.equal(organism.crossMarketCausalState?.dominantDriver, 'macro-to-local', 'organism endpoint should expose cross-market state');
+  assert.equal(organism.marketWorldState?.participantIntent, 'hedging', 'organism endpoint should expose market world state');
+  assert.equal(organism.metaCalibration?.compositeScore, 0.61, 'organism endpoint should expose meta calibration');
+  assert.equal(organism.operatorAttention?.focus, 'focused', 'organism endpoint should expose operator attention');
+  assert.equal(organism.selfImprovement?.strategyId, 'trend-follow-v2', 'organism endpoint should expose self improvement stream');
+  assert.equal(organism.epistemicMemoryRevision?.revisionId, 'rev-1', 'organism endpoint should expose memory revision lineage');
 
   const execution = (await requestJson(address.port, '/execution')) as {
     executionControl?: { mode: string; reason: string };
+    metaCalibration?: { compositeScore: number };
+    marketWorldState?: { participantIntent: string };
   };
   assert.equal(execution.executionControl?.mode, 'hard-stop', 'execution endpoint should reflect digital immune hard-stop');
+  assert.equal(execution.metaCalibration?.compositeScore, 0.61, 'execution endpoint should expose meta calibration state');
+  assert.equal(execution.marketWorldState?.participantIntent, 'hedging', 'execution endpoint should expose market world state');
 
   await api.stop();
   process.stdout.write('organism-phases-ok\n');

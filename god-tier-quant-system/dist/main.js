@@ -41,6 +41,17 @@ import { DigitalImmuneSystemService } from './services/digital-immune-system/ser
 import { StrategyGenomeService } from './services/strategy-genome/service.js';
 import { ReplayIntegrityService } from './services/replay-integrity/service.js';
 import { InvariantEngineService } from './services/invariant-engine/service.js';
+import { RealityLayerService } from './services/reality-layer/service.js';
+import { CausalWorldModelService } from './services/causal-world-model/service.js';
+import { MarketParticipantModelService } from './services/market-participant-model/service.js';
+import { EpistemicHealthService } from './services/epistemic-health/service.js';
+import { AdversarialAuditorService } from './services/adversarial-auditor/service.js';
+import { MarketMemoryService } from './services/market-memory/service.js';
+import { MultiTimescaleCognitionService } from './services/multiscale-cognition/service.js';
+import { MarketPhysicsService } from './services/market-physics/service.js';
+import { MarketWorldModelService } from './services/market-world-model/service.js';
+import { MetaCalibrationService } from './services/meta-calibration/service.js';
+import { OperatorAttentionService } from './services/operator-attention/service.js';
 async function main() {
     const config = loadConfig();
     const bus = new EventBus();
@@ -90,6 +101,17 @@ async function main() {
         minimumSampleSize: config.organism.replayValidationMinSamples,
     });
     const invariantEngine = new InvariantEngineService(bus);
+    const realityLayer = new RealityLayerService(bus);
+    const causalWorldModel = new CausalWorldModelService(bus);
+    const participantModel = new MarketParticipantModelService(bus);
+    const epistemicHealth = new EpistemicHealthService(bus);
+    const adversarialAuditor = new AdversarialAuditorService(bus);
+    const marketMemory = new MarketMemoryService(bus);
+    const multiTimescale = new MultiTimescaleCognitionService(bus);
+    const marketPhysics = new MarketPhysicsService(bus);
+    const marketWorldModel = new MarketWorldModelService(bus);
+    const metaCalibration = new MetaCalibrationService(bus);
+    const operatorAttention = new OperatorAttentionService(bus);
     const openRouterProvider = new OpenRouterProvider({
         apiKey: config.openRouter.apiKey,
         timeoutMs: config.openRouter.timeoutMs,
@@ -133,6 +155,17 @@ async function main() {
     ai.start();
     aiMemory.start();
     beliefGraph.start();
+    realityLayer.start();
+    causalWorldModel.start();
+    participantModel.start();
+    epistemicHealth.start();
+    adversarialAuditor.start();
+    marketMemory.start();
+    multiTimescale.start();
+    marketPhysics.start();
+    marketWorldModel.start();
+    metaCalibration.start();
+    operatorAttention.start();
     constitutionalDecision.start();
     consciousness.start();
     immuneSystem.start();

@@ -16,6 +16,9 @@ export function TopBar({ state, isConnected }: Readonly<Props>) {
   const truthScore = reality?.truthScore ?? 0;
   const snapshotId = reality?.canonicalSnapshotId ?? '—';
   const epistemicGrade = state?.epistemicHealth?.healthGrade;
+  const metaCalibration = state?.metaCalibration?.compositeScore;
+  const authorityDecay = state?.metaCalibration?.authorityDecay;
+  const selfTrust = state?.systemConsciousness?.selfTrustScore;
 
   const estProb = prob?.estimatedProbability ?? 0;
   const marketProb = prob?.marketImpliedProbability ?? 0;
@@ -44,6 +47,33 @@ export function TopBar({ state, isConnected }: Readonly<Props>) {
           title={`Epistemic health: ${epistemicGrade}`}
         >
           EH:{epistemicGrade}
+        </div>
+      )}
+
+      {metaCalibration !== undefined && (
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="panel-header">meta</span>
+          <span className={cx('font-mono text-2xs font-semibold', scoreToneClass(metaCalibration))}>
+            {(metaCalibration * 100).toFixed(0)}%
+          </span>
+        </div>
+      )}
+
+      {selfTrust !== undefined && (
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="panel-header">trust</span>
+          <span className={cx('font-mono text-2xs font-semibold', scoreToneClass(selfTrust))}>
+            {(selfTrust * 100).toFixed(0)}%
+          </span>
+        </div>
+      )}
+
+      {authorityDecay !== undefined && (
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="panel-header">decay</span>
+          <span className={cx('font-mono text-2xs font-semibold', decayToneClass(authorityDecay))}>
+            {(authorityDecay * 100).toFixed(0)}%
+          </span>
         </div>
       )}
 
@@ -163,4 +193,24 @@ function edgeClass(edge: number): string {
     return 'text-red';
   }
   return 'text-muted';
+}
+
+function scoreToneClass(score: number): string {
+  if (score > 0.7) {
+    return 'text-green';
+  }
+  if (score > 0.45) {
+    return 'text-yellow';
+  }
+  return 'text-red';
+}
+
+function decayToneClass(decay: number): string {
+  if (decay > 0.75) {
+    return 'text-red';
+  }
+  if (decay > 0.55) {
+    return 'text-yellow';
+  }
+  return 'text-green';
 }

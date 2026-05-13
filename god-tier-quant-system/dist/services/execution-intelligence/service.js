@@ -13,6 +13,11 @@ export class ExecutionIntelligenceEngine {
         this.latestConstitutionalSnapshotSeq = new Map();
         this.latestConstitutionalDecisionTs = new Map();
         this.latestRiskDecisionTs = new Map();
+        this.latestMicro = new Map();
+        this.latestPhysics = new Map();
+        this.latestScenario = new Map();
+        this.latestWorld = new Map();
+        this.latestAuthorityDecay = new Map();
         this.latestAiExecutionAdvisoryTs = 0;
         this.aiExecutionAdvisory = null;
     }
@@ -31,6 +36,21 @@ export class ExecutionIntelligenceEngine {
             };
             this.latestAiExecutionAdvisoryTs = this.clock.observe(Number(event.timestamp ?? this.clock.tick()));
         });
+        this.bus.on(EVENTS.MICROSTRUCTURE, (event) => {
+            this.latestMicro.set(event.contractId, event);
+        });
+        this.bus.on(EVENTS.MARKET_PHYSICS, (event) => {
+            this.latestPhysics.set(event.contractId, event);
+        });
+        this.bus.on(EVENTS.SCENARIO_BRANCH_STATE, (event) => {
+            this.latestScenario.set(event.contractId, event);
+        });
+        this.bus.on(EVENTS.MARKET_WORLD_STATE, (event) => {
+            this.latestWorld.set(event.contractId, event);
+        });
+        this.bus.on(EVENTS.META_CALIBRATION, (event) => {
+            this.latestAuthorityDecay.set(event.contractId, clamp(event.authorityDecay, 0, 1));
+        });
         this.bus.on(EVENTS.CONSTITUTIONAL_DECISION, (decision) => {
             this.handleConstitutionalDecision(decision);
         });
@@ -44,74 +64,19 @@ export class ExecutionIntelligenceEngine {
     handleConstitutionalDecision(decision) {
         const decisionTime = this.clock.observe(decision.timestamp);
         const executionId = `exec-${decision.contractId}-${decision.cycle_id}`;
-        if (!decision.trade_allowed || decision.execution_mode === 'blocked') {
-            this.publishState({
-                executionId,
-                contractId: decision.contractId,
-                phase: 'blocked',
-                reason: 'constitutional-block',
-                safetyMode: 'hard-stop',
-                timestamp: decisionTime,
-            });
-            return;
-        }
-        if (this.isStaleConstitutionalDecision(decision)) {
-            this.publishState({
-                executionId,
-                contractId: decision.contractId,
-                phase: 'blocked',
-                reason: 'stale-constitutional-snapshot',
-                safetyMode: 'safe-mode',
-                timestamp: decisionTime,
-            });
+        if (this.shouldBlockConstitutionalDecision(decision, executionId, decisionTime)) {
             return;
         }
         const dedupeKey = `constitutional:${decision.contractId}:${decision.snapshot_id}`;
         const lease = this.coordinator.acquire(decision.contractId, dedupeKey, decisionTime);
         if (!lease.acquired) {
-            if (lease.reason === 'duplicate') {
-                return;
+            if (lease.reason !== 'duplicate') {
+                this.publishExecutionBlocked(executionId, decision.contractId, 'execution-lock-contention', 'safe-mode', decisionTime);
             }
-            this.publishState({
-                executionId,
-                contractId: decision.contractId,
-                phase: 'blocked',
-                reason: 'execution-lock-contention',
-                safetyMode: 'safe-mode',
-                timestamp: decisionTime,
-            });
             return;
         }
         try {
-            const direction = decision.final_probability >= 0.5 ? 'YES' : 'NO';
-            const safetyMode = decision.risk_level >= 75 ? 'safe-mode' : 'normal';
-            const baselineSize = 150 * Math.max(0.02, Math.abs(decision.edge_score)) * Math.max(0.1, decision.confidence_score);
-            const size = clamp(baselineSize, 5, 800);
-            const limitPrice = clamp(decision.final_probability, 0.01, 0.99);
-            let orderStyle = decision.execution_mode === 'passive' ? 'passive' : 'market';
-            if (this.aiExecutionAdvisory
-                && this.aiExecutionAdvisory.confidence >= 0.55
-                && this.latestAiExecutionAdvisoryTs >= decision.timestamp) {
-                orderStyle = this.aiExecutionAdvisory.orderStyle;
-            }
-            const slices = this.resolveSlices(orderStyle);
-            const slippage = this.resolveSlippage(orderStyle);
-            const fillProbability = this.resolveFillProbability(orderStyle);
-            const plan = {
-                executionId,
-                contractId: decision.contractId,
-                direction,
-                orderStyle,
-                slices,
-                expectedSlippage: slippage,
-                fillProbability,
-                limitPrice,
-                size,
-                latencyBudgetMs: this.resolveLatencyBudget(orderStyle, safetyMode),
-                routeReason: 'constitutional-decision',
-                safetyMode,
-                timestamp: decisionTime,
-            };
+            const plan = this.buildPlanFromConstitutionalDecision(decision, executionId, decisionTime);
             this.emitPlanLifecycle(plan, 'constitutional-created');
             this.coordinator.release(decision.contractId, lease.token ?? '', true);
         }
@@ -182,47 +147,217 @@ export class ExecutionIntelligenceEngine {
         }
     }
     buildPlanFromRiskDecision(decision, executionId) {
-        let orderStyle = 'market';
-        let routeReason = 'baseline-market';
-        if (decision.ruinProbability > 0.15) {
-            orderStyle = 'passive';
-            routeReason = 'ruin-probability-protective-passive';
-        }
-        else if (decision.size > 500) {
-            orderStyle = 'sliced';
-            routeReason = 'large-size-sliced';
-        }
-        else if (decision.safetyMode === 'safe-mode') {
-            orderStyle = 'passive';
-            routeReason = 'safe-mode-passive';
+        const initialRouting = this.resolveInitialRiskRouting(decision);
+        let orderStyle = initialRouting.orderStyle;
+        if (this.hasFreshAiAdvisory(decision.timestamp) && decision.safetyMode !== 'hard-stop') {
+            orderStyle = this.aiExecutionAdvisory?.orderStyle ?? orderStyle;
         }
         const baselineSlippage = this.resolveBaselineSlippage(orderStyle);
         const baselineFillProbability = this.resolveBaselineFillProbability(orderStyle);
-        if (this.aiExecutionAdvisory && this.aiExecutionAdvisory.confidence >= 0.55 && decision.safetyMode !== 'hard-stop') {
-            orderStyle = this.aiExecutionAdvisory.orderStyle;
-        }
-        const slices = this.resolveSlices(orderStyle);
-        const expectedSlippage = this.aiExecutionAdvisory
+        const adjustment = this.applyRiskExecutionAdjustment(decision, orderStyle, decision.safetyMode, decision.size, initialRouting.routeReason);
+        const blendedSlippage = this.aiExecutionAdvisory
             ? clamp((baselineSlippage + this.aiExecutionAdvisory.expectedSlippage) / 2, 0.001, 1)
             : baselineSlippage;
-        const fillProbability = this.aiExecutionAdvisory
+        const blendedFillProbability = this.aiExecutionAdvisory
             ? clamp((baselineFillProbability + this.aiExecutionAdvisory.fillProbability) / 2, 0.01, 1)
             : baselineFillProbability;
+        const params = this.resolveExecutionParameters(adjustment.orderStyle, adjustment.safetyMode, blendedSlippage, blendedFillProbability, adjustment.predatoryBrake, adjustment.absorptionAcceleration, adjustment.reflexivityAcceleration);
         return {
             executionId,
             contractId: decision.contractId,
             direction: decision.direction,
-            orderStyle,
-            slices,
-            expectedSlippage,
-            fillProbability,
+            orderStyle: adjustment.orderStyle,
+            slices: params.slices,
+            expectedSlippage: params.expectedSlippage,
+            fillProbability: params.fillProbability,
             limitPrice: decision.limitPrice,
-            size: decision.size,
-            latencyBudgetMs: this.resolveLatencyBudget(orderStyle, decision.safetyMode),
-            routeReason: this.aiExecutionAdvisory ? `${routeReason}+ai-advisory` : routeReason,
-            safetyMode: decision.safetyMode,
+            size: adjustment.size,
+            latencyBudgetMs: params.latencyBudgetMs,
+            routeReason: this.aiExecutionAdvisory ? `${adjustment.routeReason}+ai-advisory` : adjustment.routeReason,
+            safetyMode: adjustment.safetyMode,
             timestamp: this.clock.observe(decision.timestamp),
         };
+    }
+    shouldBlockConstitutionalDecision(decision, executionId, decisionTime) {
+        if (!decision.trade_allowed || decision.execution_mode === 'blocked') {
+            this.publishExecutionBlocked(executionId, decision.contractId, 'constitutional-block', 'hard-stop', decisionTime);
+            return true;
+        }
+        if (this.isStaleConstitutionalDecision(decision)) {
+            this.publishExecutionBlocked(executionId, decision.contractId, 'stale-constitutional-snapshot', 'safe-mode', decisionTime);
+            return true;
+        }
+        return false;
+    }
+    publishExecutionBlocked(executionId, contractId, reason, safetyMode, timestamp) {
+        this.publishState({
+            executionId,
+            contractId,
+            phase: 'blocked',
+            reason,
+            safetyMode,
+            timestamp,
+        });
+    }
+    buildPlanFromConstitutionalDecision(decision, executionId, decisionTime) {
+        const direction = decision.final_probability >= 0.5 ? 'YES' : 'NO';
+        const initialSafetyMode = decision.risk_level >= 75 ? 'safe-mode' : 'normal';
+        const baselineSize = 150 * Math.max(0.02, Math.abs(decision.edge_score)) * Math.max(0.1, decision.confidence_score);
+        const initialSize = clamp(baselineSize, 5, 800);
+        let orderStyle = decision.execution_mode === 'passive' ? 'passive' : 'market';
+        if (this.hasFreshAiAdvisory(decision.timestamp)) {
+            orderStyle = this.aiExecutionAdvisory?.orderStyle ?? orderStyle;
+        }
+        const adjustment = this.applyConstitutionalExecutionAdjustment(decision.contractId, orderStyle, initialSafetyMode, initialSize);
+        const params = this.resolveExecutionParameters(adjustment.orderStyle, adjustment.safetyMode, this.resolveSlippage(adjustment.orderStyle), this.resolveFillProbability(adjustment.orderStyle), adjustment.predatoryBrake, adjustment.absorptionAcceleration, adjustment.reflexivityAcceleration);
+        return {
+            executionId,
+            contractId: decision.contractId,
+            direction,
+            orderStyle: adjustment.orderStyle,
+            slices: params.slices,
+            expectedSlippage: params.expectedSlippage,
+            fillProbability: params.fillProbability,
+            limitPrice: clamp(decision.final_probability, 0.01, 0.99),
+            size: adjustment.size,
+            latencyBudgetMs: params.latencyBudgetMs,
+            routeReason: this.resolveConstitutionalRouteReason(adjustment),
+            safetyMode: adjustment.safetyMode,
+            timestamp: decisionTime,
+        };
+    }
+    hasFreshAiAdvisory(timestamp) {
+        return Boolean(this.aiExecutionAdvisory
+            && this.aiExecutionAdvisory.confidence >= 0.55
+            && this.latestAiExecutionAdvisoryTs >= timestamp);
+    }
+    resolveInitialRiskRouting(decision) {
+        if (decision.ruinProbability > 0.15) {
+            return { orderStyle: 'passive', routeReason: 'ruin-probability-protective-passive' };
+        }
+        if (decision.size > 500) {
+            return { orderStyle: 'sliced', routeReason: 'large-size-sliced' };
+        }
+        if (decision.safetyMode === 'safe-mode') {
+            return { orderStyle: 'passive', routeReason: 'safe-mode-passive' };
+        }
+        return { orderStyle: 'market', routeReason: 'baseline-market' };
+    }
+    readExecutionSignals(contractId, safetyMode) {
+        const micro = this.latestMicro.get(contractId);
+        const physics = this.latestPhysics.get(contractId);
+        const scenario = this.latestScenario.get(contractId);
+        const world = this.latestWorld.get(contractId);
+        const authorityDecay = this.latestAuthorityDecay.get(contractId) ?? 0;
+        return {
+            scenarioInvalidated: Boolean(scenario?.invalidated),
+            predatoryBrake: (micro?.toxicityScore ?? 0) > 0.75 ||
+                (micro?.spoofProbability ?? 0) > 0.68 ||
+                (physics?.structuralStress ?? 0) > 0.8,
+            absorptionAcceleration: (micro?.absorptionScore ?? 0) > 0.72 &&
+                !scenario?.invalidated &&
+                safetyMode === 'normal',
+            forcedPositioningPressure: (world?.forcedPositioningPressure ?? 0) > 0.7,
+            reflexivityAcceleration: (world?.reflexivityAcceleration ?? 0) > 0.72,
+            authorityDecay,
+        };
+    }
+    applyConstitutionalExecutionAdjustment(contractId, orderStyle, safetyMode, size) {
+        const signals = this.readExecutionSignals(contractId, safetyMode);
+        let nextOrderStyle = orderStyle;
+        let nextSafetyMode = safetyMode;
+        let nextSize = size;
+        if (signals.scenarioInvalidated || signals.authorityDecay > 0.72) {
+            nextSafetyMode = 'safe-mode';
+            nextOrderStyle = 'passive';
+            nextSize = clamp(nextSize * 0.72, 5, 800);
+        }
+        if (signals.predatoryBrake) {
+            nextOrderStyle = 'passive';
+            nextSize = clamp(nextSize * 0.65, 5, 800);
+        }
+        if (signals.absorptionAcceleration && nextOrderStyle !== 'passive') {
+            nextOrderStyle = 'market';
+        }
+        if (signals.forcedPositioningPressure) {
+            nextSize = clamp(nextSize * 0.82, 5, 800);
+        }
+        return {
+            ...signals,
+            orderStyle: nextOrderStyle,
+            safetyMode: nextSafetyMode,
+            size: nextSize,
+        };
+    }
+    applyRiskExecutionAdjustment(decision, orderStyle, safetyMode, size, routeReason) {
+        const signals = this.readExecutionSignals(decision.contractId, safetyMode);
+        let nextOrderStyle = orderStyle;
+        let nextSafetyMode = safetyMode;
+        let nextSize = size;
+        let nextRouteReason = routeReason;
+        if (signals.scenarioInvalidated || signals.authorityDecay > 0.72) {
+            nextSafetyMode = 'safe-mode';
+            nextOrderStyle = 'passive';
+            nextSize = clamp(nextSize * 0.72, 1, nextSize);
+        }
+        if (signals.predatoryBrake) {
+            nextOrderStyle = 'passive';
+            nextSize = clamp(nextSize * 0.65, 1, nextSize);
+            nextRouteReason = `${nextRouteReason}+toxicity-brake`;
+        }
+        if (signals.absorptionAcceleration && nextOrderStyle !== 'passive') {
+            nextOrderStyle = 'market';
+            nextRouteReason = `${nextRouteReason}+absorption-acceleration`;
+        }
+        if (signals.forcedPositioningPressure) {
+            nextSize = clamp(nextSize * 0.82, 1, nextSize);
+            nextRouteReason = `${nextRouteReason}+positioning-throttle`;
+        }
+        return {
+            ...signals,
+            orderStyle: nextOrderStyle,
+            safetyMode: nextSafetyMode,
+            size: nextSize,
+            routeReason: nextRouteReason,
+        };
+    }
+    resolveExecutionParameters(orderStyle, safetyMode, expectedSlippage, fillProbability, predatoryBrake, absorptionAcceleration, reflexivityAcceleration) {
+        let slices = this.resolveSlices(orderStyle);
+        let adjustedSlippage = expectedSlippage;
+        let adjustedFillProbability = fillProbability;
+        if (predatoryBrake) {
+            adjustedSlippage = clamp(adjustedSlippage + 0.004, 0.001, 1);
+            adjustedFillProbability = clamp(adjustedFillProbability * 0.82, 0.01, 1);
+        }
+        if (absorptionAcceleration) {
+            adjustedSlippage = clamp(adjustedSlippage - 0.0015, 0.001, 1);
+            adjustedFillProbability = clamp(adjustedFillProbability * 1.08, 0.01, 1);
+        }
+        if (reflexivityAcceleration) {
+            slices = Math.max(slices, 2);
+        }
+        let latencyBudgetMs = this.resolveLatencyBudget(orderStyle, safetyMode);
+        if (absorptionAcceleration) {
+            latencyBudgetMs = Math.max(30, latencyBudgetMs - 20);
+        }
+        return {
+            slices,
+            expectedSlippage: adjustedSlippage,
+            fillProbability: adjustedFillProbability,
+            latencyBudgetMs,
+        };
+    }
+    resolveConstitutionalRouteReason(adjustment) {
+        if (adjustment.predatoryBrake) {
+            return 'constitutional-decision+toxicity-brake';
+        }
+        if (adjustment.scenarioInvalidated) {
+            return 'constitutional-decision+scenario-invalidation';
+        }
+        if (adjustment.absorptionAcceleration) {
+            return 'constitutional-decision+absorption-acceleration';
+        }
+        return 'constitutional-decision';
     }
     handleOrderEvent(order) {
         const current = this.states.get(order.executionId);

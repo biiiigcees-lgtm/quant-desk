@@ -42,6 +42,63 @@ function testHardStopVetoWins() {
     assert.equal(out.execution_mode, 'blocked', 'hard-stop must force blocked mode');
     assert.ok(out.governance_log.some((row) => row.rule === 'hard-risk-veto' && row.outcome === 'block'), 'expected hard-risk-veto block trace');
 }
+function testMetaCalibrationAuthorityDecayBlocks() {
+    const bus = new EventBus();
+    new ConstitutionalDecisionService(bus).start();
+    const decisions = [];
+    bus.on(EVENTS.CONSTITUTIONAL_DECISION, (event) => {
+        decisions.push(event);
+    });
+    const now = Date.now();
+    const contractId = 'KXBTC-CD-3';
+    bus.emit(EVENTS.DECISION_SNAPSHOT, makeSnapshot(contractId, now));
+    bus.emit(EVENTS.META_CALIBRATION, {
+        contractId,
+        signalCalibration: 0.61,
+        aiCalibration: 0.58,
+        executionCalibration: 0.55,
+        regimeCalibration: 0.6,
+        uncertaintyCalibration: 0.49,
+        compositeScore: 0.57,
+        authorityDecay: 0.91,
+        timestamp: now + 1,
+    });
+    bus.emit(EVENTS.AI_AGGREGATED_INTELLIGENCE, makeAggregated(contractId));
+    const out = decisions[0];
+    if (!out) {
+        throw new Error('expected constitutional decision output');
+    }
+    assert.equal(out.trade_allowed, false, 'authority decay breach must block trading');
+    assert.equal(out.execution_mode, 'blocked', 'authority decay breach must force blocked mode');
+    assert.ok(out.governance_log.some((row) => row.rule === 'meta-calibration-authority' && row.outcome === 'block'), 'expected meta-calibration authority block trace');
+}
+function testScenarioInvalidationBlocks() {
+    const bus = new EventBus();
+    new ConstitutionalDecisionService(bus).start();
+    const decisions = [];
+    bus.on(EVENTS.CONSTITUTIONAL_DECISION, (event) => {
+        decisions.push(event);
+    });
+    const now = Date.now();
+    const contractId = 'KXBTC-CD-4';
+    bus.emit(EVENTS.DECISION_SNAPSHOT, makeSnapshot(contractId, now));
+    bus.emit(EVENTS.SCENARIO_BRANCH_STATE, {
+        contractId,
+        invalidated: true,
+        branchScores: { branchA: 0.22, branchB: 0.78 },
+        dominantBranch: 'branchB',
+        volatilityWeight: 0.86,
+        timestamp: now + 1,
+    });
+    bus.emit(EVENTS.AI_AGGREGATED_INTELLIGENCE, makeAggregated(contractId));
+    const out = decisions[0];
+    if (!out) {
+        throw new Error('expected constitutional decision output');
+    }
+    assert.equal(out.trade_allowed, false, 'invalidated branch at high volatility must block trading');
+    assert.equal(out.execution_mode, 'blocked', 'invalidated branch must force blocked mode');
+    assert.ok(out.governance_log.some((row) => row.rule === 'scenario-branch-validity' && row.outcome === 'block'), 'expected scenario branch block trace');
+}
 function makeAggregated(contractId) {
     return {
         contractId,
@@ -211,6 +268,8 @@ function makeSnapshot(contractId, now) {
 function run() {
     testBlocksWithoutSnapshot();
     testHardStopVetoWins();
+    testMetaCalibrationAuthorityDecayBlocks();
+    testScenarioInvalidationBlocks();
     process.stdout.write('constitutional-decision-ok\n');
 }
 run();

@@ -22,7 +22,8 @@
     "test:organism-phases": "node --enable-source-maps dist/tests/organism-phases.test.js",
     "test:invariant-engine": "node --enable-source-maps dist/tests/invariant-engine.test.js",
     "test:chaos-resilience": "node --enable-source-maps dist/tests/chaos-resilience.test.js",
-    "test:hardening": "npm run test:snapshot-sync && npm run test:execution-lifecycle && npm run test:orchestration-parser-guard && npm run test:orchestration-router-reliability && npm run test:orchestration-authority && npm run test:slice-6 && npm run test:organism-phases",
+    "test:causal-world-model": "node --enable-source-maps dist/tests/causal-world-model.test.js",
+    "test:hardening": "npm run test:snapshot-sync && npm run test:execution-lifecycle && npm run test:orchestration-parser-guard && npm run test:orchestration-router-reliability && npm run test:orchestration-authority && npm run test:slice-6 && npm run test:organism-phases && npm run test:causal-world-model",
     "test:determinism": "npm run test:hardening && npm run test:replay-memory && npm run test:authority-determinism && npm run test:belief-graph && npm run test:invariant-engine && npm run test:chaos-resilience"
   },
   "devDependencies": {

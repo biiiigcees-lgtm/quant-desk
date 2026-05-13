@@ -18,8 +18,8 @@ type CandidatePlan = {
 function mapPhaseToFlow(rawPhase: string | undefined): ExecPhase {
   if (!rawPhase) return 'idle';
   if (rawPhase === 'created') return 'planning';
-  if (rawPhase === 'routed' || rawPhase === 'acknowledged') return 'simulating';
-  if (rawPhase === 'partial') return 'executing';
+  if (rawPhase === 'submitted' || rawPhase === 'routed' || rawPhase === 'acknowledged') return 'simulating';
+  if (rawPhase === 'partial' || rawPhase === 'partially_filled') return 'executing';
   if (rawPhase === 'filled') return 'filled';
   return 'idle';
 }
@@ -28,6 +28,9 @@ export function BottomPanel({ state }: Readonly<Props>) {
   const execState = state?.executionState;
   const execControl = state?.executionControl;
   const simUniverse = state?.simulationUniverse;
+  const scenario = state?.scenarioBranchState;
+  const meta = state?.metaCalibration;
+  const world = state?.marketWorldState;
   const currentPhase = mapPhaseToFlow(execState?.phase ?? (execState?.phase === 'blocked' ? 'idle' : undefined));
   const isBlocked = execState?.phase === 'blocked' || execControl?.mode === 'hard-stop';
   const modeColor = executionModeColor(execControl?.mode);
@@ -101,6 +104,8 @@ export function BottomPanel({ state }: Readonly<Props>) {
           <SimStat label="worst PnL" value={`$${(simUniverse?.worstCasePnl ?? 0).toFixed(2)}`} color={simUniverse && simUniverse.worstCasePnl < -10 ? '#FF4D4D' : '#FFB020'} />
           <SimStat label="tail prob" value={`${((simUniverse?.tailProbability ?? 0) * 100).toFixed(2)}%`} />
           <SimStat label="path div" value={(simUniverse?.executionPathDivergence ?? 0).toFixed(4)} />
+          <SimStat label="branch vol" value={`${((scenario?.volatilityWeight ?? 0) * 100).toFixed(0)}%`} color={scenario?.invalidated ? '#FF4D4D' : '#E6EDF3'} />
+          <SimStat label="authority" value={`${((meta?.authorityDecay ?? 0) * 100).toFixed(0)}%`} color={authorityToneColor(meta?.authorityDecay ?? 0)} />
         </div>
         {simUniverse && (
           <div className="mt-2 pt-2 border-t border-border font-mono text-2xs text-muted">
@@ -117,6 +122,9 @@ export function BottomPanel({ state }: Readonly<Props>) {
           <FactorBar label="drift" value={state?.realitySnapshot?.driftFactor ?? 0} />
           <FactorBar label="anomaly" value={state?.realitySnapshot?.anomalyFactor ?? 0} />
           <FactorBar label="belief" value={state?.realitySnapshot?.beliefFactor ?? 0} />
+        </div>
+        <div className="mt-1 font-mono text-2xs text-secondary truncate">
+          {world ? `${world.participantIntent} | reflex ${(world.reflexivityAcceleration * 100).toFixed(0)}%` : 'world model pending'}
         </div>
         <div className="mt-2 pt-2 border-t border-border flex justify-between">
           <span className="panel-header">truth</span>
@@ -297,4 +305,14 @@ function factorTextClass(value: number): string {
     return 'text-yellow';
   }
   return 'text-red';
+}
+
+function authorityToneColor(authorityDecay: number): string {
+  if (authorityDecay > 0.75) {
+    return '#FF4D4D';
+  }
+  if (authorityDecay > 0.55) {
+    return '#FFB020';
+  }
+  return '#00E5A8';
 }

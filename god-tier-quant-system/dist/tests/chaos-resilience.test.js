@@ -113,10 +113,27 @@ function testReplayMismatchEscalatesToHardStop() {
         assert.equal(hardStop, true, 'replay mismatch must escalate to hard-stop');
     }
 }
+function testCriticalCognitionEventsRequireExplicitTimestamp() {
+    const bus = new EventBus();
+    const accepted = bus.emit(EVENTS.MARKET_WORLD_STATE, {
+        contractId: 'KXBTC-CHAOS',
+        participantIntent: 'neutral',
+        syntheticLiquidityProbability: 0.5,
+        forcedPositioningPressure: 0.4,
+        reflexivityAcceleration: 0.3,
+        worldConfidence: 0.6,
+        scenarioDominantBranch: 'baseline',
+        hiddenState: 'neutral',
+    });
+    assert.equal(accepted, false, 'market world state without explicit timestamp must be rejected');
+    assert.equal(bus.history(EVENTS.MARKET_WORLD_STATE).length, 0, 'rejected event should not enter history');
+    assert.ok(bus.rejections(EVENTS.MARKET_WORLD_STATE).some((entry) => entry.rejectionReason === 'missing-explicit-timestamp'), 'expected missing explicit timestamp rejection');
+}
 function run() {
     testDuplicateIdempotencyRejection();
     testStaleEventRejection();
     testReplayMismatchEscalatesToHardStop();
+    testCriticalCognitionEventsRequireExplicitTimestamp();
     process.stdout.write('chaos-resilience-ok\n');
 }
 run();

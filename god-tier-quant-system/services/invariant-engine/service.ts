@@ -1,6 +1,13 @@
 import { EventBus } from '../../core/event-bus/bus.js';
 import { EVENTS } from '../../core/event-bus/events.js';
-import { ConstitutionalDecisionEvent, DecisionSnapshotEvent, ExecutionPlan } from '../../core/schemas/events.js';
+import {
+  ConstitutionalDecisionEvent,
+  DecisionSnapshotEvent,
+  ExecutionPlan,
+  MetaCalibrationEvent,
+  ReplayIntegrityEvent,
+  SystemConsciousnessEvent,
+} from '../../core/schemas/events.js';
 
 interface SnapshotInvariantState {
   latestSequence: number;
@@ -33,6 +40,45 @@ export class InvariantEngineService {
         this.raiseViolation('critical', 'invalid-execution-timestamp', 1, {
           executionId: event.executionId,
           contractId: event.contractId,
+        });
+      }
+    });
+
+    this.bus.on<MetaCalibrationEvent>(EVENTS.META_CALIBRATION, (event) => {
+      if (event.authorityDecay > 0.9) {
+        this.raiseViolation('critical', 'authority-decay-threshold-breach', event.timestamp, {
+          contractId: event.contractId,
+          authorityDecay: event.authorityDecay.toFixed(4),
+        });
+      } else if (event.authorityDecay > 0.75) {
+        this.raiseViolation('warning', 'authority-decay-warning', event.timestamp, {
+          contractId: event.contractId,
+          authorityDecay: event.authorityDecay.toFixed(4),
+        });
+      }
+    });
+
+    this.bus.on<SystemConsciousnessEvent>(EVENTS.SYSTEM_CONSCIOUSNESS, (event) => {
+      if ((event.selfTrustScore ?? 1) < 0.25 || (event.trustDecay ?? 0) > 0.85) {
+        this.raiseViolation('critical', 'self-trust-collapse', event.timestamp, {
+          contractId: event.contractId,
+          selfTrustScore: String(event.selfTrustScore ?? 1),
+          trustDecay: String(event.trustDecay ?? 0),
+        });
+      } else if ((event.selfTrustScore ?? 1) < 0.4 || (event.trustDecay ?? 0) > 0.65) {
+        this.raiseViolation('warning', 'self-trust-degraded', event.timestamp, {
+          contractId: event.contractId,
+          selfTrustScore: String(event.selfTrustScore ?? 1),
+          trustDecay: String(event.trustDecay ?? 0),
+        });
+      }
+    });
+
+    this.bus.on<ReplayIntegrityEvent>(EVENTS.REPLAY_INTEGRITY, (event) => {
+      if (!event.deterministic || event.sourceChecksum !== event.replayChecksum) {
+        this.raiseViolation('critical', 'replay-integrity-divergence', event.timestamp, {
+          sourceChecksum: event.sourceChecksum,
+          replayChecksum: event.replayChecksum,
         });
       }
     });

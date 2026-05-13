@@ -22,8 +22,7 @@ export class EventBus {
     emit(event, payload, metadata) {
         const timestamp = resolveTimestamp(payload, metadata, this.clock);
         if (timestamp === null && REQUIRES_EXPLICIT_TIMESTAMP.has(event)) {
-            const envelope = this.sequencer.wrap(payload, metadata?.snapshotId ?? 'na', metadata?.source ?? event, 0);
-            this.recordRejected(event, envelope, 'missing-explicit-timestamp', metadata?.idempotencyKey);
+            this.rejectMissingExplicitTimestamp(event, payload, metadata);
             return false;
         }
         const resolvedTimestamp = timestamp ?? this.clock.tick();
@@ -31,43 +30,19 @@ export class EventBus {
         const source = metadata?.source ?? event;
         const idempotencyKey = metadata?.idempotencyKey;
         const envelope = this.sequencer.wrap(payload, snapshotId, source, resolvedTimestamp);
-        const monotonic = this.sequencer.validateMonotonic(envelope);
-        if (!monotonic) {
-            this.recordRejected(event, envelope, 'non-monotonic-sequence', idempotencyKey);
+        if (this.rejectIfInvalidEnvelope(event, envelope, idempotencyKey)) {
             return false;
         }
-        const builtInValidation = this.validateEnvelope(envelope);
-        if (!builtInValidation.valid) {
-            this.recordRejected(event, envelope, builtInValidation.reason ?? 'invalid-envelope', idempotencyKey);
+        if (this.rejectIfCustomValidatorFails(event, envelope, idempotencyKey)) {
             return false;
         }
-        const customValidator = this.validators.get(event);
-        if (customValidator) {
-            const customValidation = customValidator(envelope);
-            if (!customValidation.valid) {
-                this.recordRejected(event, envelope, customValidation.reason ?? 'validator-rejected', idempotencyKey);
-                return false;
-            }
+        if (!this.acceptIdempotency(event, envelope, idempotencyKey, resolvedTimestamp)) {
+            return false;
         }
-        if (idempotencyKey) {
-            this.pruneIdempotency(resolvedTimestamp);
-            if (this.processedIdempotency.has(idempotencyKey)) {
-                this.recordRejected(event, envelope, 'duplicate-idempotency-key', idempotencyKey);
-                return false;
-            }
-            this.processedIdempotency.set(idempotencyKey, resolvedTimestamp);
+        if (!this.acceptOrdering(event, source, resolvedTimestamp, metadata, envelope, idempotencyKey)) {
+            return false;
         }
-        const enforceStaleOrdering = metadata?.source !== undefined || metadata?.snapshotId !== undefined;
-        if (enforceStaleOrdering) {
-            const staleScope = `${event}:${source}`;
-            const previousTimestamp = this.lastAcceptedTimestampByScope.get(staleScope);
-            if (previousTimestamp !== undefined && resolvedTimestamp < previousTimestamp) {
-                this.recordRejected(event, envelope, 'stale-event', idempotencyKey);
-                return false;
-            }
-            this.lastAcceptedTimestampByScope.set(staleScope, resolvedTimestamp);
-        }
-        const record = {
+        this.appendHistory({
             sequence: envelope.sequence,
             event,
             payload,
@@ -76,16 +51,7 @@ export class EventBus {
             source,
             lineageId: envelope.lineageId,
             idempotencyKey,
-        };
-        if (this.eventHistory.length < this.maxHistory) {
-            this.eventHistory.push(record);
-            this.historyCount += 1;
-        }
-        else {
-            this.eventHistory[this.historyCursor] = record;
-            this.historyCursor = (this.historyCursor + 1) % this.maxHistory;
-            this.historyCount = this.maxHistory;
-        }
+        });
         return this.emitter.emit(event, payload);
     }
     registerValidator(event, validator) {
@@ -172,6 +138,70 @@ export class EventBus {
             this.rejectedHistory.shift();
         }
     }
+    rejectMissingExplicitTimestamp(event, payload, metadata) {
+        const envelope = this.sequencer.wrap(payload, metadata?.snapshotId ?? 'na', metadata?.source ?? event, 0);
+        this.recordRejected(event, envelope, 'missing-explicit-timestamp', metadata?.idempotencyKey);
+    }
+    rejectIfInvalidEnvelope(event, envelope, idempotencyKey) {
+        if (!this.sequencer.validateMonotonic(envelope)) {
+            this.recordRejected(event, envelope, 'non-monotonic-sequence', idempotencyKey);
+            return true;
+        }
+        const builtInValidation = this.validateEnvelope(envelope);
+        if (!builtInValidation.valid) {
+            this.recordRejected(event, envelope, builtInValidation.reason ?? 'invalid-envelope', idempotencyKey);
+            return true;
+        }
+        return false;
+    }
+    rejectIfCustomValidatorFails(event, envelope, idempotencyKey) {
+        const customValidator = this.validators.get(event);
+        if (!customValidator) {
+            return false;
+        }
+        const customValidation = customValidator(envelope);
+        if (customValidation.valid) {
+            return false;
+        }
+        this.recordRejected(event, envelope, customValidation.reason ?? 'validator-rejected', idempotencyKey);
+        return true;
+    }
+    acceptIdempotency(event, envelope, idempotencyKey, resolvedTimestamp) {
+        if (!idempotencyKey) {
+            return true;
+        }
+        this.pruneIdempotency(resolvedTimestamp);
+        if (this.processedIdempotency.has(idempotencyKey)) {
+            this.recordRejected(event, envelope, 'duplicate-idempotency-key', idempotencyKey);
+            return false;
+        }
+        this.processedIdempotency.set(idempotencyKey, resolvedTimestamp);
+        return true;
+    }
+    acceptOrdering(event, source, resolvedTimestamp, metadata, envelope, idempotencyKey) {
+        const enforceStaleOrdering = metadata?.source !== undefined || metadata?.snapshotId !== undefined;
+        if (!enforceStaleOrdering) {
+            return true;
+        }
+        const staleScope = `${event}:${source}`;
+        const previousTimestamp = this.lastAcceptedTimestampByScope.get(staleScope);
+        if (previousTimestamp !== undefined && resolvedTimestamp < previousTimestamp) {
+            this.recordRejected(event, envelope, 'stale-event', idempotencyKey);
+            return false;
+        }
+        this.lastAcceptedTimestampByScope.set(staleScope, resolvedTimestamp);
+        return true;
+    }
+    appendHistory(record) {
+        if (this.eventHistory.length < this.maxHistory) {
+            this.eventHistory.push(record);
+            this.historyCount += 1;
+            return;
+        }
+        this.eventHistory[this.historyCursor] = record;
+        this.historyCursor = (this.historyCursor + 1) % this.maxHistory;
+        this.historyCount = this.maxHistory;
+    }
     pruneIdempotency(nowMs) {
         const cutoff = nowMs - this.idempotencyTtlMs;
         for (const [key, acceptedAt] of this.processedIdempotency.entries()) {
@@ -188,7 +218,7 @@ function extractTimestamp(payload) {
             return candidate;
         }
     }
-    return NaN;
+    return Number.NaN;
 }
 function resolveTimestamp(payload, metadata, _clock) {
     if (metadata && Number.isFinite(metadata.timestamp) && Number(metadata.timestamp) > 0) {
@@ -242,4 +272,15 @@ const REQUIRES_EXPLICIT_TIMESTAMP = new Set([
     EVENTS.AI_AGGREGATED_INTELLIGENCE,
     EVENTS.CONSTITUTIONAL_DECISION,
     EVENTS.REPLAY_INTEGRITY,
+    EVENTS.CAUSAL_INSIGHT,
+    EVENTS.MARKET_CAUSAL_STATE,
+    EVENTS.MARKET_PHYSICS,
+    EVENTS.SCENARIO_BRANCH_STATE,
+    EVENTS.CROSS_MARKET_CAUSAL_STATE,
+    EVENTS.MARKET_WORLD_STATE,
+    EVENTS.EPISTEMIC_MEMORY_REVISION,
+    EVENTS.SELF_IMPROVEMENT,
+    EVENTS.MARKET_EXPERIENCE,
+    EVENTS.META_CALIBRATION,
+    EVENTS.OPERATOR_ATTENTION,
 ]);

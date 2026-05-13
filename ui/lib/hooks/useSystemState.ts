@@ -48,11 +48,25 @@ function deriveCognitiveMode(state: SystemStateSnapshot | null): 'normal' | 'foc
   const control = state.executionControl?.mode;
   const anomaly = state.anomaly?.severity;
   const uncertainty = state.realitySnapshot?.uncertaintyState;
+  const authorityDecay = state.metaCalibration?.authorityDecay ?? 0;
+  const trustDecay = state.systemConsciousness?.trustDecay ?? 0;
 
-  if (control === 'hard-stop' || anomaly === 'critical' || uncertainty === 'extreme') {
+  if (
+    control === 'hard-stop' ||
+    anomaly === 'critical' ||
+    uncertainty === 'extreme' ||
+    authorityDecay > 0.8 ||
+    trustDecay > 0.78
+  ) {
     return 'critical';
   }
-  if (control === 'safe-mode' || anomaly === 'high' || uncertainty === 'high') {
+  if (
+    control === 'safe-mode' ||
+    anomaly === 'high' ||
+    uncertainty === 'high' ||
+    authorityDecay > 0.62 ||
+    trustDecay > 0.58
+  ) {
     return 'focused';
   }
   return 'normal';

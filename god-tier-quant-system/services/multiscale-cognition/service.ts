@@ -2,6 +2,7 @@ import { EventBus } from '../../core/event-bus/bus.js';
 import { EVENTS } from '../../core/event-bus/events.js';
 import { safeHandler } from '../../core/errors/handler.js';
 import {
+  CrossMarketCausalStateEvent,
   DriftEvent,
   GlobalContextEvent,
   MicrostructureEvent,
@@ -13,9 +14,10 @@ const TICK_WINDOW = 10;
 const LOCAL_WINDOW = 30;
 const REGIME_WINDOW = 5;
 const MACRO_WINDOW = 3;
+type Direction = 1 | 0 | -1;
 
 interface TimescaleResult {
-  direction: 1 | 0 | -1;
+  direction: Direction;
   strength: number;
 }
 
@@ -32,8 +34,14 @@ function pushWindow<T>(arr: T[], item: T, max: number): void {
   if (arr.length > max) arr.shift();
 }
 
-function sign(val: number, threshold = 0.005): 1 | 0 | -1 {
-  return val > threshold ? 1 : val < -threshold ? -1 : 0;
+function sign(val: number, threshold = 0.005): Direction {
+  if (val > threshold) {
+    return 1;
+  }
+  if (val < -threshold) {
+    return -1;
+  }
+  return 0;
 }
 
 export class MultiTimescaleCognitionService {
@@ -78,13 +86,17 @@ export class MultiTimescaleCognitionService {
   }
 
   private getOrCreate(contractId: string): ContractCognitionState {
-    if (!this.states.has(contractId)) {
-      this.states.set(contractId, {
+    const existing = this.states.get(contractId);
+    if (existing) {
+      return existing;
+    }
+
+    const created: ContractCognitionState = {
         tickWindow: [], localWindow: [], regimeWindow: [],
         macroWindow: [], latestContractId: contractId,
-      });
-    }
-    return this.states.get(contractId)!;
+      };
+    this.states.set(contractId, created);
+    return created;
   }
 
   private tickView(events: MicrostructureEvent[]): TimescaleResult {
@@ -99,8 +111,14 @@ export class MultiTimescaleCognitionService {
 
   private localView(events: ProbabilityEvent[]): TimescaleResult {
     if (events.length < 2) return { direction: 0, strength: 0 };
-    const first = events[0]!.estimatedProbability;
-    const last = events[events.length - 1]!.estimatedProbability;
+    const firstEvent = events.at(0);
+    const lastEvent = events.at(-1);
+    if (!firstEvent || !lastEvent) {
+      return { direction: 0, strength: 0 };
+    }
+
+    const first = firstEvent.estimatedProbability;
+    const last = lastEvent.estimatedProbability;
     const delta = last - first;
     const avgEdge = events.reduce((s, e) => s + Math.abs(e.edge), 0) / events.length;
     return {
@@ -111,7 +129,7 @@ export class MultiTimescaleCognitionService {
 
   private regimeView(events: DriftEvent[]): TimescaleResult {
     if (events.length === 0) return { direction: 0, strength: 0 };
-    const sevMap: Record<string, number> = { low: 0.2, medium: 0.6, high: 1.0 };
+    const sevMap: Record<string, number> = { low: 0.2, medium: 0.6, high: 1 };
     const avgSev = events.reduce((s, e) => s + (sevMap[e.severity] ?? 0.2), 0) / events.length;
     const avgKl = events.reduce((s, e) => s + e.kl, 0) / events.length;
     // High drift severity = adverse = bearish signal
@@ -123,10 +141,12 @@ export class MultiTimescaleCognitionService {
 
   private macroView(events: GlobalContextEvent[]): TimescaleResult {
     if (events.length === 0) return { direction: 0, strength: 0 };
-    const last = events[events.length - 1]!;
-    const dir: 1 | 0 | -1 =
-      last.marketRegime === 'risk-on' ? 1 :
-      last.marketRegime === 'risk-off' ? -1 : 0;
+    const last = events.at(-1);
+    if (!last) {
+      return { direction: 0, strength: 0 };
+    }
+
+    const dir = macroDirection(last.marketRegime);
     const avgStress = events.reduce((s, e) => s + e.stressIndex, 0) / events.length;
     return {
       direction: dir,
@@ -151,9 +171,24 @@ export class MultiTimescaleCognitionService {
     const macro = this.macroView(this.macroWindow);
 
     const coherenceScore = this.computeCoherence([tick, local, regime, macro]);
-    const temporalAlignment: 'aligned' | 'mixed' | 'divergent' =
-      coherenceScore >= 0.75 ? 'aligned' :
-      coherenceScore >= 0.5 ? 'mixed' : 'divergent';
+    const temporalAlignment = deriveTemporalAlignment(coherenceScore);
+
+    const macroStress = this.macroWindow.length > 0
+      ? this.macroWindow.reduce((sum, item) => sum + item.stressIndex, 0) / this.macroWindow.length
+      : 0.5;
+    const macroToLocal = clamp(Math.abs(macro.direction - local.direction) * 0.35 + macroStress * 0.45, 0, 1);
+    const liquidityToDrift = clamp((1 - liquidityScore(this.macroWindow.at(-1)?.liquidity)) * 0.5 + regime.strength * 0.5, 0, 1);
+    const sentimentCoupling = clamp(coherenceScore * 0.6 + Math.abs(tick.direction - local.direction) * 0.2 + Math.abs(local.direction - regime.direction) * 0.2, 0, 1);
+    const riskTransmissionScore = clamp(macroToLocal * 0.4 + liquidityToDrift * 0.35 + sentimentCoupling * 0.25, 0, 1);
+
+    const dominantDriver = pickDominantDriver(macroToLocal, liquidityToDrift, sentimentCoupling);
+
+    const timestamp = latestTimestamp([
+      s.tickWindow.at(-1)?.timestamp,
+      s.localWindow.at(-1)?.timestamp,
+      s.regimeWindow.at(-1)?.timestamp,
+      this.macroWindow.at(-1)?.timestamp,
+    ]);
 
     const event: MultiTimescaleViewEvent = {
       contractId,
@@ -163,10 +198,82 @@ export class MultiTimescaleCognitionService {
       macro,
       coherenceScore,
       temporalAlignment,
-      timestamp: Date.now(),
+      timestamp,
+    };
+
+    const crossMarket: CrossMarketCausalStateEvent = {
+      contractId,
+      riskTransmissionScore: Number(riskTransmissionScore.toFixed(4)),
+      correlationBreakdown: {
+        macroToLocal: Number(macroToLocal.toFixed(4)),
+        liquidityToDrift: Number(liquidityToDrift.toFixed(4)),
+        sentimentCoupling: Number(sentimentCoupling.toFixed(4)),
+      },
+      dominantDriver,
+      timestamp,
     };
 
     this.latest.set(contractId, event);
     this.bus.emit<MultiTimescaleViewEvent>(EVENTS.MULTI_TIMESCALE_VIEW, event);
+    this.bus.emit<CrossMarketCausalStateEvent>(EVENTS.CROSS_MARKET_CAUSAL_STATE, crossMarket);
   }
+}
+
+function latestTimestamp(values: Array<number | undefined>): number {
+  const filtered = values.filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0);
+  if (filtered.length === 0) {
+    return 1;
+  }
+  return Math.max(...filtered);
+}
+
+function macroDirection(regime: string): Direction {
+  if (regime === 'risk-on') {
+    return 1;
+  }
+  if (regime === 'risk-off') {
+    return -1;
+  }
+  return 0;
+}
+
+function deriveTemporalAlignment(coherenceScore: number): 'aligned' | 'mixed' | 'divergent' {
+  if (coherenceScore >= 0.75) {
+    return 'aligned';
+  }
+  if (coherenceScore >= 0.5) {
+    return 'mixed';
+  }
+  return 'divergent';
+}
+
+function liquidityScore(liquidity: GlobalContextEvent['liquidity'] | undefined): number {
+  if (liquidity === 'abundant') {
+    return 1;
+  }
+  if (liquidity === 'normal') {
+    return 0.65;
+  }
+  return 0.35;
+}
+
+function pickDominantDriver(
+  macroToLocal: number,
+  liquidityToDrift: number,
+  sentimentCoupling: number,
+): 'macro-to-local' | 'liquidity-to-drift' | 'sentiment-coupling' {
+  if (macroToLocal >= liquidityToDrift && macroToLocal >= sentimentCoupling) {
+    return 'macro-to-local';
+  }
+  if (liquidityToDrift >= sentimentCoupling) {
+    return 'liquidity-to-drift';
+  }
+  return 'sentiment-coupling';
+}
+
+function clamp(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+  return Math.max(min, Math.min(max, value));
 }

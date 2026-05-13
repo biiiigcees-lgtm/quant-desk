@@ -6,53 +6,53 @@ export function coerceSystemState(raw: unknown): SystemStateSnapshot | null {
   }
 
   const snapshot = raw as SystemStateSnapshot;
-  const reality = snapshot.realitySnapshot;
-  if (reality) {
-    if (!isNonEmptyString(reality.canonicalSnapshotId)) {
-      return null;
-    }
-    if (!isFiniteInRange(reality.truthScore, 0, 1)) {
-      return null;
-    }
-    if (!isFiniteInRange(reality.calibrationFactor, 0, 1)) {
-      return null;
-    }
-    if (!isFiniteInRange(reality.driftFactor, 0, 1)) {
-      return null;
-    }
-    if (!isFiniteInRange(reality.anomalyFactor, 0, 1)) {
-      return null;
-    }
-    if (!isFiniteInRange(reality.beliefFactor, 0, 1)) {
-      return null;
-    }
-    if (!isPositiveNumber(reality.timestamp)) {
-      return null;
-    }
+  if (!isRealitySnapshotValid(snapshot.realitySnapshot)) {
+    return null;
   }
-
-  if (snapshot.executionControl) {
-    if (!isPositiveNumber(snapshot.executionControl.timestamp)) {
-      return null;
-    }
-    if (!isNonEmptyString(snapshot.executionControl.reason)) {
-      return null;
-    }
+  if (!isExecutionControlValid(snapshot.executionControl)) {
+    return null;
   }
-
-  if (snapshot.probability) {
-    if (!isPositiveNumber(snapshot.probability.timestamp)) {
-      return null;
-    }
-    if (!isFiniteInRange(snapshot.probability.estimatedProbability, 0, 1)) {
-      return null;
-    }
-    if (!isFiniteInRange(snapshot.probability.marketImpliedProbability, 0, 1)) {
-      return null;
-    }
+  if (!isProbabilityValid(snapshot.probability)) {
+    return null;
   }
 
   return snapshot;
+}
+
+function isRealitySnapshotValid(reality: SystemStateSnapshot['realitySnapshot']): boolean {
+  if (!reality) {
+    return true;
+  }
+
+  return (
+    isNonEmptyString(reality.canonicalSnapshotId)
+    && isFiniteInRange(reality.truthScore, 0, 1)
+    && isFiniteInRange(reality.calibrationFactor, 0, 1)
+    && isFiniteInRange(reality.driftFactor, 0, 1)
+    && isFiniteInRange(reality.anomalyFactor, 0, 1)
+    && isFiniteInRange(reality.beliefFactor, 0, 1)
+    && isPositiveNumber(reality.timestamp)
+  );
+}
+
+function isExecutionControlValid(control: SystemStateSnapshot['executionControl']): boolean {
+  if (!control) {
+    return true;
+  }
+
+  return isPositiveNumber(control.timestamp) && isNonEmptyString(control.reason);
+}
+
+function isProbabilityValid(probability: SystemStateSnapshot['probability']): boolean {
+  if (!probability) {
+    return true;
+  }
+
+  return (
+    isPositiveNumber(probability.timestamp)
+    && isFiniteInRange(probability.estimatedProbability, 0, 1)
+    && isFiniteInRange(probability.marketImpliedProbability, 0, 1)
+  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

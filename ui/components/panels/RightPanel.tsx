@@ -8,6 +8,8 @@ interface Props { state: SystemStateSnapshot | null }
 
 type AgentStatus = 'active' | 'idle' | 'error';
 type Direction = 1 | 0 | -1;
+type AgentSignal = { confidence: number; status: AgentStatus; reasoning: string };
+type AggregatedIntelligence = NonNullable<SystemStateSnapshot['aiAggregatedIntelligence']>;
 
 interface AgentInfo {
   id: string;
@@ -26,6 +28,63 @@ const AGENTS: AgentInfo[] = [
   { id: 'memory-research',          label: 'Memory / Research',      shortLabel: 'MEM' },
   { id: 'meta-orchestrator',        label: 'Meta Orchestrator',      shortLabel: 'ORC' },
 ];
+
+const AGENT_SIGNAL_RESOLVERS: Record<string, (metrics: AggregatedIntelligence) => AgentSignal | null> = {
+  'market-analyst': (metrics) => {
+    if (!metrics.market_state) {
+      return null;
+    }
+    return {
+      confidence: metrics.market_state.confidence,
+      status: 'active',
+      reasoning: metrics.market_state.narrative?.slice(0, 80) ?? '',
+    };
+  },
+  'probability-calibration': (metrics) => {
+    if (!metrics.probability_adjustment) {
+      return null;
+    }
+    const adjustment = metrics.probability_adjustment.recommendedAdjustment;
+    const sign = adjustment > 0 ? '+' : '';
+    return {
+      confidence: metrics.probability_adjustment.calibrationScore,
+      status: 'active',
+      reasoning: `adj: ${sign}${(adjustment * 100).toFixed(1)}%`,
+    };
+  },
+  'risk-governor': (metrics) => {
+    if (!metrics.risk_level) {
+      return null;
+    }
+    return {
+      confidence: metrics.risk_level.confidence,
+      status: 'active',
+      reasoning: metrics.risk_level.recommendation?.slice(0, 80) ?? '',
+    };
+  },
+  'execution-intelligence': (metrics) => {
+    if (!metrics.execution_recommendation) {
+      return null;
+    }
+    return {
+      confidence: metrics.execution_recommendation.confidence,
+      status: 'active',
+      reasoning: `${metrics.execution_recommendation.orderStyle} × ${metrics.execution_recommendation.slices} slices`,
+    };
+  },
+  'anomaly-detection': (metrics) => {
+    const firstFlag = metrics.anomaly_flags?.[0];
+    if (!firstFlag) {
+      return null;
+    }
+    const normalizedScore = firstFlag.score > 1 ? firstFlag.score / 100 : firstFlag.score;
+    return {
+      confidence: normalizedScore,
+      status: 'active',
+      reasoning: `${firstFlag.type}: ${firstFlag.severity}`,
+    };
+  },
+};
 
 function extractAgentMetrics(state: SystemStateSnapshot | null, agentId: string) {
   const metrics = state?.aiAggregatedIntelligence;
@@ -46,6 +105,9 @@ function extractAgentMetrics(state: SystemStateSnapshot | null, agentId: string)
 
 export function RightPanel({ state }: Readonly<Props>) {
   const failures = state?.aiOrchestrationFailures;
+  const attention = state?.operatorAttention;
+  const meta = state?.metaCalibration;
+  const world = state?.marketWorldState;
 
   return (
     <aside className="flex flex-col w-[28%] min-w-0 bg-surface panel-border overflow-hidden">
@@ -85,6 +147,15 @@ export function RightPanel({ state }: Readonly<Props>) {
         <p className="font-mono text-2xs text-secondary leading-relaxed line-clamp-3">
           {state?.aiAggregatedIntelligence?.market_state?.narrative ?? 'Meta-orchestrator idle. Awaiting market signal.'}
         </p>
+        <div className="mt-2 flex items-center justify-between font-mono text-2xs text-muted">
+          <span>meta {((meta?.compositeScore ?? 0) * 100).toFixed(0)}%</span>
+          <span className={cx(attentionFocusClass(attention?.focus))}>
+            {attention?.focus ?? 'normal'}
+          </span>
+        </div>
+        <div className="mt-1 font-mono text-2xs text-secondary truncate">
+          {world ? `${world.participantIntent} / branch ${world.scenarioDominantBranch}` : 'world model pending'}
+        </div>
       </div>
 
       {/* Multi-timescale coherence */}
@@ -203,52 +274,12 @@ function DisagreementMatrix({ state }: Readonly<{ state: SystemStateSnapshot | n
   );
 }
 
-function deriveAgentSignal(metrics: SystemStateSnapshot['aiAggregatedIntelligence'], agentId: string): { confidence: number; status: AgentStatus; reasoning: string } | null {
+function deriveAgentSignal(metrics: SystemStateSnapshot['aiAggregatedIntelligence'], agentId: string): AgentSignal | null {
   if (!metrics) {
     return null;
   }
-
-  switch (agentId) {
-    case 'market-analyst':
-      if (!metrics.market_state) return null;
-      return {
-        confidence: metrics.market_state.confidence,
-        status: 'active',
-        reasoning: metrics.market_state.narrative?.slice(0, 80) ?? '',
-      };
-    case 'probability-calibration':
-      if (!metrics.probability_adjustment) return null;
-      return {
-        confidence: metrics.probability_adjustment.calibrationScore,
-        status: 'active',
-        reasoning: `adj: ${(metrics.probability_adjustment.recommendedAdjustment > 0 ? '+' : '')}${(metrics.probability_adjustment.recommendedAdjustment * 100).toFixed(1)}%`,
-      };
-    case 'risk-governor':
-      if (!metrics.risk_level) return null;
-      return {
-        confidence: metrics.risk_level.confidence,
-        status: 'active',
-        reasoning: metrics.risk_level.recommendation?.slice(0, 80) ?? '',
-      };
-    case 'execution-intelligence':
-      if (!metrics.execution_recommendation) return null;
-      return {
-        confidence: metrics.execution_recommendation.confidence,
-        status: 'active',
-        reasoning: `${metrics.execution_recommendation.orderStyle} × ${metrics.execution_recommendation.slices} slices`,
-      };
-    case 'anomaly-detection': {
-      const firstFlag = metrics.anomaly_flags?.[0];
-      if (!firstFlag) return null;
-      return {
-        confidence: firstFlag.score,
-        status: 'active',
-        reasoning: `${firstFlag.type}: ${firstFlag.severity}`,
-      };
-    }
-    default:
-      return null;
-  }
+  const resolver = AGENT_SIGNAL_RESOLVERS[agentId];
+  return resolver ? resolver(metrics) : null;
 }
 
 function directionGlyph(direction: Direction): string {
@@ -330,4 +361,14 @@ function alignmentFillClass(alignment: 'aligned' | 'mixed' | 'divergent'): strin
     return 'bg-yellow';
   }
   return 'bg-red';
+}
+
+function attentionFocusClass(focus: 'normal' | 'focused' | 'critical' | undefined): string {
+  if (focus === 'critical') {
+    return 'text-red';
+  }
+  if (focus === 'focused') {
+    return 'text-yellow';
+  }
+  return 'text-green';
 }

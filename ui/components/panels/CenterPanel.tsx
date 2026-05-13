@@ -14,8 +14,17 @@ export function CenterPanel({ state }: Readonly<Props>) {
   const anomaly = state?.anomaly;
   const execControl = state?.executionControl;
   const causalInsights = state?.causalInsights ?? [];
+  const marketCausalState = state?.marketCausalState;
   const epistemicHealth = state?.epistemicHealth;
   const adversarialAudit = state?.adversarialAudit;
+  const systemConsciousness = state?.systemConsciousness;
+  const marketPhysics = state?.marketPhysics;
+  const scenarioBranchState = state?.scenarioBranchState;
+  const crossMarket = state?.crossMarketCausalState;
+  const marketWorld = state?.marketWorldState;
+  const metaCalibration = state?.metaCalibration;
+  const operatorAttention = state?.operatorAttention;
+  const marketExperience = state?.marketExperience;
 
   const estProb = prob?.estimatedProbability ?? 0;
   const ciLow = prob?.confidenceInterval?.[0] ?? estProb;
@@ -103,6 +112,36 @@ export function CenterPanel({ state }: Readonly<Props>) {
         </div>
       )}
 
+      {(marketWorld || metaCalibration || operatorAttention || scenarioBranchState || systemConsciousness) && (
+        <div className="px-4 py-2 panel-border shrink-0">
+          <span className="panel-header block mb-1.5">cognitive fusion</span>
+          <div className="grid grid-cols-4 gap-2">
+            <FusionCell label="world" value={marketWorld?.worldConfidence ?? 0} />
+            <FusionCell label="meta" value={metaCalibration?.compositeScore ?? 0} />
+            <FusionCell label="trust" value={systemConsciousness?.selfTrustScore ?? 0} />
+            <FusionCell label="attention" value={1 - (operatorAttention?.density ?? 0)} />
+          </div>
+          <div className="mt-2 flex items-center justify-between font-mono text-2xs text-secondary">
+            <span>
+              {marketWorld?.participantIntent ?? 'neutral'} / {scenarioBranchState?.dominantBranch ?? 'branch-0'}
+            </span>
+            <span>
+              tx {((crossMarket?.riskTransmissionScore ?? 0) * 100).toFixed(0)}% | stress {((marketPhysics?.structuralStress ?? 0) * 100).toFixed(0)}%
+            </span>
+          </div>
+          {operatorAttention?.focus === 'critical' && (
+            <div className="mt-2 px-2 py-1 rounded border border-red/40 bg-elevated font-mono text-2xs text-red">
+              operator attention critical: {operatorAttention.contradictionHotspots.join(', ') || 'hotspots unresolved'}
+            </div>
+          )}
+          {marketExperience?.recurringFailureSignature && (
+            <div className="mt-1 px-2 py-1 rounded border border-yellow/40 bg-elevated font-mono text-2xs text-yellow">
+              recurring failure archetype: {marketExperience.archetype} | trauma {(marketExperience.traumaPenalty * 100).toFixed(0)}%
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Adversarial audit warning */}
       {adversarialAudit && adversarialAudit.adversarialScore > 0.5 && (
         <div className="mx-4 my-1 px-3 py-2 rounded border border-red bg-elevated shrink-0">
@@ -146,6 +185,23 @@ export function CenterPanel({ state }: Readonly<Props>) {
       {/* Causal graph */}
       <div className="px-4 py-3 flex-1 overflow-hidden">
         <span className="panel-header block mb-2">causal world model</span>
+        {marketCausalState && (
+          <div className="mb-2 px-2 py-1.5 rounded bg-elevated border border-border/60">
+            <div className="flex items-center justify-between gap-2">
+              <span className={cx('font-mono text-2xs font-semibold uppercase', hiddenStateToneClass(marketCausalState.hiddenState))}>
+                {marketCausalState.hiddenState}
+              </span>
+              <span className="font-mono text-2xs text-muted">
+                conf {(marketCausalState.confidence * 100).toFixed(0)}% | risk {(marketCausalState.instabilityRisk * 100).toFixed(0)}%
+              </span>
+            </div>
+            {marketCausalState.topDriver && (
+              <div className="mt-1 font-mono text-2xs text-secondary">
+                driver: {marketCausalState.topDriver.cause.split(':').at(-1)} {'->'} {marketCausalState.topDriver.effect.split(':').at(-1)}
+              </div>
+            )}
+          </div>
+        )}
         {causalInsights.length > 0 ? (
           <div className="space-y-1 overflow-y-auto max-h-full">
             {causalInsights.map((insight) => (
@@ -183,6 +239,21 @@ function UncertaintyCell({ label, value, invert }: Readonly<{ label: string; val
         <div className={cx('h-full rounded-full', widthPctClass(display), fillClass)} />
       </div>
       <span className={cx('font-mono text-2xs', toneClass)}>{(display * 100).toFixed(0)}%</span>
+    </div>
+  );
+}
+
+function FusionCell({ label, value }: Readonly<{ label: string; value: number }>) {
+  const clamped = Math.max(0, Math.min(1, value));
+  const toneClass = textToneClass(clamped);
+  const fillClass = fillToneClass(clamped);
+  return (
+    <div className="bg-elevated rounded p-2 flex flex-col gap-1">
+      <span className="panel-header">{label}</span>
+      <div className="w-full h-1 bg-border rounded-full overflow-hidden">
+        <div className={cx('h-full rounded-full', widthPctClass(clamped), fillClass)} />
+      </div>
+      <span className={cx('font-mono text-2xs', toneClass)}>{(clamped * 100).toFixed(0)}%</span>
     </div>
   );
 }
@@ -318,4 +389,19 @@ function uncertaintyToneClassFromValue(value: number): string {
     return 'text-yellow';
   }
   return 'text-red';
+}
+
+function hiddenStateToneClass(state: string): string {
+  switch (state) {
+    case 'momentum-continuation':
+      return 'text-green';
+    case 'liquidity-fragility':
+      return 'text-yellow';
+    case 'panic-feedback':
+      return 'text-red';
+    case 'mean-reversion-pressure':
+      return 'text-blue';
+    default:
+      return 'text-neutral';
+  }
 }

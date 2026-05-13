@@ -7,6 +7,7 @@ export class ApiServer {
         this.port = port;
         this.server = null;
         this.latest = {};
+        this.causalInsights = [];
         this.orchestrationMetrics = [];
         this.orchestrationFailures = [];
         this.routingDecisions = [];
@@ -38,6 +39,61 @@ export class ApiServer {
         });
         this.bus.on(EVENTS.ANOMALY, (event) => {
             this.latest.anomaly = event;
+        });
+        this.bus.on(EVENTS.REALITY_SNAPSHOT, (event) => {
+            this.latest.realitySnapshot = event;
+        });
+        this.bus.on(EVENTS.CAUSAL_INSIGHT, (event) => {
+            this.causalInsights.unshift(event);
+            if (this.causalInsights.length > 40) {
+                this.causalInsights.pop();
+            }
+            this.latest.causalInsights = this.causalInsights;
+        });
+        this.bus.on(EVENTS.MARKET_CAUSAL_STATE, (event) => {
+            this.latest.marketCausalState = event;
+        });
+        this.bus.on(EVENTS.PARTICIPANT_FLOW, (event) => {
+            this.latest.participantFlow = event;
+        });
+        this.bus.on(EVENTS.ADVERSARIAL_AUDIT, (event) => {
+            this.latest.adversarialAudit = event;
+        });
+        this.bus.on(EVENTS.MARKET_MEMORY, (event) => {
+            this.latest.marketMemory = event;
+        });
+        this.bus.on(EVENTS.SIMULATION_UNIVERSE, (event) => {
+            this.latest.simulationUniverse = event;
+        });
+        this.bus.on(EVENTS.MULTI_TIMESCALE_VIEW, (event) => {
+            this.latest.multiTimescaleView = event;
+        });
+        this.bus.on(EVENTS.MARKET_PHYSICS, (event) => {
+            this.latest.marketPhysics = event;
+        });
+        this.bus.on(EVENTS.SCENARIO_BRANCH_STATE, (event) => {
+            this.latest.scenarioBranchState = event;
+        });
+        this.bus.on(EVENTS.CROSS_MARKET_CAUSAL_STATE, (event) => {
+            this.latest.crossMarketCausalState = event;
+        });
+        this.bus.on(EVENTS.MARKET_WORLD_STATE, (event) => {
+            this.latest.marketWorldState = event;
+        });
+        this.bus.on(EVENTS.META_CALIBRATION, (event) => {
+            this.latest.metaCalibration = event;
+        });
+        this.bus.on(EVENTS.OPERATOR_ATTENTION, (event) => {
+            this.latest.operatorAttention = event;
+        });
+        this.bus.on(EVENTS.SELF_IMPROVEMENT, (event) => {
+            this.latest.selfImprovement = event;
+        });
+        this.bus.on(EVENTS.MARKET_EXPERIENCE, (event) => {
+            this.latest.marketExperience = event;
+        });
+        this.bus.on(EVENTS.EPISTEMIC_MEMORY_REVISION, (event) => {
+            this.latest.epistemicMemoryRevision = event;
         });
         this.bus.on(EVENTS.AI_AGGREGATED_INTELLIGENCE, (event) => {
             this.latest.aiAggregatedIntelligence = event;
@@ -106,6 +162,12 @@ export class ApiServer {
                     validation: this.latest.validation ?? null,
                     aiAggregatedIntelligence: this.latest.aiAggregatedIntelligence ?? null,
                     constitutionalDecision: this.latest.constitutionalDecision ?? null,
+                    marketPhysics: this.latest.marketPhysics ?? null,
+                    scenarioBranchState: this.latest.scenarioBranchState ?? null,
+                    crossMarketCausalState: this.latest.crossMarketCausalState ?? null,
+                    marketWorldState: this.latest.marketWorldState ?? null,
+                    metaCalibration: this.latest.metaCalibration ?? null,
+                    operatorAttention: this.latest.operatorAttention ?? null,
                 }));
                 return;
             }
@@ -140,6 +202,20 @@ export class ApiServer {
                     digitalImmuneAlert: this.latest.digitalImmuneAlert ?? null,
                     strategyGenome: this.latest.strategyGenome ?? null,
                     replayIntegrity: this.latest.replayIntegrity ?? null,
+                    marketCausalState: this.latest.marketCausalState ?? null,
+                    participantFlow: this.latest.participantFlow ?? null,
+                    adversarialAudit: this.latest.adversarialAudit ?? null,
+                    marketMemory: this.latest.marketMemory ?? null,
+                    multiTimescaleView: this.latest.multiTimescaleView ?? null,
+                    marketPhysics: this.latest.marketPhysics ?? null,
+                    scenarioBranchState: this.latest.scenarioBranchState ?? null,
+                    crossMarketCausalState: this.latest.crossMarketCausalState ?? null,
+                    marketWorldState: this.latest.marketWorldState ?? null,
+                    metaCalibration: this.latest.metaCalibration ?? null,
+                    operatorAttention: this.latest.operatorAttention ?? null,
+                    marketExperience: this.latest.marketExperience ?? null,
+                    selfImprovement: this.latest.selfImprovement ?? null,
+                    epistemicMemoryRevision: this.latest.epistemicMemoryRevision ?? null,
                 }));
                 return;
             }

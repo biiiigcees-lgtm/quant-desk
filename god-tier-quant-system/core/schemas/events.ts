@@ -34,6 +34,9 @@ export interface MicrostructureEvent {
   panicRepricing: boolean;
   liquidityRegime: 'normal' | 'thin' | 'vacuum';
   aggressionScore: number;
+  spoofProbability?: number;
+  absorptionScore?: number;
+  toxicityScore?: number;
   timestamp: number;
 }
 
@@ -216,6 +219,11 @@ export interface GlobalContextEvent {
   marketRegime: 'risk-on' | 'risk-off' | 'neutral';
   liquidity: 'thin' | 'normal' | 'abundant';
   stressIndex: number;
+  vix?: number;
+  btcDominance?: number;
+  dxy?: number;
+  yieldSpread?: number;
+  macroNarrative?: string;
   timestamp: number;
 }
 
@@ -328,6 +336,130 @@ export interface CausalInsight {
   reverseStrength: number;
   confidence: number;
   spurious: boolean;
+  timestamp: number;
+}
+
+export interface CausalEdgeState {
+  cause: string;
+  effect: string;
+  opportunities: number;
+  transitions: number;
+  causalStrength: number;
+  reverseStrength: number;
+  confidence: number;
+  spurious: boolean;
+}
+
+export interface CausalMarketStateEvent {
+  contractId: string;
+  hiddenState:
+    | 'momentum-continuation'
+    | 'liquidity-fragility'
+    | 'panic-feedback'
+    | 'mean-reversion-pressure'
+    | 'neutral';
+  confidence: number;
+  instabilityRisk: number;
+  causalEntropy: number;
+  topDriver: { cause: string; effect: string; strength: number } | null;
+  activeEdges: CausalEdgeState[];
+  timestamp: number;
+}
+
+export interface EpistemicMemoryRevisionEvent {
+  contractId: string;
+  revisionId: string;
+  hypothesisId: string;
+  previousConfidence: number;
+  nextConfidence: number;
+  reason: string;
+  lineage: string[];
+  contradictionCount: number;
+  timestamp: number;
+}
+
+export interface MarketPhysicsEvent {
+  contractId: string;
+  compression: number;
+  expansion: number;
+  inertia: number;
+  exhaustion: number;
+  entropyExpansion: number;
+  liquidityConservation: number;
+  structuralStress: number;
+  timestamp: number;
+}
+
+export interface ScenarioBranchStateEvent {
+  contractId: string;
+  invalidated: boolean;
+  branchScores: Record<string, number>;
+  dominantBranch: string;
+  volatilityWeight: number;
+  timestamp: number;
+}
+
+export interface CrossMarketCausalStateEvent {
+  contractId: string;
+  riskTransmissionScore: number;
+  correlationBreakdown: {
+    macroToLocal: number;
+    liquidityToDrift: number;
+    sentimentCoupling: number;
+  };
+  dominantDriver: string;
+  timestamp: number;
+}
+
+export interface MarketWorldStateEvent {
+  contractId: string;
+  participantIntent: 'accumulation' | 'distribution' | 'hedging' | 'liquidation' | 'neutral';
+  syntheticLiquidityProbability: number;
+  forcedPositioningPressure: number;
+  reflexivityAcceleration: number;
+  worldConfidence: number;
+  scenarioDominantBranch: string;
+  hiddenState: CausalMarketStateEvent['hiddenState'];
+  timestamp: number;
+}
+
+export interface SelfImprovementEvent {
+  strategyId: string;
+  contractId: string;
+  adaptationRate: number;
+  guarded: boolean;
+  reason: string;
+  updatedWeights: Record<string, number>;
+  timestamp: number;
+}
+
+export interface MarketExperienceEvent {
+  contractId: string;
+  archetype: string;
+  recurringFailureSignature: boolean;
+  traumaPenalty: number;
+  retrievalConfidence: number;
+  timestamp: number;
+}
+
+export interface MetaCalibrationEvent {
+  contractId: string;
+  signalCalibration: number;
+  aiCalibration: number;
+  executionCalibration: number;
+  regimeCalibration: number;
+  uncertaintyCalibration: number;
+  compositeScore: number;
+  authorityDecay: number;
+  timestamp: number;
+}
+
+export interface OperatorAttentionEvent {
+  contractId: string;
+  focus: 'normal' | 'focused' | 'critical';
+  priority: string[];
+  contradictionHotspots: string[];
+  density: number;
   timestamp: number;
 }
 
@@ -707,6 +839,8 @@ export interface SystemConsciousnessEvent {
   }>;
   contradictionDensity: number;
   cognitiveStressState: 'stable' | 'elevated' | 'critical';
+  selfTrustScore?: number;
+  trustDecay?: number;
   invalidationPath: string;
   timestamp: number;
 }
@@ -728,6 +862,7 @@ export interface EpistemicHealthEvent {
   anomalyHealth: number;
   stabilityHealth: number;
   healthGrade: 'A' | 'B' | 'C' | 'D' | 'F';
+  metaCalibrationScore?: number;
   timestamp: number;
 }
 

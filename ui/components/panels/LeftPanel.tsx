@@ -23,6 +23,9 @@ export function LeftPanel({ state }: Readonly<Props>) {
   const anomaly = state?.anomaly;
   const reality = state?.realitySnapshot;
   const pf = state?.participantFlow;
+  const physics = state?.marketPhysics;
+  const scenario = state?.scenarioBranchState;
+  const meta = state?.metaCalibration;
   const uncertaintyTone = uncertaintyToneClass(reality?.uncertaintyState);
 
   const priceHistory = usePriceHistory(prob?.estimatedProbability);
@@ -67,6 +70,7 @@ export function LeftPanel({ state }: Readonly<Props>) {
         <HeatRow label="OBI" value={Math.abs(obiValue)} intensity={obiValue} />
         <HeatRow label="SPREAD" value={prob?.calibrationError ?? 0} intensity={-(prob?.calibrationError ?? 0)} />
         <HeatRow label="SWEEP" value={prob?.uncertaintyScore ?? 0} intensity={1 - (prob?.uncertaintyScore ?? 0)} />
+        <HeatRow label="STRUCT" value={physics?.structuralStress ?? 0} intensity={-(physics?.structuralStress ?? 0)} />
       </div>
 
       {/* Drift & calibration */}
@@ -88,12 +92,23 @@ export function LeftPanel({ state }: Readonly<Props>) {
             value={prob?.regime ?? '—'}
             color="#FFB020"
           />
+          <Badge
+            label="meta"
+            value={`${(((meta?.compositeScore ?? 0) * 100).toFixed(0))}%`}
+            color={metaToneColor(meta?.compositeScore ?? 0)}
+          />
         </div>
         {/* Uncertainty */}
         <div className="mt-2 flex items-center justify-between">
           <span className="font-mono text-2xs text-muted">uncertainty</span>
           <span className={cx('font-mono text-xs', uncertaintyTone)}>
             {reality?.uncertaintyState ?? '—'}
+          </span>
+        </div>
+        <div className="mt-1 flex items-center justify-between">
+          <span className="font-mono text-2xs text-muted">branch</span>
+          <span className={cx('font-mono text-2xs', scenario?.invalidated ? 'text-red' : 'text-secondary')}>
+            {scenario?.dominantBranch ?? 'pending'}
           </span>
         </div>
       </div>
@@ -269,4 +284,14 @@ function toneClassFromColor(color: string): string {
     default:
       return 'text-neutral';
   }
+}
+
+function metaToneColor(score: number): string {
+  if (score > 0.7) {
+    return '#00E5A8';
+  }
+  if (score > 0.45) {
+    return '#FFB020';
+  }
+  return '#FF4D4D';
 }

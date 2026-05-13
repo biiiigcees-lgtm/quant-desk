@@ -116,7 +116,7 @@ function stableStringify(value: unknown): string {
   }
 
   const obj = value as Record<string, unknown>;
-  const keys = Object.keys(obj).sort();
+  const keys = Object.keys(obj).sort((left, right) => left.localeCompare(right));
   const entries = keys.map((key) => `${JSON.stringify(key)}:${stableStringify(obj[key])}`);
   return `{${entries.join(',')}}`;
 }

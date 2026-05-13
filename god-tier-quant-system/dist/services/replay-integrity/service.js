@@ -89,7 +89,7 @@ function stableStringify(value) {
         return `[${value.map((item) => stableStringify(item)).join(',')}]`;
     }
     const obj = value;
-    const keys = Object.keys(obj).sort();
+    const keys = Object.keys(obj).sort((left, right) => left.localeCompare(right));
     const entries = keys.map((key) => `${JSON.stringify(key)}:${stableStringify(obj[key])}`);
     return `{${entries.join(',')}}`;
 }
