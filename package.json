@@ -11,7 +11,7 @@
     "build": "npm run build:core && npm run build:api && npm run build:ui",
     "build:core": "cd core && npx tsc --noEmit",
     "build:api": "cd apps/api && npx tsc",
-    "build:ui": "cd apps/ui && npm run build",
+    "build:ui": "cd apps/ui && npx next build",
     "test": "turbo run test",
     "lint": "turbo run lint",
     "clean": "turbo run clean",
