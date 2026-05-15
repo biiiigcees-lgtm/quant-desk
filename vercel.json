@@ -2,22 +2,5 @@
   "version": 2,
   "installCommand": "npm install",
   "buildCommand": "npm run build",
-  "framework": null,
-  "outputDirectory": "apps/ui/.next",
-  "functions": {
-    "apps/api/**/*.ts": {
-      "runtime": "@vercel/node@3.0.0",
-      "maxDuration": 30
-    }
-  },
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "apps/api/$1.ts"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "apps/ui/$1"
-    }
-  ]
+  "outputDirectory": "apps/ui/.next"
 }
