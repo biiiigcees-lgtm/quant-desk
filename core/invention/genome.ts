@@ -55,6 +55,3 @@ export function executeGenome(genome: StrategyGenome, inputs: number[]): number 
   return 0.5;
 }
 
-export function selectTopPerformers(population: StrategyGenome[], count: number): StrategyGenome[] {
-  return population.sort((a, b) => b.performance.fitness - a.performance.fitness).slice(0, count);
-}

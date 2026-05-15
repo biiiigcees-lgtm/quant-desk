@@ -1,6 +1,8 @@
 import { redisGet, redisSet } from '../infra/redis';
 import { createLogger } from '../infra/logger';
-import { createRandomGenome, mutateGenome, crossover, selectTopPerformers, updatePerformance, StrategyGenome } from '../core/invention/genome';
+import { createRandomGenome, StrategyGenome } from '../core/invention/genome';
+import { mutateGenome, crossover } from '../core/invention/mutation';
+import { selectTopPerformers, updatePerformance } from '../core/invention/selection';
 import { env } from '../infra/env';
 
 const logger = createLogger('StrategyEvolver');

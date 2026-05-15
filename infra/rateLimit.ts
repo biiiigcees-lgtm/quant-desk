@@ -29,7 +29,7 @@ export class RateLimiter {
 
     try {
       // Get current requests
-      const data = await this.redis.get(key);
+      const data = await this.redis.get(key) as string | null;
       const requests: number[] = data ? JSON.parse(data) : [];
 
       // Filter out old requests
@@ -48,7 +48,7 @@ export class RateLimiter {
 
       // Add current request
       validRequests.push(now);
-      await this.redis.set(key, JSON.stringify(validRequests), Math.ceil(this.config.windowMs / 1000));
+      await this.redis.setex(key, Math.ceil(this.config.windowMs / 1000), JSON.stringify(validRequests));
 
       return {
         allowed: true,

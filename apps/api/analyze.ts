@@ -14,11 +14,11 @@ export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const snapshot = await redisGet('snapshot:latest');
+    const snapshot = await redisGet<any>('snapshot:latest');
     if (!snapshot) return res.status(503).json({ error: 'No snapshot available' });
 
-    const calibrationState = await redisGet('calibration:state');
-    const strategyGenome = await redisGet('strategies:best');
+    const calibrationState = await redisGet<any>('calibration:state');
+    const strategyGenome = await redisGet<any>('strategies:best');
 
     const result = await analyze(snapshot, strategyGenome, calibrationState);
 

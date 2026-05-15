@@ -1,19 +1,19 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "apps/api/**/*.ts",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "apps/ui/package.json",
-      "use": "@vercel/next"
+  "installCommand": "npm install",
+  "buildCommand": "npm run build",
+  "framework": null,
+  "outputDirectory": "apps/ui/.next",
+  "functions": {
+    "apps/api/**/*.ts": {
+      "runtime": "nodejs18.x",
+      "maxDuration": 30
     }
-  ],
+  },
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "apps/api/$1"
+      "dest": "apps/api/$1.ts"
     },
     {
       "src": "/(.*)",

@@ -1,6 +1,7 @@
 import { redisGet, redisSet } from '../../infra/redis';
 import { createLogger } from '../../infra/logger';
-import { selectTopPerformers, StrategyGenome } from '../../core/invention/genome';
+import { StrategyGenome } from '../../core/invention/genome';
+import { selectTopPerformers } from '../../core/invention/selection';
 
 const logger = createLogger('API:StrategyEvolve');
 

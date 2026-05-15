@@ -8,7 +8,10 @@
   },
   "scripts": {
     "dev": "turbo run dev",
-    "build": "turbo run build",
+    "build": "npm run build:core && npm run build:api && npm run build:ui",
+    "build:core": "cd core && npx tsc --noEmit",
+    "build:api": "cd apps/api && npx tsc",
+    "build:ui": "cd apps/ui && npm run build",
     "test": "turbo run test",
     "lint": "turbo run lint",
     "clean": "turbo run clean",
@@ -21,11 +24,8 @@
     "@types/node": "^20.11.0",
     "turbo": "^1.11.0",
     "typescript": "^5.3.3",
-    "tsx": "^4.7.0",
-    "@upstash/redis": "^1.31.0"
+    "tsx": "^4.7.0"
   },
   "packageManager": "npm@10.2.4",
-  "dependencies": {
-    "@upstash/redis": "^1.38.0"
-  }
+  "dependencies": {}
 }

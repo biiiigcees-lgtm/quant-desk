@@ -8,7 +8,7 @@ export default async function handler(req: any, res: any) {
 
   try {
     const r = await fetch('https://api.bybit.com/v5/market/tickers?category=linear&symbol=BTCUSDT');
-    const d = await r.json();
+    const d = await r.json() as any;
     const t = d.result?.list?.[0];
     if (!t) throw new Error('No data');
     const fundingRate = parseFloat(t.fundingRate || '0');

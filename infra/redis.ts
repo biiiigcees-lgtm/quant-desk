@@ -1,6 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { env, validateEnv } from './env';
-import { createLogger } from './env';
+import { createLogger } from './logger';
 
 validateEnv();
 
@@ -16,11 +16,21 @@ export function getRedis(): Redis {
         token: env.REDIS_REST_TOKEN,
       });
       logger.info('Using Upstash REST Redis');
-    } else {
+    } else if (env.REDIS_URL) {
+      // For direct Redis connections, we need to parse the URL and extract token
+      // Upstash Redis URL format: redis://default:token@host:port
+      const urlParts = env.REDIS_URL.split('://');
+      const authPart = urlParts[1]?.split('@');
+      const token = authPart?.[0]?.split(':')?.[1] || '';
+      const hostUrl = authPart?.[1] || urlParts[1];
+      
       redis = new Redis({
-        url: env.REDIS_URL,
+        url: `https://${hostUrl}`,
+        token: token || 'default',
       });
-      logger.info('Using direct Redis connection');
+      logger.info('Using direct Redis connection (converted to Upstash format)');
+    } else {
+      throw new Error('No Redis configuration found. Set REDIS_URL or REDIS_REST_URL/REDIS_REST_TOKEN');
     }
   }
   return redis;

@@ -1,12 +1,14 @@
 {
   "name": "@quant-desk/api",
   "version": "1.0.0",
+  "type": "commonjs",
   "scripts": {
     "build": "tsc"
   },
   "dependencies": {
-    "@core/*": "file:../../core",
-    "@infra/*": "file:../../infra",
+    "ts-node": "^10.9.2"
+  },
+  "devDependencies": {
     "@types/node": "^20.11.0"
   }
 }
