@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": false,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "@core/*": ["./core/*"],
+      "@services/*": ["./services/*"],
+      "@infra/*": ["./infra/*"]
+    },
+    "types": ["node"]
+  },
+  "include": ["core/**/*", "services/**/*", "workers/**/*", "infra/**/*"],
+  "exclude": ["node_modules", "dist", "apps/**"]
+}

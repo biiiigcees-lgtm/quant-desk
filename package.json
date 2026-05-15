@@ -1,0 +1,31 @@
+{
+  "name": "quant-desk",
+  "version": "3.0.0",
+  "description": "QUANT//DEK — Autonomous Adaptive Market Intelligence System",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean",
+    "worker:evolver": "tsx workers/strategy-evolver.ts",
+    "worker:calibration": "tsx workers/calibration-worker.ts",
+    "worker:adversarial": "tsx workers/adversarial-runner.ts",
+    "worker:backtest": "tsx workers/backtest-runner.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "turbo": "^1.11.0",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.0",
+    "@upstash/redis": "^1.31.0"
+  },
+  "packageManager": "npm@10.2.4",
+  "dependencies": {
+    "@upstash/redis": "^1.38.0"
+  }
+}

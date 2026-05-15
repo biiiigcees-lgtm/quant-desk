@@ -1,0 +1,15 @@
+{
+  "name": "@quant-desk/workers",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@core/*": "file:../core",
+    "@infra/*": "file:../infra"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0"
+  }
+}
