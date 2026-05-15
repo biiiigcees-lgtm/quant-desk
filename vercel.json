@@ -6,7 +6,7 @@
   "outputDirectory": "apps/ui/.next",
   "functions": {
     "apps/api/**/*.ts": {
-      "runtime": "nodejs18.x",
+      "runtime": "@vercel/node@3.0.0",
       "maxDuration": 30
     }
   },
