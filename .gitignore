@@ -6,6 +6,11 @@ node_modules/
 *.bak
 .vercel
 
+# Build artifacts
+.next/
+dist/
+*.log
+
 # OpenMemory - IDE/Assistant specific rules
 .windsurf/rules/openmemory.md
 AGENTS.md

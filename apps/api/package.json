@@ -6,7 +6,8 @@
     "build": "tsc"
   },
   "dependencies": {
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "fastify": "^5.8.5"
   },
   "devDependencies": {
     "@types/node": "^20.11.0"

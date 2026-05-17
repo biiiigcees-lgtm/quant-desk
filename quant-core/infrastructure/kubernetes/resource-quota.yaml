@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: quant-core-quota
+  namespace: quant-core
+spec:
+  hard:
+    requests.cpu: "10"
+    requests.memory: "20Gi"
+    requests.ephemeral-storage: "50Gi"
+    limits.cpu: "40"
+    limits.memory: "80Gi"
+    limits.ephemeral-storage: "200Gi"
+    pods: "20"
+    persistentvolumeclaims: "10"

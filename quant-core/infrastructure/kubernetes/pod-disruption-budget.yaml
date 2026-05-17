@@ -1,0 +1,10 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: quant-core-pdb
+  namespace: quant-core
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: quant-core

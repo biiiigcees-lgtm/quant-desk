@@ -1,0 +1,23 @@
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+COPY apps/api/package*.json ./apps/api/
+COPY quant-core/package*.json ./quant-core/
+RUN npm ci
+COPY . .
+RUN npm run build:quant-core
+RUN cd apps/api && npx tsc
+
+FROM node:18-alpine AS runtime
+WORKDIR /app
+COPY package*.json ./
+COPY apps/api/package*.json ./apps/api/
+COPY quant-core/package*.json ./quant-core/
+RUN npm ci --production
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/quant-core/dist ./quant-core/dist
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+ENV NODE_ENV=production
+ENV PORT=3002
+EXPOSE 3002
+CMD ["node", "apps/api/dist/server.js"]

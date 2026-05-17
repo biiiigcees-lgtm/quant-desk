@@ -3,13 +3,17 @@
   "version": "3.0.0",
   "description": "QUANT//DEK — Autonomous Adaptive Market Intelligence System",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "quant-core"
+  ],
   "engines": {
     "node": ">=18"
   },
   "scripts": {
     "dev": "turbo run dev",
-    "build": "npm run build:core && npm run build:api && npm run build:ui",
-    "build:core": "cd core && npx tsc --noEmit",
+    "build": "npm run build:quant-core && npm run build:api && npm run build:ui",
+    "build:quant-core": "cd quant-core && npx tsc",
     "build:api": "cd apps/api && npx tsc",
     "build:ui": "cd apps/ui && npx next build",
     "test": "turbo run test",
@@ -28,8 +32,13 @@
   },
   "packageManager": "npm@10.2.4",
   "dependencies": {
-    "next": "^15.0.0",
+    "next": "^16.1.7",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "@upstash/redis": "^1.28.0",
+    "postcss": "^8.5.10"
+  },
+  "overrides": {
+    "postcss": "^8.5.10"
   }
 }
