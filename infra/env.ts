@@ -7,7 +7,7 @@ export const env = {
   REDIS_REST_TOKEN: process.env.REDIS_REST_TOKEN,
   
   // Kalshi
-  KALSHI_API_KEY: process.env.KALSHI_API_KEY || 'e7d488f2-dde6-4539-855f-0c27303ddb60',
+  KALSHI_API_KEY: process.env.KALSHI_API_KEY,
   KALSHI_API_URL: process.env.KALSHI_API_URL || 'https://api.elections.kalshi.com/trade-api/v2',
   
   // OpenRouter (AI)

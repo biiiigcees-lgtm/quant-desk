@@ -1,0 +1,78 @@
+# Vector Configuration
+# Ships structured JSON logs from all services to Loki
+# Compatible with both infra/logger.ts and quant-core/src/services/logger.ts JSON format
+
+[sources.quant_core_logs]
+type = "file"
+include = ["/var/log/quant-core/*.log"]
+ignore_older_secs = 600
+glob_minimum_cooldown_ms = 1000
+
+[sources.quant_core_stdout]
+type = "socket"
+mode = "tcp"
+address = "0.0.0.0:6000"
+decoding = "json"
+
+[sources.infra_logs]
+type = "file"
+include = ["/var/log/quant-desk/*.log"]
+ignore_older_secs = 600
+
+# Transform: ensure all logs have standard fields
+[transforms.normalize]
+type = "remap"
+inputs = ["quant_core_logs", "quant_core_stdout", "infra_logs"]
+source = '''
+  # Ensure JSON parse was successful
+  if !exists(.timestamp) {
+    .timestamp = now()
+  }
+  if !exists(.level) {
+    .level = "info"
+  }
+  if !exists(.context) {
+    .context = "unknown"
+  }
+  if !exists(.message) {
+    .message = string!(.)
+  }
+
+  # Map log levels to Loki severity
+  .severity = match(.level) {
+    "ERROR" => "error",
+    "WARN" => "warn",
+    "INFO" => "info",
+    "DEBUG" => "debug",
+    _ => "info"
+  }
+
+  # Extract service name from context for labels
+  .service = match(.context) {
+    /^API:*/ => "api",
+    /^Worker:*/ => "worker",
+    /quant-core/ => "quant-core",
+    /^Redis/ => "infra",
+    /^RateLimit/ => "infra",
+    _ => "default"
+  }
+'''
+
+# Route logs to Loki
+[sinks.loki]
+type = "loki"
+inputs = ["normalize"]
+endpoint = "http://loki:3100"
+encoding.codec = "json"
+healthcheck.enabled = true
+
+[sinks.loki.labels]
+service = "{{ service }}"
+level = "{{ level }}"
+context = "{{ context }}"
+
+# Also output to console for local debugging
+[sinks.console]
+type = "console"
+inputs = ["normalize"]
+encoding.codec = "json"

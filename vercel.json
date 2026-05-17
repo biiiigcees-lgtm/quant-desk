@@ -2,5 +2,6 @@
   "version": 2,
   "installCommand": "npm install",
   "buildCommand": "npm run build",
-  "outputDirectory": "apps/ui/.next"
+  "outputDirectory": "apps/ui/.next",
+  "ignoreCommand": "git diff HEAD~1 --name-only | grep -qv '^apps/ui/\\|^core/\\|^infra/\\|^apps/api/\\|^quant-core/\\|^package.json\\|^vercel.json' && exit 0; exit 1"
 }

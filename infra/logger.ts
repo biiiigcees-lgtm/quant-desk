@@ -5,6 +5,14 @@ export enum LogLevel {
   ERROR = 3,
 }
 
+export interface LogEntry {
+  timestamp: string;
+  level: string;
+  context: string;
+  message: string;
+  meta?: Record<string, any>;
+}
+
 export class Logger {
   private level: LogLevel;
   private context: string;
@@ -19,9 +27,14 @@ export class Logger {
   }
 
   private formatMessage(level: string, message: string, meta?: any): string {
-    const timestamp = new Date().toISOString();
-    const metaStr = meta ? ` ${JSON.stringify(meta)}` : '';
-    return `[${timestamp}] [${level}] [${this.context}] ${message}${metaStr}`;
+    const entry: LogEntry = {
+      timestamp: new Date().toISOString(),
+      level,
+      context: this.context,
+      message,
+      meta: meta !== undefined ? (typeof meta === 'object' ? meta : { value: meta }) : undefined,
+    };
+    return JSON.stringify(entry);
   }
 
   debug(message: string, meta?: any): void {
@@ -44,14 +57,16 @@ export class Logger {
 
   error(message: string, error?: Error | any): void {
     if (this.shouldLog(LogLevel.ERROR)) {
-      const meta = error instanceof Error ? { error: error.message, stack: error.stack } : error;
+      const meta = error instanceof Error
+        ? { error: error.message, stack: error.stack }
+        : error;
       console.error(this.formatMessage('ERROR', message, meta));
     }
   }
 }
 
 export function createLogger(context: string, level?: LogLevel): Logger {
-  const envLevel = process.env.LOG_LEVEL === 'debug' ? LogLevel.DEBUG : 
+  const envLevel = process.env.LOG_LEVEL === 'debug' ? LogLevel.DEBUG :
                   process.env.LOG_LEVEL === 'warn' ? LogLevel.WARN :
                   process.env.LOG_LEVEL === 'error' ? LogLevel.ERROR :
                   LogLevel.INFO;
